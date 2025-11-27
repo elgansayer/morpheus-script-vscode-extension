@@ -1,0 +1,51 @@
+//-----
+// Suppress
+//-----
+
+//=============================================================
+//=============================================================
+SuppressMain:
+
+	// These values were lifted directly from attack.scr.
+	// It is a good idea to keep them in synch, so that the transition from
+	// suppress to attack is as smooth as possible.
+
+	self.shortrange = 150
+	self.mediumrange = 650
+	self.pronedistance = 850
+
+	//----------------------
+	// decide how to stand
+
+	local.distance = self.distancetoenemy
+	if (local.distance > self.pronedistance && self.weapongroup != bazooka && self.team == german)
+	{
+		// prone
+		waitexec anim/prone.scr
+	}
+	else if (local.distance > self.mediumrange)
+	{
+		// crouch
+		waitexec anim/crouch.scr::transition
+	}
+	else
+	{
+		// stand
+		waitexec anim/stand.scr::transition
+	}
+
+	//----------------------
+	// attack
+
+	waitexec anim/shoot.scr
+
+	//----------------------
+	// wait a bit
+
+	local.stopwaitingtime = level.time + .5 + randomfloat(1)
+
+	while (level.time < local.stopwaitingtime)
+	{
+		waitexec anim/aim.scr
+	}
+end

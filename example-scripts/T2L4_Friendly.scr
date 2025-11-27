@@ -1,0 +1,148 @@
+//------------------------------------------------------------------
+//	t2l4_Friendly.Scr
+//
+//
+//		Handles friendlies running around in T2L4....
+//
+//--------------------------------------------------------------------------------
+
+
+
+//--------------------------------------------------------------------------------
+Run_To local.dest local.anim:
+//
+//	AI will run to the destination and play the animation when he gets there.
+// 
+//	Examples:
+//	$DiverGuy1 waitthread gags/t2l4_Friendly.Scr::Run_To $StopHere 24A201_Dive
+//	$DiverGuy2 waitthread gags/t2l4_Friendly.Scr::Run_To $StopHere 24A204_Dive
+//	$DiverGuy3 waitthread gags/t2l4_Friendly.Scr::Run_To $StopHere 24A207_Dive
+//
+// optionally, you may want to have them crouch with this command:
+//
+//		$DiverSoldier# exec global/crouch.scr
+//
+//--------------------------------------------------------------------------------
+
+	if (local.dest==NIL)
+	{
+//		println "Invalid runto command in t2l4_friendly.scr!"
+		End
+	}
+
+	self exec global/disable_ai.scr
+
+	self runto local.dest
+	self waittill movedone
+
+	if ( local.anim!=NULL )
+	{
+		self.blendtime = 0.01
+		self anim local.anim
+		self waittill animdone
+		self.blendtime = 0.2
+
+		// do any other necessary things....
+	}
+
+	self exec global/enable_ai.scr
+
+
+	End
+
+
+//
+// Init the diver guys.
+//
+diver_guys_init:
+	level.DiverGuy1Spawner = waitthread global/spawner.scr::spawner_create $Diverguy1
+	level.DiverGuy2Spawner = waitthread global/spawner.scr::spawner_create $Diverguy2
+	level.DiverGuy3Spawner = waitthread global/spawner.scr::spawner_create $Diverguy3
+end
+
+//--------------------------------------------------------------------------------
+DoDiverJump:
+//
+//	Have DiverGuy1 jump into foxhole at $DiverGuyDest1
+//
+//--------------------------------------------------------------------------------
+
+	local.diverguy1 = waitthread global/spawner.scr::spawner_activate level.DiverGuy1Spawner
+	local.diverguy1 nodamage
+
+	local.diverguy1 waitthread Run_To $DiverGuyDest1 24A201_Dive
+	
+	local.diverguy1 exec global/disable_ai.scr
+
+	local.count = 0
+	while ( local.count < 3 )
+	{
+		local.count ++
+		local.diverguy1 anim 24A202_DivePause
+		local.diverguy1 waittill animdone
+	}
+
+	local.diverguy1 anim 24A203_GetUp
+	local.diverguy1 waittill animdone
+
+	local.diverguy1 exec global/enable_ai.scr
+
+	local.diverguy1 runto $captain_start_path
+	local.diverguy1 waittill movedone
+
+	End
+
+//--------------------------------------------------------------------------------
+DoDiverDive:
+//
+//	Have DiverGuy2 dive into foxhole at $DiverDest2
+//
+//--------------------------------------------------------------------------------
+
+	local.diverguy2 = waitthread global/spawner.scr::spawner_activate level.DiverGuy2Spawner
+	local.diverguy2 nodamage
+
+	local.diverguy2 waitthread Run_To $DiverGuyDest2 24A204_Dive
+
+	local.diverguy2 exec global/disable_ai.scr
+
+	local.count = 0
+	while ( local.count < 3 )
+	{
+		local.count ++
+		local.diverguy2 anim 24A205_DivePause
+		local.diverguy2 waittill animdone
+	}
+	
+	local.diverguy2 anim 24A206_GetUp
+	local.diverguy2 waittill animdone 
+
+	local.diverguy2 exec global/enable_ai.scr
+
+	local.diverguy2 runto $captain_start_path
+	local.diverguy2 waittill movedone
+
+	End
+
+//--------------------------------------------------------------------------------
+DoDiverSlide:
+//
+//	Have DiverGuy3 slide into foxhole at $DiverGuyDest3
+//
+//--------------------------------------------------------------------------------
+
+	local.diverguy3 = waitthread global/spawner.scr::spawner_activate level.DiverGuy3Spawner
+	local.diverguy3 nodamage
+
+	local.diverguy3 waitthread Run_To $DiverGuyDest3 24A207_DiveRoll
+
+	local.diverguy3 exec global/disable_ai.scr
+	
+	waitframe
+		
+	local.diverguy3 exec global/enable_ai.scr
+
+	local.diverguy3 runto $captain_start_path
+	local.diverguy3 waittill movedone
+		
+	End

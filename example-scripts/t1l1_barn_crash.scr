@@ -1,0 +1,322 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// gags/t1l1_barn_crash.scr
+//
+// author: Michael Goodwin
+//
+// setup:
+//
+//   initialize the script (after spawn) with the line:
+//   exec gags/t1l1_barn_crash.scr $nazi $nazi2
+//
+//   start the sequence with the line:
+//   exec gags/t1l1_barn_crash.scr::start
+//
+//   place a info_pathnode path "barnnazipath1" for soldier #1
+//
+//   place a info_pathnode path "barnnazipath2" for soldier #2
+//
+// TODO:
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main local.nazi1 local.nazi2:
+
+	level.barnnazi1 = local.nazi1
+	level.barnnazi2 = local.nazi2
+
+	level.barnnazi1 exec global/ai_hide.scr
+	level.barnnazi2 exec global/ai_hide.scr
+
+	level.cutharness = 0
+	level.cuenazi2 = 0
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// start the gag
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+start:
+
+//turns off the flak
+	thread gags/box_effects.scr::stop_all_fx_region
+	
+	$player physics_off
+	thread morebouncetotheounce
+//	exec global/earthquake.scr 0.75 3.0 1 0
+
+	$first_sky_origin rendereffects "-skyorigin"
+	$second_sky_origin rendereffects "+skyorigin"
+	$world render_terrain "1"
+
+	wait 2
+	$barnnazi1 playsound den_T1L1_GS5801
+
+	wait 2
+	$glass_sound playsound snd_glass_shatter2
+	$smoke_grenade TurnOn
+
+	wait 3
+	$barnnazi2 playsound den_T1L1_GS5901
+	wait 2
+	thread soldiersrun
+	wait 1.0
+
+	local.usekey = getboundkey1 "+use"
+	local.msg = (loc_convert_string "Press ") + local.usekey + (loc_convert_string " to cut loose from the parachute.")
+	thread throbtext local.msg 0
+	
+	//turn the ambient sound on now.
+	forcemusic normal normal
+
+	level.cutharness = 1
+
+	//time before AI locates the player
+	wait 2.0
+	thread soldiersact
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// player crashes through the barn roof
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+crashthroughroof:
+
+	// TODO: determine exploder set #
+	self remove
+	thread global/exploder.scr::explode 1
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// start the sequence with the german soldiers
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+soldiersrun:
+
+	level.barnnazi1 thread barnnazi1run
+	level.barnnazi2 thread barnnazi2run
+	level.cuenazi2 = 1
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// sequence for soldier #1
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+barnnazi1run:
+
+	self exec global/ai_show.scr
+	self exec global/disable_ai.scr
+	self runto $barnnazipath1
+	self waittill movedone
+	wait 1.0
+	self turnto $player
+	wait 1.0
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// sequence for soldier #2
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+barnnazi2run:
+
+	wait 1.0
+	self exec global/ai_show.scr
+	self exec global/disable_ai.scr
+	self runto $barnnazipath2
+	self waittill movedone
+	wait 2.0
+	self turnto $player
+	wait 1.0
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// start the fight with the german soldiers
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+soldiersact:
+
+	level.barnnazi1 thread barnnazi1act
+	level.barnnazi2 thread barnnazi2act
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// activate soldier #1
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+barnnazi1act:
+
+	self exec global/enable_ai.scr
+	self attackplayer 
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// activate soldier #2
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+barnnazi2act:
+
+	wait 1.5
+	self exec global/enable_ai.scr
+	self attackplayer 
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread run when the player presses action
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cutharness:
+
+	if ( level.cutharness == 1 )
+	{
+		$player playsound cutcord
+		self remove
+
+		thread throbtext_off
+
+		level.barnnazi1 exec global/enable_ai.scr
+		level.barnnazi2 exec global/enable_ai.scr
+		level.cuenazi2 = 0
+
+		level.bounce = 0
+
+		$player physics_on
+		
+		// give him weapons...
+		$player item weapons/colt45.tik
+		$player item weapons/m1_garand.tik
+		$player item weapons/m2frag_grenade.tik
+		$player item items/binoculars.tik
+
+		waitthread global/items.scr::add_item "binoculars" noprint	// Show binoculars inventory icon
+
+
+		$player ammo pistol 50
+		$player ammo rifle 24
+		$player ammo grenade 3
+
+		drawhud 1
+
+		$tank_roof solid
+		wait 0.5
+		$player useweaponclass rifle
+		$player safeholster 0
+
+	}
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// throb text
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+throbtext local.str local.time:
+
+	if ( local.time == NIL )
+		local.time = 5
+
+	local.hudindex = 66		// in honor of Galvan
+
+	huddraw_alpha local.hudindex 0
+	huddraw_virtualsize local.hudindex 1
+	huddraw_string local.hudindex local.str
+	huddraw_align local.hudindex left top
+	huddraw_font local.hudindex facfont-20
+	huddraw_color local.hudindex 1.0 0.0 0.0
+	huddraw_rect local.hudindex 5 180 0 0
+
+	level.flashhud = 1
+	local.stop = level.time + local.time
+
+	while ( (level.time <= local.stop) && (level.flashhud == 1) )
+	{
+		for ( local.i = 0.0; local.i <= 1.0; local.i += 0.2 )
+		{
+			huddraw_alpha local.hudindex local.i
+			waitframe
+		}
+
+		wait 0.5
+
+		for ( local.i = 1.0; local.i >= 0.0; local.i -= 0.2 )
+		{
+			huddraw_alpha local.hudindex local.i
+			waitframe
+		}
+
+		if ( local.time == 0 )
+			local.stop = level.time
+	}
+
+	huddraw_alpha local.hudindex 0
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// turn off throbbing
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+throbtext_off:
+
+	level.flashhud = 0
+	
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// bounce simulation at end of harness
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+morebouncetotheounce:
+
+	level.bounce = 1
+
+	local.startdZ = -8.0
+	local.damping = 0.85
+	local.tension = 0.85
+
+	while ( level.bounce == 1 )
+	{
+		local.vel = (0.0 0.0 local.startdZ)
+		while ( (level.bounce == 1) && (local.vel[2] < -local.startdZ) )
+		{
+			$player.origin = $player.origin + local.vel
+			local.vel = local.vel + (0.0 0.0 local.tension)
+//			println "velZ is " local.vel[2]
+
+			waitframe
+		}
+
+		local.startdZ = local.startdZ * local.damping
+		local.damping = local.damping * local.damping
+		if ( local.damping < 0.25 )
+		{
+			level.bounce = 0
+		}
+	}
+
+end

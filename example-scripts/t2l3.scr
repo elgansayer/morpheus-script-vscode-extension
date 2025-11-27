@@ -1,0 +1,3310 @@
+main:
+	level.script = "maps/t2l3.scr"
+	level.music = "t2l3"
+	setcvar "g_mission" "2"
+	
+	exec global/auto.scr
+
+// added for gags
+exec gags/t2l3_soldiers_talking.scr
+
+	level waittill prespawn
+	
+	thread global/friendly.scr::friendlygen
+
+	// lock down player
+	$player physics_off
+	//*** fade out
+	fadeout .001 0 0 0 1
+
+	// Turn off the hud.
+	drawhud 0
+
+// panzer variable
+	
+	level.enemytankspeed = 50
+	level.playertanktarget = 0
+	level.lookahead = 256
+	level.tankaquiretarget = 0
+	level.webberdropgun = 0
+	level.nodrophealth = 1	
+
+	trigger $panzertrigger
+	
+	level waittill spawn
+
+	//add in our clip brushes
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( -5248 -6272 384 )
+	local.clipbrush setsize ( 0 -576 -448 ) ( 2976 0 0 )
+	local.clipbrush solid
+
+	thread initthemap
+//
+	exec gags/t2l3_soldiers_run_and_die.scr::init
+
+	// exec gags/t2l3_soldiers_trench_dash.scr::init	
+	waitthread gags/t2l3_captainruntoandtalk.scr::t2l3_captainruntalk_init $captainike $captainikefront
+	thread gags/T2L3_Friendly.scr::foxhole_guys_init
+	
+	thread gags/T2L3_Friendly.scr::tree_guys_init
+
+	thread deathcheck         
+	
+	thread tweekgermanhealth	
+	thread tweekamericanaccuracy
+
+	//
+	// normal snow
+	//
+	level.rain_speed = "250"
+	level.rain_speed_vary = "1"
+	level.rain_length = "1.5"
+	level.rain_width = "1.5"
+	level.rain_density = "1"
+	level.rain_slant = "250"
+	level.rain_min_dist = "500"
+	level.rain_numshaders = 12
+	level.rain_shader = "textures/snow"
+
+// global timer variables
+	level.killzone = 0
+
+	level.captainlivetime = 0 
+
+	level.skill = getcvar (skill)
+
+	if (level.skill == "0")
+	{
+		level.findcaptaintime = 40
+		level.sargetimerboost = 180
+		level.medictimerboost = 120
+	}
+	else if (level.skill == "1")
+	{
+		level.findcaptaintime = 30
+		level.sargetimerboost = 160
+		level.medictimerboost = 150
+	}
+	else if (level.skill == "2")
+	{
+		level.findcaptaintime = 20
+		level.sargetimerboost = 150
+		level.medictimerboost = 80
+	}
+	else
+	{
+		level.findcaptaintime = 999
+		level.sargetimerboost = 999
+		level.medictimerboost = 999
+	}
+
+	$mortar_turret0 maxyawoffset "50.0"
+	$mortar_turret0 hide
+	$mortar_turret0 notsolid
+
+	$mortar hide
+	$mortar notsolid
+	$mortar.collisionent = $granatwerfer_collision
+	$mortar_turret0.collisionent = $granatwerfer_turret_collision
+	$mortar nodamage
+	$mortar immune Explosion	
+		
+	$mp44trigger nottriggerable
+	$bazookaguystrigger nottriggerable
+
+	level.medicforcebarrageon = 1
+
+	$player threatbias -10
+
+	thread global/friendly.scr::chain_off 2
+	thread global/friendly.scr::chain_off 3
+	thread global/friendly.scr::chain_off 4
+	
+	if (getcvar(start) == "end")
+	{
+		$player.origin = ( 388 3811 1816 )
+		thread global/ai.scr::spawn 15
+		thread global/friendly.scr::chain_off 1
+		thread global/friendly.scr::chain_off 2
+		thread global/friendly.scr::chain_on 3
+	}
+	
+//	thread initthemap
+	thread americansinit
+	
+	// the american officer will set this guy in motion but keeping it here for now
+	trigger $spawnrightflank	
+	
+	thread kommanderinit
+	thread removewave2
+	
+	wait 2
+	
+	thread gags/t2l3_blitzkrieg.scr::BarrageInit
+
+	$sarg nodamage
+	$privateparts nodamage
+							 
+	thread triggersarg
+
+	//$captainiketrigger thread triggercaptainike
+
+	$panzer2tree nodamage
+
+	// $playertree1 thread playertreethink
+		
+	thread begin
+
+	level.objective1 = 0
+
+//	for (local.i=1;local.i<=$wave3ammo.size;local.i++)
+//	{
+//		$wave3ammo[local.i].origin = ($wave3ammo[local.i].origin - (0 0 128))
+//		$wave3ammo[local.i] hide
+//		$wave3ammo[local.i] notsolid
+//	}
+	$kommander remove
+	$dude remove
+
+end
+
+playertreethink:
+	self nodamage
+	while (level.wave != 3)
+	{
+		wait 1	
+	}
+	self waittill trigger
+	// $playertree1 takedamage
+	// kill $playertree1
+	trigger $playertree1trigger
+
+end
+
+triggersarg:
+	thread sargetimerboost
+	if (level.barragerunning == 1)
+	{
+		while (level.barragerunning == 1)
+		{
+			waitframe
+		}
+	}
+	
+	waitframe
+
+	local.dist = 9999
+	
+	while ( local.dist > 256 )
+	{
+		local.dist = vector_length($sarg.origin - $player.origin)
+		$sarg anim 23A820_KneelingCycle
+		$sarg waittill animdone
+	}
+		
+	level.foundsarg = 1
+	
+	level.objective1 = 1
+
+	waitthread gags/t2l3_medic.scr::t2l3_sarg_think
+	waitthread gags/t2l3_medic.scr::medic_start
+	$captain_health solid
+	$captain_health show
+	
+	exec global/autosave.scr 2	
+end
+
+sargetimerboost:
+	local.dist = 9999
+	while ( local.dist > 256 )
+	{
+		local.dist = vector_length($sarg.origin - $player.origin)
+		waitframe
+	}
+	level.captainlivetime += level.sargetimerboost
+end
+
+triggermedic:
+	
+end
+
+removethemg:
+	wait 7
+end
+
+triggercaptainike:
+
+	thread triggermaddash
+	waitthread gags/t2l3_captainruntoandtalk.scr::t2l3_triggercaptainruntalk
+	thread kommanderstartattack
+	
+	thread removethemg
+	
+	thread startartillerybombardment
+	
+	//
+	// normal snow
+	//
+	level.rain_speed = "250"
+	level.rain_speed_vary = "1"
+	level.rain_length = "1.5"
+	level.rain_width = "1.5"
+	level.rain_density = "1"
+	level.rain_slant = "250"
+	level.rain_min_dist = "500"
+	level.rain_numshaders = 12
+	level.rain_shader = "textures/snow"
+
+	thread wavedialogueinit
+
+	level.ambientbarrage = 0
+	
+end
+
+captainike_wakeuptheplatoon:
+	$mortar_turret0 show
+	$mortar_turret0 solid
+	
+	$mortar show
+	$mortar solid
+
+	for (local.i=1;local.i<level.friendlys+1;local.i++)
+	{
+		if !(isalive level.friendly[local.i])
+			continue
+
+		if (level.wave == 1)
+		{
+			if (level.friendly[local.i].group == 1)
+			{
+				level.friendly[local.i] exec global/enable_ai.scr
+				level.friendly[local.i] rendereffects "-dontdraw"
+				level.friendly[local.i] turnto $s1
+				level.friendly[local.i] exec global/crouch.scr	
+			}
+		}
+		else 
+		{
+			if (level.friendly[local.i].group == 5)
+			{
+				level.friendly[local.i] exec global/enable_ai.scr
+				level.friendly[local.i] rendereffects "-dontdraw"
+				level.friendly[local.i] turnto $s5
+				level.friendly[local.i] exec global/crouch.scr	
+			}
+		}		
+	}
+
+	for (local.i=1;local.i<$friendly.size+1;local.i++)
+	{
+		if (isalive $friendly[local.i])
+		{
+			if ($friendly[local.i].group == 1)
+				$friendly[local.i] ai_on
+			else if ($friendly[local.i].group == 5)
+				$friendly[local.i] ai_on
+
+			$friendly[local.i] exec global/crouch.scr		
+		}
+	}
+	
+	$ltkury turnto $s5
+	$ltkury exec global/crouch.scr
+	$ltkury resetleash
+	$ltkury.fixedleash = 1
+	$lamb nodamage
+	$lamb immune Explosion
+	
+	$lamb exec global/crouch.scr
+end
+
+triggermaddash:
+	wait 10
+	thread gags/t2l3_soldiers_trench_dash.scr::cue_trench_dash
+end
+
+begin:
+//--------------------------------------
+// Fade-in
+//--------------------------------------
+
+// Heal the player and set up inventory
+
+	$player fullheal
+	$player takeall
+	$player item weapons/p38.tik
+	$player item weapons/kar98.tik
+	$player item weapons/mp40.tik
+	$player item weapons/steilhandgranate.tik  
+ 	$player item weapons/nebelhandgranate.tik  
+ 
+ 	$player ammo pistol 32
+ 	$player ammo smg 296
+ 	$player ammo rifle 120
+ 	$player ammo smokegrenade 3
+ 	$player ammo grenade 3
+ 
+freezeplayer
+$player.viewangles = "0 90 0"
+//dprintln "camera should be frozen"
+	
+
+ wait 1.5
+ 
+ //*** Christmas Eve, 194
+ showmenu bastogne1
+ hidemouse
+ 
+ wait 1.5
+ //*** Bastogne....
+ showmenu bastogne2
+ hidemouse
+ 
+ wait 2.25
+ //*** Bastogne....
+ showmenu bastogne3
+ hidemouse
+
+ // Get the four soldiers in the right spot.
+thread gags/t2l3_soldiers_talking.scr::four_soldiers_talking_init
+ 
+ thread backgroundtalking
+ wait 3
+ fadein 2 0 0 0 1
+ 
+// println ( "opening sequence " )
+// Start the four soldiers talking gag.
+thread gags/t2l3_soldiers_talking.scr::four_soldiers_talking
+
+// wait 2
+ hidemenu bastogne1
+ hidemenu bastogne2
+ hidemenu bastogne3
+ hidemouse
+
+//dprintln "camera unlocked"
+wait 2
+releaseplayer
+$player.viewangles = "0 90 0"
+//--------------------------------------
+// End of Fade-in
+//--------------------------------------
+
+end
+
+// First round of explosions.
+artillery_barrage_1:
+
+	//
+	// artillery fallout snow
+	//
+	level.startbarrage = 1
+
+	thread gags/t2l3_medic.scr::t2l3_medic_init 
+
+	level.rain_speed = "250"
+	level.rain_speed_vary = "10"
+	level.rain_length = "2"
+	level.rain_width = "2"
+	level.rain_density = ".1"
+	level.rain_slant = "150"
+	level.rain_min_dist = "2000"
+	level.rain_numshaders = 12
+	level.rain_shader = "textures/fallout"
+		
+	// println ("Artillery Barrage occurs here")
+
+	// moved this because of cache sound hit
+	// start the artillery attack ambience
+	// forcemusic aux2 aux2 
+
+	local.countanim = 0
+	//
+	// TODO: Remove this, for temp purposes only.
+	//
+	while (local.countanim < 20)
+	{
+		local.countanim = local.countanim + 1
+		waitframe
+	}
+
+	thread gags/t2l3_soldiers_talking.scr::four_soldiers_talking_over
+		
+	// Start the tree falling on two guys gag.
+	thread gags/T2L3_Friendly.scr::tree_death_init
+
+	thread startscriptedguys
+	
+	// start the artillery attack ambience
+	forcemusic aux2 aux2 
+	exec global/autosave.scr 1
+
+	// unlock the player
+	$player physics_on
+
+	exec gags/t2l3_soldiers_trench_dash.scr::init	
+end
+
+fstart:    
+	self health 550
+	self.mins = 0
+	self.maxs = 50
+	self thread global/friendly.scr::friendlythink
+end
+
+obj1:
+	exec global/obj.scr 1 complete "Hold against first wave." 
+	exec global/obj.scr 2 current  "Hold against second wave." 
+	thread global/friendly.scr::chain_off 1
+	thread global/friendly.scr::chain_on 2
+	$friendly mindist 128
+end
+
+threatbias:
+	$player threatbias 0
+end
+
+endthedemo:
+	// Play the end of the wave ambience soundtrack
+	forcemusic aux5 aux5 
+	
+	// dprintln "You Have Successfully Held The Line. You Have Completed The Mission."
+	$player nodamage
+	wait 5
+	// fadeout 3.5 0 0 0 1
+	exec global/missioncomplete.scr t2l4 1
+end
+
+deathcheck:
+end
+
+//
+// Map Constraints
+//
+
+initthemap:
+	$captain_health notsolid
+	$captain_health hide
+	level.barrage_dialogue_time = 0
+	level.barrage_dialogue = 0
+	
+	level.wave_dialogue_time = 0
+	level.wave_dialogue = 0
+	
+	level.enableassault = 0
+	level.axiswins = 0
+	level.retreat = 0
+
+	level.victorydistance = 128
+	level.germanawareness = 384
+	// level.germanawareness = 600
+		
+// tanks 'R' us
+	
+	level.curvehicles = 0
+	level.maxvehicles = 5
+	level.tankrange = 1500
+	level.lastshottime = level.time
+	level.lasttankhit = level.time
+	
+	for (local.i=1;local.i<$enemy.size+1;local.i++)	
+	{
+		$enemy[local.i] rendereffects "+dontdraw"
+		$enemy[local.i] exec global/disable_ai.scr
+		$enemy[local.i] dontdropweapons
+		$enemy[local.i] immune Explosion
+		$enemy[local.i] ai_off
+	}
+	for (local.i=1;local.i<$enemy5.size+1;local.i++)
+	{
+		$enemy5[local.i] rendereffects "+dontdraw"
+		$enemy5[local.i] exec global/disable_ai.scr
+		$enemy5[local.i] dontdropweapons
+		$enemy5[local.i] immune Explosion
+		$enemy5[local.i] ai_off
+	}
+	
+	$panzer rendereffects "+dontdraw"
+	$panzer_turret0 rendereffects "+dontdraw"
+
+	$panzer2 rendereffects "+dontdraw"
+	$panzer2_turret0 rendereffects "+dontdraw"
+
+	$panzer3 rendereffects "+dontdraw"
+	$panzer3_turret0 rendereffects "+dontdraw"
+
+	$halftrack1 rendereffects "+dontdraw"
+
+	$stolentruck.collisionent = $stolentruck.target
+	$stolentruck thread global/vehicles_thinkers.scr::enemy_truck_think 100
+	//$stolentruck thread global/stationaryweapons.scr::StationaryWeapon vehicles/opeltruck_d.tik 128 30 512
+	$stolentruck vehicleanim idlenolights
+	$stolentruck vehicleanim color_snow	
+	
+	$halftrack1_gunner rendereffects "+dontdraw"
+	$halftrack1_gunner ai_off
+	$halftrack1_gunner nodamage
+end
+
+//
+// Panzer
+//
+
+panzer_shoot local.target:
+
+		self.gun = self QueryTurretSlotEntity 0
+		self.gun2 = self QueryTurretSlotEntity 1
+			
+		if (self.gun)
+			self.gun nodamage
+		if (self.gun2)
+			self.gun2 nodamage
+			
+		if (level.sightdistance == NIL)
+			level.sightdistance = 2000
+
+		self.gun setAimTarget local.target
+
+		self thread panzer_attack_loop self.gun local.target
+		self.attack_thread = parm.previousthread
+	
+end
+
+panzertankdrive:
+
+// dprintln ( "panzer start moving")
+	
+	$panzer.type = 0
+	$panzer rendereffects "-shadow"
+	$panzer.start_health = 1000
+	$panzer.health = $panzer.start_health
+	$panzer removeondeath 0
+	$panzer immune bullet
+	$panzer immune fast_bullet
+	$panzer immune grenade
+	$panzer immune bash
+	$panzer.accuracy = 100
+			
+	$panzer thread global/vehicles_thinkers.scr::enemy_tank_think2 1 empty_panzer_winter
+	$panzer.get_out = 0			
+
+	// $panzer thread global/Vehicle_Warning.Scr::WarnFriendlies $enemy5 800 0.707
+	$panzer thread drive_path $panzertank_path level.enemytankspeed
+
+	thread panzerthink
+	thread panzer_target_preference
+end
+
+panzertankdrive2:
+	$panzer thread drive_path $panzertank_path2 level.enemytankspeed
+	thread panzerthink
+end
+
+tank_pain local.gun:
+end
+
+panzerthink:
+
+	if !(isalive $panzer)
+	{
+		if ( parm.other.team == german )
+		{
+			parm.other.enableEnemy = 0
+			parm.other runto $s5
+
+		//	println ("run to s5!!!!!")
+		}
+		end
+	}
+	else if ($panzer.health < $panzer.start_health)
+	{
+		$panzer.health = 1
+	}
+		
+	wait 5
+	goto panzerthink
+	
+end
+
+
+drive_path local.path local.speed local.remove:
+	self.driving = 1
+	self drive local.path local.speed 30 50 level.lookahead
+	self waittill drive
+
+	if (self)
+	{
+		self stop
+		self.driving = 0
+		if (local.remove == "remove")
+			self remove
+	}
+end
+
+panzercrossedtheline:
+	level.axiswins = 1
+end
+
+bazookaguysspawn:
+	if ((level.skill == "0") || (level.skill == "1"))
+		thread bazookaguy1thread
+	if (level.skill == "0")
+		thread bazookaguy2thread
+end
+
+bazookaguy1thread:
+	
+		// $panzer2activateguys waittill trigger
+		
+		local.ent = spawn models/human/1st-ranger_private.tik "$targetname" "friendly" "type_attack" "cover"			
+		level.bazookaguy1 = local.ent
+		local.ent.origin = $bazookaguy1start.origin
+		local.ent.gun = "panzerschrek"
+		local.ent.accuracy = 100
+		local.ent nodamage
+		local.ent exec global/disable_ai.scr
+		
+		local.ent turnto $player
+
+		local.ent.movedoneradius = 64.0
+		local.ent runto $bazookaguy1destination
+		local.ent waittill movedone
+		local.ent turnto $panzer2
+			
+		local.ent exec global/crouch.scr 
+		wait 1
+				
+		local.ent exec global/aimat.scr $panzer2
+		wait 1
+		local.ent exec global/shoot.scr
+		local.ent takedamage
+		local.ent.accuracy = 1
+		wait 4
+		
+		while (isalive $panzer2)
+		{
+			local.ent turnto $panzer2
+			local.ent exec global/aimat.scr $panzer2
+			local.ent exec global/shoot.scr
+			wait 4
+		}
+
+		local.ent exec global/disable_ai.scr
+		
+		local.ent runto $anchor1
+		local.ent waittill movedone
+		local.ent turnto $s1
+		local.ent exec global/crouch.scr
+		local.ent resetleash
+		local.ent.fixedleash = 1
+
+		local.ent exec global/enable_ai.scr
+
+		level.bazooka1guy = local.ent
+end
+
+bazookaguy2thread:
+		
+		// $panzer2activateguys waittill trigger
+		
+		local.ent2 = spawn models/human/1st-ranger_private.tik "$targetname" "friendly" "type_attack" "cover"			
+		level.bazookaguy2 = local.ent2
+		local.ent2.origin = $bazookaguy2start.origin
+		local.ent2.gun = "panzerschrek"
+		local.ent2.accuracy = 100
+		local.ent2 nodamage
+		local.ent2 exec global/disable_ai.scr
+		
+		local.ent2 turnto $player
+
+		local.ent2.movedoneradius = 64.0
+		local.ent2 runto $bazookaguy2destination
+		local.ent2 waittill movedone
+		local.ent2 turnto $panzer2
+		
+		local.ent2 exec global/aimat.scr $panzer2
+		wait 2
+		local.ent2 exec global/shoot.scr
+		local.ent2.accuracy = 1
+		local.ent2 takedamage
+		wait 4
+		while (isalive $panzer2)
+		{
+			local.ent2 turnto $panzer2
+			local.ent2 exec global/aimat.scr $panzer2
+			local.ent2 exec global/shoot.scr
+			wait 4
+		}
+		
+		local.ent2 exec global/disable_ai.scr
+
+		local.ent2 runto $anchor2
+		local.ent2 waittill movedone
+
+		local.ent2 turnto $s1
+		local.ent2 exec global/crouch.scr
+		local.ent2 resetleash
+		local.ent2.fixedleash = 1
+
+		local.ent2 exec global/enable_ai.scr
+		
+		level.bazooka2guy = local.ent2
+end
+
+panzer3_target_preference:
+	
+	$panzer3.notattacking = 1
+	level.playertanktarget = 0
+
+	while (isalive level.bazookaguy1)
+	{
+		$panzer3 thread panzer_target level.bazookaguy1
+		wait 15
+	}
+	
+	while (isalive level.bazookaguy2)
+	{
+		$panzer3 thread panzer_target level.bazookaguy2
+		wait 15
+	}
+
+	while (isalive $panzer3)
+	{
+		{
+			for (local.i=1;local.i<$friendly.size+1;local.i++)	
+			{
+				if(isalive $friendly[local.i])
+				{
+					if ($friendly[local.i].group == 1)
+					{
+						local.target = $friendly[local.i]
+					}
+				}				
+			}	
+				
+			while (isalive local.target)
+			{
+				$panzer3 thread panzer_target local.target
+				wait 15
+			}
+		}
+		wait 1
+	}
+		
+end
+
+panzer_target_preference:
+
+	$panzer.notattacking = 1
+	level.playertanktarget = 0
+	
+	while (isalive $panzer)
+	{
+		{
+			for (local.i=1;local.i<$friendly.size+1;local.i++)	
+			{
+				if(isalive $friendly[local.i])
+				{
+					if ($friendly[local.i].group == 5)
+					{
+						local.target = $friendly[local.i]
+					}
+				}				
+			}	
+				
+			while (isalive local.target)
+			{
+				$panzer thread panzer_target local.target
+				wait 15
+			}
+		}
+		wait 1
+	}
+
+end
+
+panzer2_target_preference:
+
+	$panzer2.notattacking = 1
+	$panzer2tree takedamage
+	level.playertanktarget = 0
+
+	if ((level.skill == "0") || (level.skill == "1"))
+	{
+		while (isalive $panzer2tree)
+		{
+			$panzer2 thread panzer_target $panzer2tree
+			wait 15
+		}
+	
+	}
+	else
+	{
+		$panzer2.gun = self QueryTurretSlotEntity 0
+
+		wait 5
+
+		while ( isalive $player && isalive $panzer2 )
+		{
+			$panzer2.gun setaimtarget $player
+			$panzer2.gun waittill ontarget
+			$panzer2 wait 0.2
+			$panzer2.gun anim fire
+			local.rand = randomfloat 2
+			local.rand += 3.5
+			wait local.rand
+		}
+	}
+
+	//$panzer2.notattacking = 0
+	
+	level.playertanktarget = $player
+
+end
+
+//
+panzer_attack_loop local.gun local.target:    //self is the tank
+	if (isalive self)
+	{
+		local.trace_offset = local.gun.origin + (0 0 48)
+		if (self.stunned == 1)
+		{
+//			println "z:             " self " is not firing because stunned"
+			wait 1
+		}
+		else
+		{
+//			println "z:         " self " on target, waitting 5 secs to fire"
+			wait 5
+			if (self.stunned != 1)
+				local.gun anim fire
+			wait 2
+		}
+	}	
+end
+
+panzer_target local.target:
+
+	if(isalive self)
+		self thread panzer_shoot local.target
+
+end
+
+halftrack1isdead:
+	while (isalive $halftrack1)
+		wait 1
+	
+	$player nodamage
+	thread global/halftrack.scr::halftrack_killed $halftrack1
+	radiusdamage ( $halftrack1.origin + (0 0 128) ) 500 500 
+end
+
+CheckGuyAndRun:
+	if (isalive self)
+	{
+		local.dist = vector_length (self.origin - $anchor1.origin)
+		if (local.dist < 384)
+		{
+			self exec global/disable_ai.scr
+			local.int = randomint(100)
+			if (local.int > 80)
+				self runto $v1
+			else if (local.int > 60)
+				self runto $v2
+			else if (local.int > 40)
+				self runto $v3
+			else if (local.int > 20)	
+				self runto $v4
+			else
+				self runto $v5
+
+			self waittill movedone
+			self exec global/enable_ai.scr
+		}
+	}
+end
+
+halftrack1victory:
+	
+	if (isalive $halftrack1)
+	{
+		$halftrack1breakamericans waittill trigger
+		
+		for (local.i=1;local.i<$friendly.size+1;local.i++)
+		{
+			if ($friendly[local.i].group == 1)
+				$friendly[local.i] thread CheckGuyAndRun
+		}		
+		
+		$sarg thread CheckGuyAndRun
+		$privateparts thread CheckGuyAndRun
+		$lamb thread CheckGuyAndRun
+		level.bazooka1guy thread CheckGuyAndRun
+		if (level.skill == "0")
+			level.bazooka2guy thread CheckGuyAndRun
+		level.globalcaptainike thread CheckGuyAndRun
+
+		for ( local.i = 1; local.i < $trenchdasher.size + 1; local.i++ )
+		{
+			$trenchdasher[local.i] thread CheckGuyAndRun
+		}
+
+		$halftrack1victory waittill trigger
+		
+		level.axiswins = 1
+	}
+end
+
+
+wave3_think local.ent local.type local.pathname local.speed local.startmovingdelay:
+
+	level waittill spawn
+
+	while (level.wave != 3)
+	 	wait 1
+
+//	for (local.i=1;local.i<=$wave3ammo.size;local.i++)
+//	{
+//		$wave3ammo[local.i] show
+//		$wave3ammo[local.i] solid
+//		$wave3ammo[local.i].origin = ($wave3ammo[local.i].origin + (0 0 128))
+//	}
+
+
+	local.delay = local.startmovingdelay + level.time
+
+	while (local.delay > level.time)
+		wait 1
+
+	if (local.ent == $panzer2)
+	{	
+		thread panzer2_target_preference
+	}
+	else if (local.ent == $panzer3)
+	{
+		while (isalive $panzer2)
+			wait 1
+		wait 5
+		// dprintln "TANK 3 IS GOING"
+
+		level.globalcaptainike say dfr_call_AP4362 
+
+
+		thread panzer3_target_preference	
+	}
+	else if (local.ent == $halftrack1)
+	{
+		while (isalive $panzer3)
+			wait 1
+
+		$halftrack1 thread halftrack1isdead
+		$halftrack1 thread halftrack1victory
+		wait 5
+		$player playsound dfr_call_AP4363
+	}
+
+	local.ent show
+
+	if (local.type == 1)
+	{
+		local.ent thread global/vehicles_thinkers.scr::enemy_tank_think2 1 empty_panzer_winter
+		local.ent.get_out = 0
+		local.ent thread drive_path local.pathname local.speed
+	}
+	else
+	{
+		local.ent thread global/halftrack.scr::halftrack_drive local.ent local.pathname 0 100 200 40 128
+
+	}
+
+	// local.ent thread global/Vehicle_Warning.Scr::WarnFriendlies $enemy7 800 0.707
+
+end
+
+
+// TWEEK
+tweekamericanaccuracy:
+	level.americanwave1accuracy = 3
+	level.americanwave2accuracy = 2
+	level.americanwave3accuracy = 1
+end
+
+tweekgermanhealth:
+	level.enemy1health = 55
+	level.enemy2health = 60
+	level.enemy3health = 65
+end
+
+AmericanRunToOtherFlank local.dest:
+	wait 3
+	self health 100
+	self exec global/disable_ai.scr
+	self exec global/stand.scr
+	
+	local.dist = 99999
+	while (local.dist > 64)
+	{
+		self exec global/disable_ai.scr
+		local.dist = vector_length( self.origin - local.dest.origin )
+		self runto local.dest	
+		waitframe
+	}
+		
+	self exec global/crouch.scr
+	self resetleash
+	self.fixedleash = 1
+	self exec global/enable_ai.scr
+end
+
+TwoAmericanGuysRunToLeftFlank:
+// dprintln "TwoAmericanGuysRunToLeftFlank"
+	local.count = 0
+	for (local.i=1;local.i<$friendly.size+1;local.i++)
+	{
+		if ((isAlive $friendly[local.i]))
+		{
+			local.dist = vector_length( $player.origin - $friendly[local.i].origin )
+
+			if (local.dist < 1024)
+			{
+				if (local.count == 0)
+				{
+					$friendly[local.i] thread AmericanRunToOtherFlank $defendleft1
+					local.count++
+					$friendly[local.i].group = 5
+					$friendly[local.i].set = 8
+				}
+				else if (local.count == 1)
+				{
+					$friendly[local.i] thread AmericanRunToOtherFlank $defendleft2
+					local.count++
+					$friendly[local.i].group = 5
+					$friendly[local.i].set = 7
+				}
+			}
+		}
+	}
+end
+
+TwoAmericanGuysRunToRightFlank:
+
+// dprintln "TwoAmericanGuysRunToRightFlank"
+
+	local.count = 0
+	for (local.i=1;local.i<$friendly.size+1;local.i++)
+	{
+		if ((isAlive $friendly[local.i]))
+		{
+			local.dist = vector_length( $player.origin - $friendly[local.i].origin )
+
+			if (local.dist < 1024)
+			{
+				if (local.count == 0)
+				{
+					$friendly[local.i] thread AmericanRunToOtherFlank $defendright1
+					local.count++
+					$friendly[local.i].group = 1
+					$friendly[local.i].set = 2
+				}
+				else if (local.count == 1)
+				{
+					$friendly[local.i] thread AmericanRunToOtherFlank $defendright2
+					local.count++
+					$friendly[local.i].group = 1
+					$friendly[local.i].set = 3
+				}
+			}
+		}
+	}
+end
+
+//
+//
+//
+americansinit:
+	
+	for (local.i=1;local.i<$friendly.size+1;local.i++)
+	{
+		$friendly[local.i].accuracy = level.americanwave1accuracy
+				
+		$friendly[local.i].sight = 512
+		$friendly[local.i].hearing = 512
+		//level.friendly[local.i].maxdist = 64
+		//level.friendly[local.i].mindist = 64
+		$friendly[local.i] exec global/disable_ai.scr
+		$friendly[local.i].anchored = 0
+
+		$friendly[local.i] rendereffects "+dontdraw"
+		
+		if ($friendly[local.i].group == 1)
+		{
+			local.anchornumber = $friendly[local.i].set
+			// $friendly[local.i] leash 128
+
+			$friendly[local.i] ai_off
+			
+			if (local.anchornumber == 1)
+				$friendly[local.i] tether $anchor1
+			else if (local.anchornumber == 2)
+				$friendly[local.i] tether $anchor2
+			else if (local.anchornumber == 3)
+				$friendly[local.i] tether $anchor3
+			else if (local.anchornumber == 4)
+				$friendly[local.i] tether $anchor4
+			else if (local.anchornumber == 5)
+				$friendly[local.i] tether $anchor5
+			
+		}
+		else if ($friendly[local.i].group == 5)
+		{
+			local.anchornumber = $friendly[local.i].set
+			// $friendly[local.i] leash 128
+
+			$friendly[local.i] ai_off
+			
+			if (local.anchornumber == 6)
+				$friendly[local.i] tether $anchor6
+			else if (local.anchornumber == 7)
+				$friendly[local.i] tether $anchor7
+			else if (local.anchornumber == 8)
+				$friendly[local.i] tether $anchor8
+			else if (local.anchornumber == 9)
+				$friendly[local.i] tether $anchor9
+			else if (local.anchornumber == 10)
+				$friendly[local.i] tether $anchor10
+			
+
+// println ( " found one in group 5" )
+
+		}
+
+		$friendly[local.i] thread death_check_american
+		$friendly[local.i] resetleash
+		$friendly[local.i] leash 64
+		$friendly[local.i] fixedleash 1
+		$friendly[local.i].maxdist = 256
+		$friendly[local.i].mindist = 64
+
+	}
+
+	
+end
+
+death_check_american:
+	
+	if (level.wave == 1)
+	{	
+
+		// println( "death_check called " )
+		if (level.wave == 1)
+		{
+			local.health = 100
+			local.accuracy = level.americanwave1accuracy
+		}
+		
+		/*
+		else if (level.wave == 2)
+		{
+			local.health = 90 
+			local.accuracy = level.americanwave2accuracy
+		}
+		else
+		{
+			local.health = 80
+			local.accuracy = level.americanwave3accuracy
+		}
+		*/
+
+		self waittill death
+		
+		local.rval = randomint(100)
+
+		local.guy = spawn models/human/allied_usa_1st-ranger_private_snow.tik "$targetname" "friendly" "type_attack" "cover"			
+
+		local.guy health local.health
+		local.guy.accuracy = local.accuracy
+		
+		local.guy.sight = 512
+		local.guy.hearing = 512
+		
+		//local.guy.maxdist = 64
+		//local.guy.mindist = 64
+
+		local.guy.group = self.group
+		local.guy.set = self.set
+		local.guy.anchored = 0
+
+		local.guy.gun = "Mauser KAR 98K"
+
+		wait 0.3
+		local.guy exec global/disable_ai.scr
+		
+		if (self.set == 1)
+		{
+			local.guy.origin = $newfriend1.origin
+			local.guy runto $anchor1	
+		}
+		else if (self.set == 2)
+		{
+			local.guy.origin = $newfriend2.origin
+			local.guy runto $anchor2
+		}
+		else if (self.set == 3)
+		{
+			local.guy.origin = $newfriend3.origin
+			local.guy runto $anchor3
+		}
+		else if (self.set == 4)
+		{
+			local.guy.origin = $newfriend4.origin
+			local.guy runto $anchor4
+		}
+		else if (self.set == 5)
+		{
+			local.guy.origin = $newfriend5.origin
+			local.guy runto $anchor5
+		}
+		else if (self.set == 6)
+		{
+			local.guy.origin = $newfriend6.origin
+			local.guy runto $anchor6
+		}
+		else if (self.set == 7)
+		{
+			local.guy.origin = $newfriend7.origin
+			local.guy runto $anchor7
+		}
+		else if (self.set == 8)
+		{
+			local.guy.origin = $newfriend8.origin
+			local.guy runto $anchor8
+		}
+		else if (self.set == 9)
+		{
+			local.guy.origin = $newfriend9.origin
+			local.guy runto $anchor9
+		}
+		else if (self.set == 10)
+		{
+			local.guy.origin = $newfriend101.origin
+			local.guy runto $anchor10
+		}
+		
+		
+		local.guy thread death_check_american	
+		local.guy.movedoneradius = 128
+		local.guy waittill movedone
+		
+		local.guy.anchored = 0
+
+		if (local.guy.set == 1)
+		{
+			local.guy turnto $s1
+			local.guy exec global/crouch.scr	
+		}
+		else
+		{
+			local.guy turnto $s5
+			local.guy exec global/crouch.scr	
+		}
+
+		local.guy exec global/enable_ai.scr	
+		local.guy resetleash
+		local.guy leash 64
+		local.guy fixedleash 1
+	}
+
+end
+
+
+//
+// German Kommander
+//
+
+kommanderinit:
+
+	level.initobjectivetwo = 0	
+	level.maxinfantryinwave1 = 15 
+	level.totalinfantrykilledinwave1 = 0
+	
+	level.skill = getcvar (skill)
+
+	level.group1 = 0 // infantry 
+	
+	level.group1activatetime = 1
+	
+	level.group2activatetime = 1
+	
+	level.group3activatetime = 1
+
+	level.group4activatetime = 1
+	
+	level.totalinfantrycount = 0
+
+	if (level.skill == "0")
+	{
+		level.bazooka = 1
+		level.smgs = 2
+		level.rifle = 7
+	}
+	else if (level.skill == "1")
+	{
+		level.bazooka = 1
+		level.smgs = 4
+		level.rifle = 5
+	}
+	else if (level.skill == "2")
+	{
+		level.bazooka = 1
+		level.smgs = 5
+		level.rifle = 2
+	}
+	else
+	{
+		level.bazooka = 1
+		level.smgs = 3
+		level.rifle = 7
+	}
+		
+	level.currentbazooka = 0
+	level.currentsmgs = 0
+	level.currentrifle = 0	
+
+	for (local.i=1;local.i<$enemy.size+1;local.i++)
+	{
+		if (isalive $enemy[local.i])
+		{
+			$enemy[local.i] thread death_check
+			$enemy[local.i] dontdropweapons
+			$enemy[local.i] thread GermanNoDrawManager
+
+			if ($enemy[local.i].group == 1)
+			{
+				level.group1 ++
+				$enemy[local.i].set = 10 + randomint(30)
+				$enemy[local.i].sight = 1500
+				$enemy[local.i].hearing = 1500
+				$enemy[local.i].health = level.enemy1health 
+				
+				$enemy[local.i] rendereffects "+dontdraw"
+
+				if (level.currentbazooka < level.bazooka)
+				{
+					level.currentbazooka ++
+					$enemy[local.i] gun "panzerschrek"
+				}
+				else if (level.currentsmgs < level.smgs)
+				{
+					level.currentsmgs ++
+					$enemy[local.i] gun "MP40"
+				}
+				else if (level.currentrifle < level.rifle)
+				{
+					level.currentrifle ++
+					$enemy[local.i] gun "Mauser KAR 98K"
+				}
+			}
+
+
+		}
+	}
+	
+	level.totalinfantrycount = level.group1
+
+end
+
+kommanderinitwave2:
+
+	$panzer rendereffects "-dontdraw"
+	$panzer_turret0 rendereffects "-dontdraw"
+	trigger $trigger9
+	
+	level.panzer1 = 0	
+	level.maxinfantryinwave2 = 15 
+	level.totalinfantrykilledinwave2 = 0
+	
+	level.group5 = 0 // infantry 
+
+	level.panzer1activatetime = 35
+	level.group5active = 0
+	level.group5activatetime = 0
+	
+	level.totalinfantrycount = 0
+
+	if (level.skill == "0")
+	{
+		level.bazooka = 0
+		level.smgs = 2
+		level.rifle = 8
+	}
+	else if (level.skill == "1")
+	{
+		level.bazooka = 0
+		level.smgs = 4
+		level.rifle = 6
+	}
+	else if (level.skill == "2")
+	{
+		level.bazooka = 0
+		level.smgs = 5
+		level.rifle = 3
+	}
+	else
+	{
+		level.bazooka = 0
+		level.smgs = 4
+		level.rifle = 6
+	}
+		
+	level.currentbazooka = 0
+	level.currentsmgs = 0
+	level.currentrifle = 0	
+
+	for (local.i=1;local.i<$enemy5.size+1;local.i++)
+	{
+		if (isalive $enemy5[local.i])
+		{
+			$enemy5[local.i] thread death_check
+			$enemy5[local.i] dontdropweapons
+			$enemy5[local.i] thread GermanNoDrawManager 
+
+			if ($enemy5[local.i].group == 5)
+			{
+				level.group5 ++
+				$enemy5[local.i].set = 10 + randomint(30)
+				$enemy5[local.i].sight = 1500
+				$enemy5[local.i].hearing = 1500
+								
+				$enemy5[local.i].health = level.enemy2health 
+
+				$enemy5[local.i] rendereffects "+dontdraw"
+
+				// left the bazooka for tweekability
+				if (level.currentbazooka < level.bazooka)
+				{
+					level.currentbazooka ++
+					$enemy5[local.i] gun "panzerschrek"
+				}
+				else if (level.currentsmgs < level.smgs)
+				{
+					level.currentsmgs ++
+					$enemy5[local.i] gun "MP40"
+				}
+				else if (level.currentrifle < level.rifle)
+				{
+					level.currentrifle ++
+					$enemy5[local.i] gun "Mauser KAR 98K"
+				}
+			}
+			
+		}
+	}
+	
+	level.totalinfantrycount = level.group5
+
+	thread TwoAmericanGuysRunToLeftFlank
+
+	waitthread gags/t2l3_captainruntoandtalk.scr::t2l3_executecaptainwave2 
+	
+end
+
+kommanderinitwave3:
+	$bazookaguystrigger triggerable
+	// third wave
+	$panzer2 rendereffects "-dontdraw"
+	$panzer2_turret0 rendereffects "-dontdraw"
+
+	$panzer3 rendereffects "-dontdraw"
+	$panzer3_turret0 rendereffects "-dontdraw"
+
+	$halftrack1 rendereffects "-dontdraw"
+	
+	///
+	$panzer2.type = 0
+	$panzer2 rendereffects "-shadow"
+	$panzer2.start_health = 10
+	$panzer2.health = $panzer2.start_health
+	$panzer2 removeondeath 0
+	$panzer2 immune bullet
+	$panzer2 immune fast_bullet
+	$panzer2 immune grenade
+	$panzer2 immune bash
+	$panzer2.accuracy = 100
+
+	$panzer3.type = 0
+	$panzer3 rendereffects "-shadow"
+	$panzer3.start_health = 100
+	$panzer3.health = $panzer3.start_health
+	$panzer3 removeondeath 0
+	$panzer3 immune bullet
+	$panzer3 immune fast_bullet
+	$panzer3 immune grenade
+	$panzer3 immune bash
+	$panzer3.accuracy = 100
+
+	thread global/halftrack.scr::halftrackinit $halftrack1 100 models/vehicles/halftrack_winter_d.tik
+	thread global/halftrack.scr::halftrack_loadpassengers $halftrack1 2 1 "human/german_winter_type1" "human/german_winter_type1"
+
+	$halftrack1 immune bullet
+	$halftrack1 immune fast_bullet
+
+	$halftrack1_gunner rendereffects "-dontdraw"
+	$halftrack1_gunner ai_on
+	$halftrack1_gunner takedamage
+	
+	thread wave3_think $panzer3 1 panzer3_path 100 40
+	thread wave3_think $halftrack1 2 halftrack1_path 100 50 
+
+	level.maxinfantryinwave3 = 30 
+	level.totalinfantrykilledinwave3 = 0
+	
+	level.skill = getcvar (skill)
+	
+	level.group7 = 0 // infantry 
+	
+	level.group7activatetime = 20
+		
+	level.totalinfantrycount = 0
+
+	if (level.skill == "0")
+	{
+		level.bazooka = 1
+		level.smgs = 2
+		level.rifle = 7
+	}
+	else if (level.skill == "1")
+	{
+		level.bazooka = 1
+		level.smgs = 4
+		level.rifle = 5
+	}
+	else if (level.skill == "2")
+	{
+		level.bazooka = 1
+		level.smgs = 5
+		level.rifle = 2
+	}
+	else
+	{
+		level.bazooka = 1
+		level.smgs = 3
+		level.rifle = 7
+	}
+		
+	level.currentbazooka = 0
+	level.currentsmgs = 0
+	level.currentrifle = 0	
+
+	thread wave3_think $panzer2 1 panzer2_path 150 10 	
+
+	////
+	//// spawn in a new group enemy7
+	////
+	while (isalive $panzer2)
+		wait 1
+
+	local.count = 7
+	while (local.count)
+	{
+		local.count --
+		level.group7 ++
+		local.newguy = spawn models/human/german_winter_type1.tik "$targetname" "enemy7" "type_attack" "cover"
+		local.newguy.group = 7
+		local.newguy.health = level.enemy3health 
+		local.newguy immune Explosion
+		local.newguy dontdropweapons
+		local.newguy thread GermanNoDrawManager		
+
+		local.newguy thread death_check
+							
+		local.rval = randomint(100)
+
+		if (local.rval > 80)
+			local.newguy.origin = $s1.origin
+		else if (local.rval > 60)
+			local.newguy.origin = $s2.origin
+		else if (local.rval > 40)
+			local.newguy.origin = $s3.origin
+		else 
+			local.newguy.origin = $s4.origin
+
+		local.newguy.set = 10 + randomint(30)
+
+		if (level.currentbazooka < level.bazooka)
+		{
+			level.currentbazooka ++
+			local.newguy gun "panzerschrek"
+		}
+		else if (level.currentsmgs < level.smgs)
+		{
+			level.currentsmgs ++
+			local.newguy gun "MP40"
+		}
+		else if (level.currentrifle < level.rifle)
+		{
+			level.currentrifle ++
+			local.newguy gun "Mauser KAR 98K"
+		}
+		
+		// local.newguy wait ( randomint(2) + 1 )
+		local.newguy exec global/disable_ai.scr
+		local.rval = randomint(100)
+		if (local.rval > 80)
+			local.newguy runto $v1
+		else if (local.rval > 60)
+			local.newguy runto $v2
+		else if (local.rval > 40)
+			local.newguy runto $v3		
+		else 
+			local.newguy runto $v4
+	}
+	
+	level.totalinfantrycount = level.group7
+
+end
+
+
+kommanderstartattack:
+
+	for (local.i=1;local.i<$enemy.size+1;local.i++)
+	{
+		$enemy[local.i] rendereffects "-dontdraw"
+		$enemy[local.i] ai_on
+	}
+
+	//Start the ambience soundtrack for the first wave
+	forcemusic aux4 aux4 
+
+	level.pocketflashes = 0
+	
+	// println( "kommander start attack!!" )
+
+	level.group1activatetime = level.group1activatetime + level.time
+	level.group2activatetime = level.group2activatetime + level.time
+	level.group3activatetime = level.group3activatetime + level.time	
+	level.group4activatetime = level.group4activatetime + level.time
+	
+	level.wave = 1
+	thread captainike_wakeuptheplatoon
+	
+	thread kommanderthink
+	
+	thread g1pathstart
+
+	thread enablegroup1ai
+
+end
+ 
+kommanderstartattack2:
+	// println( "kommander start attack II " )
+
+$artilleryleft turnoff
+$artilleryright turnoff
+
+	for (local.i=1;local.i<$enemy5.size+1;local.i++)
+	{
+		$enemy5[local.i] rendereffects "-dontdraw"
+		$enemy5[local.i] ai_on
+	}
+
+	level.group5activatetime = level.group5activatetime + level.time
+	level.panzer1activatetime = level.panzer1activatetime + level.time
+	level.wave = 2
+
+	wait 3
+	// println("- Kommander Klink is Evaluating Mobile Assault")
+
+	thread kommanderthink
+
+	// wait 4
+	thread g5pathstart
+
+	thread enablegroup5ai
+	
+	thread panzer1pathstart
+	
+	wait 4
+	$artilleryleft turnon
+end
+
+kommanderthink:
+
+	if (level.retreat == 0)
+    {
+		if (level.axiswins == 1)
+		{
+			for (local.i=1;local.i<level.friendlys+1;local.i++)
+			{
+				if !(isalive level.friendly[local.i])
+					continue
+
+				if (level.friendly[local.i].group == 1)
+				{
+					level.friendly[local.i] runto $americanretreatright	
+				}
+				else if (level.friendly[local.i].group == 5)
+				{
+					level.friendly[local.i] runto $americanretreatleft
+				}
+				
+				level.friendly[local.i] exec global/disable_ai.scr
+
+			}	
+
+			// dprintln "They're through the line, run!"
+			
+			$player playsound dfr_call_AP4331 wait // - "Fall back!"
+			$player waittill sounddone
+
+			$player playsound dfr_call_AP4332 wait // - "Retreat!"
+			$player waittill sounddone
+			
+			$player playsound dfr_call_AP4333 wait // - "They're through the line, run!"
+			$player waittill sounddone
+
+			waitframe
+			missionfailed
+			
+			end
+		}
+
+		local.groupcount = 0
+
+		if (level.wave == 1)
+		{
+			for (local.i=1;local.i<$enemy.size+1;local.i++)
+			{
+				if (isalive $enemy[local.i])
+				{
+					if ($enemy[local.i].group == 1)
+					{
+						local.groupcount ++
+					}
+				}
+				local.deadone = local.i
+			}
+			if (local.groupcount < level.totalinfantrycount)
+			{
+				
+				level.totalinfantrykilledinwave1 ++
+				if (level.maxinfantryinwave1 == level.totalinfantrykilledinwave1)
+				{
+					level.wave = 2
+					level.retreat = 1
+					// println( "start wave 2 " + level.totalinfantrykilledinwave1 )
+					
+					thread captainike_wakeuptheplatoon
+					thread kommanderinitwave2
+					thread waveleftdialogueinit
+					
+					// thread waveleftdialogue
+					
+					// $artilleryleft turnon
+					$artilleryright turnoff
+								
+					// end
+				}
+				
+				local.newguy = spawn models/human/german_winter_type1.tik "$targetname" "enemy" "type_attack" "cover"
+				local.newguy.group = 1
+				local.newguy.health = level.enemy1health 
+				local.newguy dontdropweapons
+				local.newguy immune Explosion
+				local.newguy thread death_check
+				local.newguy thread GermanNoDrawManager
+				local.rval = randomint(100)
+
+				if (local.rval > 80)
+					local.newguy.origin = $s1.origin
+				else if (local.rval > 60)
+					local.newguy.origin = $s2.origin
+				else if (local.rval > 40)
+					local.newguy.origin = $s3.origin
+				else 
+					local.newguy.origin = $s4.origin
+
+				local.newguy.set = 10 + randomint(30)
+
+				if (level.currentbazooka < level.bazooka)
+				{
+					level.currentbazooka ++
+					local.newguy gun "panzerschrek"
+				}
+				else if (level.currentsmgs < level.smgs)
+				{
+					level.currentsmgs ++
+					local.newguy gun "MP40"
+				}
+				else if (level.currentrifle < level.rifle)
+				{
+					level.currentrifle ++
+					local.newguy gun "Mauser KAR 98K"
+				}
+				
+				// local.newguy wait 3
+				local.newguy exec global/disable_ai.scr
+				// level.temp = $destination.size + 1
+				// local.newguy runto $destination[randomint(level.temp)]
+
+				local.rval = randomint(100)
+				if (local.rval > 80)
+					local.newguy runto $v1
+				else if (local.rval > 60)
+					local.newguy runto $v2
+				else if (local.rval > 40)
+					local.newguy runto $v3		
+				else 
+					local.newguy runto $v4
+								
+			}
+		}
+		else if (level.wave == 2)
+		{
+		// println ( "klink think wave 2 ")
+			for (local.i=1;local.i<$enemy5.size+1;local.i++)
+			{
+				if (isalive $enemy5[local.i])
+				{
+					if ($enemy5[local.i].group == 5)
+					{
+						local.groupcount ++
+					}
+				}
+				local.deadone = local.i
+			}
+			
+			if !(isalive $panzer)
+			{
+					level.wave = 3
+					level.retreat = 1
+					// println( "start wave 3 " + level.totalinfantrykilledinwave2 )
+	
+					$artilleryleft turnoff
+					
+					$player playsound dfr_call_AS2202
+
+					thread TwoAmericanGuysRunToRightFlank
+
+					thread kommanderinitwave3
+					
+					wait 3
+					thread setobjective 6
+														
+			}
+			else if (local.groupcount < level.totalinfantrycount)
+			{
+				// println ( "wave 2" + local.groupcount)
+				level.totalinfantrykilledinwave2 ++
+				
+				//if (level.maxinfantryinwave2 == level.totalinfantrykilledinwave2)
+				
+				
+				local.newguy = spawn models/human/german_winter_type2.tik "$targetname" "enemy5" "type_attack" "cover"
+				local.newguy.group = 5
+				local.newguy dontdropweapons
+				local.newguy immune Explosion
+				local.newguy thread GermanNoDrawManager
+
+				local.rval = randomint(100)
+				if (local.rval > 80)
+					local.newguy.origin = $s5.origin
+				else if (local.rval > 60)
+					local.newguy.origin = $s6.origin
+				else if (local.rval > 40)
+					local.newguy.origin = $s7.origin
+				else 
+					local.newguy.origin = $s8.origin
+
+				local.newguy.set = 10 + randomint(30)
+				
+				local.newguy.health = level.enemy2health 
+
+				local.newguy thread death_check
+			
+				if (level.currentbazooka < level.bazooka)
+				{
+					level.currentbazooka ++
+					local.newguy gun "panzerschrek"
+				}
+				else if (level.currentsmgs < level.smgs)
+				{
+					level.currentsmgs ++
+					local.newguy gun "MP40"
+				}
+				else if (level.currentrifle < level.rifle)
+				{
+					level.currentrifle ++
+					local.newguy gun "Mauser KAR 98K"
+				}
+								
+				// local.newguy wait 3
+				local.newguy exec global/disable_ai.scr
+
+				local.rval = randomint(100)
+				if (local.rval > 80)
+					local.newguy runto $v5
+				else if (local.rval > 60)
+					local.newguy runto $v6
+				else if (local.rval > 40)
+					local.newguy runto $v7
+				else
+					local.newguy runto $v8
+		
+				
+			}
+		}
+		else if (level.wave == 3)
+		{
+			// println( " kommander is on wave 3 " )
+			for (local.i=1;local.i<$enemy7.size+1;local.i++)
+			{
+				if (isalive $enemy7[local.i])
+				{
+					if ($enemy7[local.i].group == 7)
+					{
+						local.groupcount ++
+					}
+				}
+				local.deadone = local.i
+			}
+			
+			if ( !(isalive $panzer3) && !(isalive $halftrack1) )
+			{
+					level.wave = 4
+					level.retreat = 1
+					// println( "its all over " + level.totalinfantrykilledinwave3 )
+										
+					level.globalcaptainike exec global/disable_ai.scr
+					level.globalcaptainike anim 23A838_ceasefire
+					waitthread global/objectives.scr::add_objectives 6 3 
+					thread endthedemo
+			}
+			else if (local.groupcount < level.totalinfantrycount)
+			{
+				
+				level.totalinfantrykilledinwave3 ++
+				//if (level.maxinfantryinwave3 > level.totalinfantrykilledinwave3)
+								
+				local.newguy = spawn models/human/german_winter_type1.tik "$targetname" "enemy7" "type_attack" "cover"
+				local.newguy.group = 7
+				local.newguy.health = level.enemy3health 
+				local.newguy dontdropweapons
+				local.newguy thread death_check
+				local.newguy immune Explosion
+				local.newguy thread GermanNoDrawManager
+
+				local.rval = randomint(100)
+
+				if (local.rval > 80)
+					local.newguy.origin = $s1.origin
+				else if (local.rval > 60)
+					local.newguy.origin = $s2.origin
+				else if (local.rval > 40)
+					local.newguy.origin = $s3.origin
+				else 
+					local.newguy.origin = $s4.origin
+
+				local.newguy.set = 10 + randomint(30)
+
+				if (level.currentbazooka < level.bazooka)
+				{
+					level.currentbazooka ++
+					local.newguy gun "panzerschrek"
+				}
+				else if (level.currentsmgs < level.smgs)
+				{
+					level.currentsmgs ++
+					local.newguy gun "MP40"
+				}
+				else if (level.currentrifle < level.rifle)
+				{
+					level.currentrifle ++
+					local.newguy gun "Mauser KAR 98K"
+				}
+				
+				local.newguy exec global/disable_ai.scr
+			
+				local.rval = randomint(100)
+				if (local.rval > 80)
+					local.newguy runto $v1
+				else if (local.rval > 60)
+					local.newguy runto $v2
+				else if (local.rval > 40)
+					local.newguy runto $v3		
+				else 
+					local.newguy runto $v4
+								
+			}
+		}
+			
+	}
+
+	if (level.retreat == 1)
+	{
+		// println (" retreat !!!!!!! " )
+		level.retreat = 0			
+		$artilleryright turnoff
+		if (level.wave == 2)
+		{
+			for (local.i=1;local.i<$enemy.size+1;local.i++)
+			{
+				if (isalive $enemy[local.i])
+				{
+					// println (" retreat wave 1 !!!!!!! " )
+					$enemy[local.i] exec global/disable_ai.scr
+					$enemy[local.i].set = 999
+					$enemy[local.i] runto $s1
+				}
+			}
+			
+		}
+		if (level.wave == 3)
+		{
+			for (local.i=1;local.i<$enemy5.size+1;local.i++)
+			{
+			// dprintln (" retreat wave 2 !!!!!!! " )
+				if (isalive $enemy5[local.i])
+				{
+					$enemy5[local.i] exec global/disable_ai.scr
+					$enemy5[local.i].set = 999
+					$enemy5[local.i] runto $s5
+				}
+			}
+		}
+		if (level.wave == 4)
+		{
+			for (local.i=1;local.i<$enemy7.size+1;local.i++)
+			{
+				if (isalive $enemy7[local.i])
+				{
+					$enemy7[local.i] exec global/disable_ai.scr
+					$enemy7[local.i].set = 999
+					$enemy7[local.i] runto $s1
+				}
+			}
+		}
+	}
+
+wait 0.1
+goto kommanderthink
+
+end
+
+RemoveRetreatEnemy local.dest:
+	
+	self.movedoneradius = 1024
+	self runto local.dest
+	
+	local.dist = vector_length (self.origin - local.dest.origin)
+	
+	if (local.dist < 1024)
+	{
+		self remove	
+	}
+
+end 
+
+//
+// german group1
+//
+
+death_check:
+	// println( "death_check called " )
+	self waittill death
+	self.targetname = ""
+	{		
+		if (self.gun == "panzerschrek" )
+		{
+			level.currentbazooka --
+			// println ("took weapon away panzerschrek")
+		}
+		else if (self.gun == "MP40" )
+		{
+			level.currentsmgs --
+			// println ("took weapon away mp40")
+		}
+		else if (self.gun == "Mauser KAR 98K" )
+		{
+			level.currentrifle --
+			// println ("took weapon away rifle")
+		}
+	}
+end
+
+runshoot:
+
+	local.rval = randomint(100)
+
+	if (local.rval > 50)
+	{
+		
+		local.rval = randomint(100)
+
+		if (local.rval > 80)
+			local.target = $v1
+		else if (local.rval > 60)
+			local.target = $v2
+		else if (local.rval > 40)
+			local.target = $v3
+		else
+			local.target = $v4
+
+		local.wait = 0.3
+		local.count = 0
+		while (local.count < 4)
+		{
+			local.count ++
+			self exec global/aimat.scr local.target
+			wait local.wait
+			self exec global/shoot.scr
+			wait 0.5
+		}
+	}
+
+end
+
+enablegroup1ai:
+	
+	local.distance = 1500
+	local.length = 0
+	
+	local.engageforthislong = 88 // must be less than 90
+
+	if (level.enableassault == 1)
+	{	
+		// dprintln "Enable Group 1 AI"
+		if (level.axiswins == 1)
+		{
+			wait 5
+			end
+		}
+		if (level.wave == 1)
+		{
+			if !(level.retreat)
+			{
+				for (local.i=1;local.i<$enemy.size+1;local.i++)
+				{
+					if ($enemy[local.i].group != 1)
+					{
+						continue
+					}
+					if ($enemy[local.i].set == 99) // victory
+					{
+						continue
+					}
+				
+					// thread wavedialogue 
+
+					local.length = vector_length( $enemy[local.i].origin - $anchor3.origin )
+					if ( local.length < local.distance)
+					{
+						
+						if ($enemy[local.i].gun == "panzerschrek")
+						{
+							$enemy[local.i] exec global/enable_ai.scr
+							continue
+						}
+
+						if ( local.length < level.germanawareness )
+						{
+							$enemy[local.i] exec global/enable_ai.scr
+							$enemy[local.i] attackplayer
+							continue	
+						}
+
+						if ($enemy[local.i].set == 0)
+						{
+							$enemy[local.i] exec global/enable_ai.scr
+							// $enemy[local.i].set = 20
+							$enemy[local.i].set = local.engageforthislong
+							// println (" WAKE UP dOOd !!" )
+						}
+						else if ($enemy[local.i].set == 1)
+						{
+							if !(isalive $enemy[local.i].enemy)
+							{
+								// $enemy[local.i].set = 20
+								$enemy[local.i].set = local.engageforthislong
+								$enemy[local.i] exec global/disable_ai.scr
+							
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy[local.i] runto $v1
+								else if (local.rval > 60)
+									$enemy[local.i] runto $v2
+								else if (local.rval > 40)
+									$enemy[local.i] runto $v3
+								else
+									$enemy[local.i] runto $v4
+
+								// println( " RUN like CRAZY " + $enemy[local.i].enemy )
+							}
+							else
+							{
+								$enemy[local.i] exec global/enable_ai.scr
+								// println( " engage your enemy " + $enemy[local.i].enemy )
+							}
+						}
+						else if ($enemy[local.i].set > 1)
+						{
+							if ($enemy[local.i].set == local.engageforthislong)
+							{
+								$enemy[local.i] thread runshoot
+							}
+
+							$enemy[local.i].set --
+							
+							if ($enemy[local.i].set > (local.engageforthislong / 2) )
+							{
+								continue
+							}
+                                                                                                
+							if (randomint(100) > 33)
+							{
+								$enemy[local.i] walkto $player
+								$enemy[local.i] attackplayer
+								// println (" attacking player" )
+								$enemy[local.i] exec global/enable_ai.scr
+							}
+							else if (randomint(100) > 33)
+							{
+								$enemy[local.i].set = local.engageforthislong
+								$enemy[local.i] exec global/disable_ai.scr
+								
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy[local.i] runto $v1
+								else if (local.rval > 60)
+									$enemy[local.i] runto $v2
+								else if (local.rval > 40)
+									$enemy[local.i] runto $v3
+								else
+									$enemy[local.i] runto $v4
+								// println (" runto new victory spot " )
+							}
+							else
+							{
+								local.count = 0
+								for (local.i=1;local.i<level.friendlys+1;local.i++)
+								{
+									if (isalive level.friendly[local.i])
+									{
+										if (level.friendly[local.i].group == 1)
+										{
+											local.count = local.i
+										}
+									}	
+								}
+							
+								if (local.count > 0)
+								{
+									$enemy[local.i] walkto level.friendly[local.count]
+								}
+								else
+								{
+									$enemy[local.i] walkto $player
+									$enemy[local.i] attackplayer
+								}
+								
+								$enemy[local.i] exec global/enable_ai.scr
+								// println (" attacking : " + $enemy[local.i].enemy )
+							}           
+						}
+					}
+					else
+					{
+						if ($enemy[local.i].set > 1)
+							$enemy[local.i].set--
+
+
+						$enemy[local.i] exec global/disable_ai.scr
+						
+						if ($enemy[local.i].set == 1)
+						{						
+							$enemy[local.i].set = local.engageforthislong
+
+							local.rval = randomint(100)
+							if (local.rval > 80)
+								$enemy[local.i] runto $r3
+							else if (local.rval > 60)
+								$enemy[local.i] runto $r4
+							else if (local.rval > 40)
+								$enemy[local.i] runto $r5
+							else
+								$enemy[local.i] runto $r6
+							
+						}
+
+					}
+				}
+			}
+		}
+		else if (level.wave == 3)
+		{
+			if !(level.retreat)
+			{
+				for (local.i=1;local.i<$enemy7.size+1;local.i++)
+				{
+					if ($enemy7[local.i].group != 7)
+					{
+						continue
+					}
+					if ($enemy7[local.i].set == 99) // victory
+					{
+						continue
+					}
+				
+					// thread wavedialogue 
+
+					local.length = vector_length( $enemy7[local.i].origin - $anchor3.origin )
+					if ( local.length < local.distance)
+					{
+						
+						if ($enemy7[local.i].gun == "panzerschrek")
+						{
+							$enemy7[local.i] exec global/enable_ai.scr
+							continue
+						}
+
+						if ( local.length < level.germanawareness )
+						{
+							$enemy7[local.i] exec global/enable_ai.scr
+							$enemy7[local.i] attackplayer
+							continue	
+						}
+
+						if ($enemy7[local.i].set == 0)
+						{
+							$enemy7[local.i] exec global/enable_ai.scr
+							// $enemy[local.i].set = 20
+							$enemy7[local.i].set = local.engageforthislong
+							// println (" WAKE UP dOOd !!" )
+						}
+						else if ($enemy7[local.i].set == 1)
+						{
+							if !(isalive $enemy7[local.i].enemy)
+							{
+								// $enemy[local.i].set = 20
+								$enemy7[local.i].set = local.engageforthislong
+								$enemy7[local.i] exec global/disable_ai.scr
+							
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy7[local.i] runto $v1
+								else if (local.rval > 60)
+									$enemy7[local.i] runto $v2
+								else if (local.rval > 40)
+									$enemy7[local.i] runto $v3
+								else
+									$enemy7[local.i] runto $v4
+
+								// println( " RUN like CRAZY " + $enemy[local.i].enemy )
+							}
+							else
+							{
+								$enemy7[local.i] exec global/enable_ai.scr
+								// println( " engage your enemy " + $enemy[local.i].enemy )
+							}
+						}
+						else if ($enemy7[local.i].set > 1)
+						{
+							$enemy7[local.i].set --
+							if ($enemy7[local.i].set > (local.engageforthislong / 2) )
+								continue
+                                                                                                
+							if (randomint(100) > 33)
+							{
+								$enemy7[local.i] walkto $player
+								$enemy7[local.i] attackplayer
+								// println (" attacking player" )
+								$enemy7[local.i] exec global/enable_ai.scr
+							}
+							else if (randomint(100) > 33)
+							{
+								$enemy7[local.i].set = local.engageforthislong
+								$enemy7[local.i] exec global/disable_ai.scr
+								
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy7[local.i] runto $v1
+								else if (local.rval > 60)
+									$enemy7[local.i] runto $v2
+								else if (local.rval > 40)
+									$enemy7[local.i] runto $v3
+								else
+									$enemy7[local.i] runto $v4
+								// println (" runto new victory spot " )
+							}
+							else
+							{
+								$enemy7[local.i] exec global/enable_ai.scr
+								// println (" attacking : " + $enemy[local.i].enemy )
+							}           
+						}
+					}
+					else
+					{
+						if (level.wave == 1)
+						{
+							if ($enemy[local.i].set > 1)
+								$enemy[local.i].set--
+
+							$enemy[local.i] exec global/disable_ai.scr
+							
+							if ($enemy[local.i].set == 1)
+							{						
+								$enemy[local.i].set = local.engageforthislong
+
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy[local.i] runto $r3
+								else if (local.rval > 60)
+									$enemy[local.i] runto $r4
+								else if (local.rval > 40)
+									$enemy[local.i] runto $r5
+								else
+									$enemy[local.i] runto $r6
+							}
+						}
+						else if (level.wave == 3)
+						{
+							if ($enemy7[local.i].set > 1)
+								$enemy7[local.i].set--
+
+							$enemy7[local.i] exec global/disable_ai.scr
+							
+							if ($enemy7[local.i].set == 1)
+							{						
+								$enemy7[local.i].set = local.engageforthislong
+
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy7[local.i] runto $r3
+								else if (local.rval > 60)
+									$enemy7[local.i] runto $r4
+								else if (local.rval > 40)
+									$enemy7[local.i] runto $r5
+								else
+									$enemy7[local.i] runto $r6
+							}
+
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			if (level.wave == 1)
+			{
+				for (local.i=1;local.i<$enemy.size+1;local.i++)
+				{
+					if ($enemy[local.i].set == 999)
+					{
+						// dprintln ("RUN AWAY RUN AWAY")
+						$enemy[local.i] exec global/disable_ai.scr
+						$enemy[local.i].set = 0
+						$enemy[local.i] runto $s1
+						$enemy[local.i] thread FleeRemoveGerman $s1
+					}
+				}
+			}
+			else if (level.wave == 3)
+			{
+				for (local.i=1;local.i<$enemy7.size+1;local.i++)
+				{
+					if ($enemy7[local.i].set == 999)
+					{
+						// println ("RUN AWAY RUN AWAY")
+						$enemy7[local.i] exec global/disable_ai.scr
+						$enemy7[local.i].set = 0
+						$enemy7[local.i] runto $s1
+						$enemy7[local.i] thread FleeRemoveGerman $s1
+					}
+				}
+			}
+		}
+	}
+
+
+wait 0.1	
+goto enablegroup1ai
+	
+end
+ 
+enablegroup5ai:
+
+	local.engageforthislong = 50 // must be less than 90	
+	local.distance = 512
+	local.length = 0
+	
+	if (level.enableassault == 1)
+	{	
+		if (level.axiswins == 1)
+		{
+			wait 5
+			end
+		}
+		if (level.wave == 2)
+		{
+			if !(level.retreat)
+			{
+				
+				for (local.i=1;local.i<$enemy5.size+1;local.i++)
+				{
+					if ($enemy5[local.i].group != 5)
+					{
+						continue
+					}
+					if ($enemy5[local.i].set == 99) // victory
+					{
+						continue
+					}
+					if ($enemy5[local.i].set == 999)
+					{
+						$enemy5[local.i] exec global/disable_ai.scr
+						$enemy5[local.i].set = 999
+						$enemy5[local.i] runto $s5
+						continue
+					}
+										
+					// thread wavedialogue 
+					
+					local.length = vector_length( $enemy5[local.i].origin - $anchor8.origin )
+					if ( local.length < local.distance)
+					{
+						
+						if ($enemy5[local.i].gun == "panzerschrek")
+						{
+							$enemy5[local.i] exec global/enable_ai.scr
+							continue
+						}
+
+						if ( local.length < level.germanawareness )
+						{
+							$enemy5[local.i] exec global/enable_ai.scr
+							$enemy5[local.i] attackplayer
+							continue	
+						}
+
+						if ($enemy5[local.i].set == 0)
+						{
+							$enemy5[local.i] exec global/enable_ai.scr
+							
+							$enemy5[local.i].set = local.engageforthislong
+							// println (" WAKE UP dOOd !!" )
+						}
+						else if ($enemy5[local.i].set == 1)
+						{
+							if !(isalive $enemy5[local.i].enemy)
+							{
+								// $enemy[local.i].set = 20
+								$enemy5[local.i].set = local.engageforthislong
+								$enemy5[local.i] exec global/disable_ai.scr
+							
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy5[local.i] runto $v5
+								else if (local.rval > 60)
+									$enemy5[local.i] runto $v6
+								else if (local.rval > 40)
+									$enemy5[local.i] runto $v7
+								else
+									$enemy5[local.i] runto $v8
+
+								// println( " RUN like CRAZY " + $enemy5[local.i].enemy )
+							}
+							else
+							{
+								$enemy5[local.i] exec global/enable_ai.scr
+								// println( " engage your enemy " + $enemy5[local.i].enemy )
+							}
+						}
+						else if ($enemy5[local.i].set > 1)
+						{
+							$enemy5[local.i].set --
+							if ($enemy5[local.i].set > (local.engageforthislong / 2) )
+								continue
+                                                                                                
+							if (randomint(100) > 33)
+							{
+								$enemy5[local.i] walkto $player
+								$enemy5[local.i] attackplayer
+								// println (" attacking player" )
+								$enemy5[local.i] exec global/enable_ai.scr
+							}
+							else if (randomint(100) > 33)
+							{
+								$enemy5[local.i].set = local.engageforthislong
+								$enemy5[local.i] exec global/disable_ai.scr
+								
+								local.rval = randomint(100)
+								if (local.rval > 80)
+									$enemy5[local.i] runto $v5
+								else if (local.rval > 60)
+									$enemy5[local.i] runto $v6
+								else if (local.rval > 40)
+									$enemy5[local.i] runto $v7
+								else
+									$enemy5[local.i] runto $v8
+								// println (" runto new victory spot " )
+							}
+							else
+							{
+								
+								$enemy5[local.i] exec global/enable_ai.scr
+								// println (" attacking : " + $enemy5[local.i].enemy )
+							}           
+						}
+					}
+					else
+					{
+						if ($enemy5[local.i].set > 1)
+							$enemy5[local.i].set--
+
+
+						$enemy5[local.i] exec global/disable_ai.scr
+						
+						if ($enemy5[local.i].set == 1)
+						{						
+							$enemy5[local.i].set = local.engageforthislong
+
+							local.rval = randomint(100)
+							if (local.rval > 80)
+								$enemy5[local.i] runto $v5
+							else if (local.rval > 60)
+								$enemy5[local.i] runto $v6
+							else if (local.rval > 40)
+								$enemy5[local.i] runto $v7
+							else
+								$enemy5[local.i] runto $v8
+						}
+
+					}
+				}
+			
+			// $artilleryleft turnoff	
+
+			}
+		}
+		else
+		{
+			for (local.i=1;local.i<$enemy5.size+1;local.i++)
+			{
+				if ($enemy5[local.i].set == 999)
+				{
+				//println ("RUN AWAY RUN AWAY")
+				$enemy5[local.i] exec global/disable_ai.scr
+				$enemy5[local.i].set = 0
+				$enemy5[local.i] runto $s5
+				$enemy5[local.i] thread FleeRemoveGerman $s5
+				}
+			}
+		}
+	}
+
+
+wait 0.1	
+goto enablegroup5ai
+
+end
+
+FleeRemoveGerman local.dest:
+
+	local.dist = 9999
+	while (local.dist > 512)
+	{
+		local.dist = vector_length ( self.origin - local.dest.origin )
+		self runto local.dest
+		waitframe
+	}
+	
+	self remove
+
+end
+
+
+g1pathstart:
+
+	while (level.group1activatetime > level.time)
+		wait 1
+
+dprintln "go go go !"
+
+	for (local.i=1;local.i<$enemy.size+1;local.i++)
+	{
+		if (isalive $enemy[local.i])
+		{
+			local.rval = randomint(100)
+			
+			if (local.rval > 80)
+				$enemy[local.i] runto $v1
+			else if (local.rval > 60)
+				$enemy[local.i] runto $v2
+			else if (local.rval > 40)
+				$enemy[local.i] runto $v3
+			else
+				$enemy[local.i] runto $v4
+		}
+	}
+
+	level.enableassault = 1
+
+end
+
+
+g5pathstart:
+
+	while (level.group5activatetime > level.time)
+		wait 1
+
+dprintln "go go go !"
+
+	for (local.i=1;local.i<$enemy5.size+1;local.i++)
+	{
+		if (isalive $enemy5[local.i])
+		{
+			local.rval = randomint(100)
+			if (local.rval > 80)
+				$enemy5[local.i] runto $v5
+			else if (local.rval > 60)
+				$enemy5[local.i] runto $v6
+			else if (local.rval > 40)
+				$enemy5[local.i] runto $v7
+			else
+				$enemy5[local.i] runto $v8
+		}	
+	}
+
+	level.enableassault = 1
+
+end
+
+panzer1pathstart:
+	if (level.panzer1 == 0)
+	{
+		if (level.panzer1activatetime < level.time)
+		{
+			level.panzer1 = 1
+			// println("- Kommander Klink orders panzer to attack!!!!")
+			thread panzertankdrive
+			level.retreat = 0
+			level.panzer1activatetime = level.time + 50
+			goto panzer1pathstart
+		}
+		else
+		{
+			wait 0.5
+			goto panzer1pathstart
+		}
+	}
+	else if (level.panzer1 == 1)
+	{
+		if (level.panzer1activatetime < level.time)
+		{
+			level.panzer1 = 2
+
+			thread panzertankdrive2
+
+			level.retreat = 0
+		}
+		else
+		{
+			wait 0.5
+						
+			goto panzer1pathstart
+		}
+		
+	}
+end
+
+g1pathd:
+	
+	if (level.wave == 1)
+	{
+		for (local.i=1;local.i<$enemy.size+1;local.i++)
+		{
+			if (isalive $enemy[local.i])
+			{
+				if ($enemy[local.i].group == 1)
+				{
+					if ($enemy[local.i] istouching $trigger5)
+					{
+						$enemy[local.i].set = 99
+						level.axiswins = 1
+						$enemy[local.i] exec global/enable_ai.scr
+					}
+				}
+			}
+		}
+	}
+	else if (level.wave == 3)
+	{
+		for (local.i=1;local.i<$enemy7.size+1;local.i++)
+		{
+			if (isalive $enemy7[local.i])
+			{
+				if ($enemy7[local.i].group == 7)
+				{
+					if ($enemy7[local.i] istouching $trigger5)
+					{
+						$enemy7[local.i].set = 99
+						level.axiswins = 1
+						$enemy7[local.i] exec global/enable_ai.scr
+					}
+				}
+			}
+		}
+	}
+
+	$trigger5 triggerable	
+end
+
+g5pathd:
+	while (isalive $panzer)
+	{
+		for (local.i=1;local.i<$enemy5.size+1;local.i++)
+		{
+			if (isalive $enemy5[local.i])
+			{
+				if ($enemy5[local.i].group == 5)
+				{
+					if ($enemy5[local.i] istouching $trigger8)
+					{
+						$enemy5[local.i].set = 99
+						level.axiswins = 1
+						$enemy5[local.i] exec global/enable_ai.scr
+					}
+				}
+			}
+		}
+
+		$trigger8 triggerable	
+		wait 1
+	}
+
+end
+
+//
+// group 2
+//
+r1thread:
+	for (local.i=1;local.i<$enemy.size+1;local.i++)
+	{
+		if (isalive $enemy[local.i])
+		{
+			if ($enemy[local.i].group == 2)
+			{
+				$enemy[local.i] exec global/enable_ai.scr
+			}
+		}
+	}           
+end
+
+//
+// group 3
+//
+r2thread:
+	for (local.i=1;local.i<$enemy.size+1;local.i++)
+	{
+		if (isalive $enemy[local.i])
+		{
+			if ($enemy[local.i].group == 3)
+			{
+				$enemy[local.i] exec global/enable_ai.scr
+			}
+		}
+	}           
+end
+
+//
+// group 4
+//
+r3thread:
+	for (local.i=1;local.i<$enemy.size+1;local.i++)
+	{
+		if (isalive $enemy[local.i])
+		{
+			if ($enemy[local.i].group == 4)
+			{
+				$enemy[local.i] runto $player
+			}
+		}
+	}           
+end
+
+
+////////////////////////////
+// barrage_dialogue
+////////////////////////////
+
+barrage_dialogue_init:
+// make sure this matches the projectile generator max time key value pair
+	level.barrage_dialogue_time = level.time + 60
+end
+
+barrage_dialogue:
+
+	if (level.barrage_dialogue_time < level.time)
+		end
+	
+	$player playsound dfr_T2L3_barrage
+
+	local.time = randomint(5) + 3
+	
+	wait local.time
+	goto barrage_dialogue
+end
+
+//////////////////////////////
+//	wave dialogue
+//////////////////////////////
+wavedialogueinit:
+	level.wave_dialogue_time = level.time + 10
+end
+
+waveleftdialogueinit:
+	level.wave_dialogue_time = randomint(15) + 5
+	level.wave_dialogue = 0
+end
+
+waveleftdialogue:
+	
+	//$player playsound dfr_T2L3_AC9003 wait // - "Sereant, get down the line and find a bazooka. Dont let that tank breach our line!"
+	//$player waittill sounddone
+	
+	// $player playsound dfr_call_AP4358 wait // - "Tiger tank on the left!"
+	// $player waittill sounddone
+
+end
+
+wavedialogue:
+
+	if (level.wave_dialogue_time < level.time)
+	{
+// println (" wave dialogue " ) 
+
+		local.rval = randomint(100)
+
+		if (level.wave == 1)
+		{
+			if (local.rval > 66)
+				local.ent = $anchor3
+			else if (local.rval > 33)
+				local.ent = $victory1
+			else
+				local.ent = $player
+		}	
+		else if (level.wave == 2)
+		{
+			if (local.rval > 66)
+				local.ent = $anchor6
+			else if (local.rval > 33)
+				local.ent = $victory7
+			else
+				local.ent = $player
+		}
+			
+		if (level.wave == 1)
+			$player playsound dfr_t2l3_wave1
+		else if (level.wave == 2)
+			$player playsound dfr_t2l3_wave2
+		
+		level.wave_dialogue_time = randomint(15) + 5 + level.time
+	}
+
+end
+
+//////////////////////////////
+// special wave dialogue
+//////////////////////////////
+
+//////////////////////////////
+// threadkillbrush
+//////////////////////////////
+
+
+takeoutplayer:
+
+	local.killzone = level.time + 2
+
+	$killzone TurnOn
+	
+	while (local.killzone > level.time)
+	{
+		waitframe	
+	}
+
+	if ($player istouching $killbrush)
+	{
+		$player kill
+	}
+
+	wait 1
+
+	$killzone TurnOff
+
+	local.random = randomint(100)	
+	if (local.random > 50)
+		$player playsound dfr_call_AP4337	
+	else
+		$player playsound dfr_call_AS3124	
+
+	// dprintln "player is inside killbrush"
+	
+end
+
+killplayer:
+	$player kill
+end
+
+
+///////////////////////////////
+// artillerybombardment
+///////////////////////////////
+
+startartillerybombardment:
+	wait 5
+	
+	$artilleryright turnon
+	trigger $artilleryright	
+end
+
+////////////////////////////////
+// saythisline
+////////////////////////////////
+saythisline:
+
+// println (" saythisline !! ")
+	// thread kommanderstartattack2
+	// thread sayleftflank
+end
+
+sayleftflank:
+	wait 5
+	$player playsound dfr_call_AP4356 // - "Infantry, left flank!"
+end
+
+backgroundtalking:
+	wait 2
+	$player playsound dfr_t2l3_as3201
+end
+
+////THIS IS THE STRAFING PLANE GAG/////////////////////////////////////////////////////////////////
+startstrafe1:
+// println "bang bang bang bang"
+
+$stuka anim fire
+
+wait 2.5
+
+local.emitterr1 = waitthread global/strafing_gunfire.scr::targetpath $emitter_right1 1300 $strafetarget_right1 1100
+local.emitterr1 bulletspread 10 10
+
+local.emitterl1 = waitthread global/strafing_gunfire.scr::targetpath $emitter_left1 1300 $strafetarget_left1 1100
+local.emitterl1 bulletspread 10 10
+
+
+wait 3
+$stolentruck damage $stolentruck 3000 $stolentruck (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+
+wait .5
+$webbers_mp44 show
+$webbers_mp44 solid
+$mp44trigger triggerable
+
+
+end
+
+
+startstrafe2:
+// println "bang bang bang bang"
+
+wait 1.5
+
+local.emitterr2 = waitthread global/strafing_gunfire.scr::targetpath $emitter_right2 2000 $strafetarget_right2 1700
+local.emitterr2 bulletspread 10 10
+
+local.emitterl2 = waitthread global/strafing_gunfire.scr::targetpath $emitter_left2 2000 $strafetarget_left2 1700
+local.emitterl2 bulletspread 10 10
+
+end
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////
+// remove wave 2
+//////////////////////////////////////
+
+removewave2:
+
+	if (level.wave == 3)
+	{
+		// println ( " remove wave 2 has been triggered " )	
+		
+		for (local.i=1;local.i<$enemy5.size+1;local.i++)
+		{
+			if ($enemy5[local.i].group == 5)
+			{
+				$enemy5[local.i] exec global/disable_ai.scr
+				$enemy5[local.i] rendereffects "+dontdraw"
+				$enemy5[local.i] ai_off
+			}	
+		}	
+
+		for (local.i=1;local.i<level.friendlys+1;local.i++)
+		{
+			if (level.friendly[local.i].group == 5)
+			{
+				level.friendly[local.i] exec global/disable_ai.scr
+				level.friendly[local.i] rendereffects "+dontdraw"
+			}
+			else if (level.friendly[local.i].group == 1)
+			{
+				level.friendly[local.i] exec global/crouch.scr
+			}
+		}
+
+		for (local.i=1;local.i<level.enemyspawners+1;local.i++)
+		{
+			if (level.enemyspawner[local.i].set == 30)
+			{
+				level.enemyspawner[local.i] exec global/disable_ai.scr
+				level.enemyspawner[local.i] rendereffects "+dontdraw"
+
+				// dprintln ( " enemy spawner found one !!!!  " )
+			}
+		}
+
+		//$ltkury exec global/disable_ai.scr
+		//$ltkury rendereffects "+dontdraw"
+
+		$panzer rendereffects "+dontdraw"
+		$panzer_turret0 rendereffects "+dontdraw"
+
+		$sarg exec global/disable_ai.scr
+		$sarg rendereffects "+dontdraw"
+		
+		$privateparts exec global/disable_ai.scr
+		$privateparts rendereffects "+dontdraw"
+
+		$woundedgalvan exec global/disable_ai.scr
+		$woundedgalvan rendereffects "+dontdraw"
+
+		$medic exec global/disable_ai.scr
+		$medic rendereffects "+dontdraw"
+
+			
+	}
+
+end
+
+//////////////////////////////////////////////
+// setobjective
+//////////////////////////////////////////////
+
+setobjective local.num:
+
+	local.numplus = local.num + 1
+	local.numminus = local.num - 1
+	if (local.num == 1) // Locate the wounded captain
+	{
+		waitthread global/objectives.scr::add_objectives local.num 2 "Get Orders from the Captain at the Front Line" $woundedcaptainnode.origin
+		waitthread global/objectives.scr::current_objectives local.num
+	}
+	else if (local.num == 2) // Find the medic
+	{
+		waitthread global/objectives.scr::add_objectives local.num 2 "Locate The Medic" $medicnode.origin
+		waitthread global/objectives.scr::add_objectives local.numminus 3 
+		waitthread global/objectives.scr::current_objectives local.num
+	}
+	else if (local.num == 3) // Escort medic to captain
+	{
+		waitthread global/objectives.scr::add_objectives local.num 2 "Escort Medic to the Captain" $woundedcaptainnode.origin
+		waitthread global/objectives.scr::add_objectives local.numminus 3 
+		waitthread global/objectives.scr::current_objectives local.num
+	}	
+	else if (local.num == 4) // Locate and defend the right flank
+	{
+		waitthread global/objectives.scr::add_objectives local.num 2 "Locate and Defend the Right Flank" $v1.origin
+		waitthread global/objectives.scr::add_objectives local.numminus 3 
+		waitthread global/objectives.scr::current_objectives local.num
+	}
+	else if (local.num == 5) // Defend the left flank
+	{
+		waitthread global/objectives.scr::add_objectives local.num 2 "Locate and Defend the Left Flank" $v8.origin
+		waitthread global/objectives.scr::add_objectives local.numminus 3 
+		waitthread global/objectives.scr::current_objectives local.num
+	}
+	else if (local.num == 6) // Defend the Right flank
+	{
+		waitthread global/objectives.scr::add_objectives local.num 2 "Return to and Defend the Right Flank" $v1.origin
+		waitthread global/objectives.scr::add_objectives local.numminus 3 
+		waitthread global/objectives.scr::current_objectives local.num
+	}
+					
+end
+
+startscriptedguys:
+
+	for (local.i=1;local.i<=$trigger_cue_death_move.size;local.i++)
+	{
+		if ($trigger_cue_death_move[local.i].set == 1) 
+			trigger $trigger_cue_death_move[local.i] 
+	}
+	
+	trigger $Foxholedivetrigger
+	trigger $Foxholeslidetrigger
+
+end
+
+lamb_explosion_fx:
+	local.ent = spawn EffectEntity "model" $snow_crash.spawnmodel
+	local.ent.origin = $snow_crash.origin
+	local.ent notsolid
+	local.ent anim idle
+	wait 3
+	local.ent delete
+end
+
+start_lamb:
+	$lamb exec global/disable_ai.scr
+	$lamb takedamage
+	$lamb runto $lambdiehere
+	$player playsound dfr_T2L3_barrage93
+	$lamb waittill movedone
+	
+	thread lamb_explosion_fx
+	$lamb damage $lamb 3000 $lamb (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+end
+
+GermanNoDrawManager:
+	
+	while (isalive self)
+	{
+		local.dist = vector_length (self.origin - $player.origin)
+		
+		if (local.dist > 2000)
+		{
+			self rendereffects "+dontdraw"
+		}
+		else
+		{
+			self rendereffects "-dontdraw"
+		}
+			
+		waitframe
+	}
+end
+
+mp44pickup:
+	$player item models/weapons/mp44.tik
+	$webbers_mp44 remove
+	$player playsound mp44_snd_pickup
+	$player use "stg 44"
+end	
+
+panzerschrek_pickup:
+	$player use "Panzerschrek"
+end		
+

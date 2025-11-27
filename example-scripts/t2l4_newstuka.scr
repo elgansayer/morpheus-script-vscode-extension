@@ -1,0 +1,501 @@
+// gags/t2l4_newstuka.scr
+//
+// author: Michael Goodwin
+//
+// setup:
+//
+//   initialize the script (after spawn) with the line:
+//
+//   exec gags/t2l4_newstuka.scr
+
+main:
+
+	$stuka hide
+
+	level.stukagunr = spawn script_aimedstrafinggunfire
+	level.stukagunr.origin = $stuka gettagposition "tag_barrel1"
+	level.stukagunr.angles = $stuka.angles
+	level.stukagunr bind $stuka
+
+	level.stukagunl = spawn script_aimedstrafinggunfire
+	level.stukagunl.origin = $stuka gettagposition "tag_barrel2"
+	level.stukagunl.angles = $stuka.angles
+	level.stukagunl bind $stuka
+
+	$stuka.health = 15 * 180			// # shots @ 180 HP
+	$stuka.smokeat = 15 * 180
+	$stuka immune "bullet" "explosion"
+	$stuka takedamage
+
+	$stuka.canbomb = 1
+	$stuka.smoking = 0
+
+	level.fire_at_stuka	= 0
+
+end
+
+healthcheck:
+
+//	while ( self.health > 0 )
+	{
+		local.health = self.health
+		while ( self!=NULL && local.health == self.health )
+		{
+			waitframe
+		}
+
+		if ( self!=NULL )
+		{
+			//dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~ stuka.health is " self.health
+			if ( (self.health < self.smokeat) && (self.smoking == 0) )
+			{
+//				dprintln "STUKA SMOKING!"
+				self.smoking = 1
+				self anim smoke
+			}
+		}
+	}
+
+end
+
+
+stuka_start:
+	
+
+	if ( $stuka==NIL || $stuka==NULL )
+	{
+		// huh?
+		end
+	}
+
+	$stuka thread healthcheck
+
+
+	waitthread gags/t2l4_end.scr::SetupEndGuys
+
+
+	if ( $stuka )
+	{
+		thread gags/t2l4_end.scr::GuysDiveOutOfTheWay
+		$stukastrafetrigger1 thread gags/t2l4_newstuka.scr::stukastrafetrigger 2.0 $targetl1 $targetr1
+		$stuka waitthread gags/t2l4_newstuka.scr::stukastraferun $straferun1 2.25
+	}
+
+	thread gags/t2l4_captain.scr::CappyDoStukaDialog
+
+	wait 3.0
+	if ( $stuka.health <= 0 )
+	{
+		thread crashstuka1 $crash1
+		end
+	}
+
+
+	if ( $stuka )
+	{
+		thread gags/t2l4_end.scr::GuysShootPlane $stuka
+		$stukabombtrigger1 thread gags/t2l4_newstuka.scr::stukabombtrigger gags/t2l4_newstuka.scr::polefallgag
+		$stuka waitthread gags/t2l4_newstuka.scr::stukabombrun $bombrun1
+
+	}
+	wait 3.0
+
+	if ( $stuka.health <= 0 )
+	{
+		thread crashstuka2 $crash2
+		end
+	}
+
+	if ( $stuka )
+	{
+		thread gags/t2l4_end.scr::GuysShootPlane $stuka
+		$stukastrafetrigger1 thread gags/t2l4_newstuka.scr::stukastrafetrigger 2.0 $targetl1 $targetr1
+		$stuka waitthread gags/t2l4_newstuka.scr::stukastraferun $straferun1 2.25
+	}
+	wait 3.0
+
+	if ( $stuka.health <= 0 )
+	{
+		thread crashstuka1 $crash1
+		end
+	}
+
+	if ( $stuka )
+	{
+		thread gags/t2l4_end.scr::GuysShootPlane $stuka
+		$stuka waitthread gags/t2l4_newstuka.scr::stukabombrun $bombrun1
+		$stukabombtrigger2 thread gags/t2l4_newstuka.scr::stukabombtrigger
+	}
+	wait 3.0
+
+	if ( $stuka.health <= 0 )
+	{
+		thread crashstuka2 $crash2
+		end
+	}
+
+	if ( $stuka )
+	{
+		thread gags/t2l4_end.scr::GuysShootPlane $stuka
+		$stukastrafetrigger1 thread gags/t2l4_newstuka.scr::stukastrafetrigger 2.0 $targetl1 $targetr1
+		$stuka waitthread gags/t2l4_newstuka.scr::stukastraferun $straferun1 2.25
+	}
+	wait 3.0
+
+	if ( $stuka.health <= 0 )
+	{
+		thread crashstuka1 $crash1
+		end
+	}
+
+	// they didn't kill the stuka, time to kill the captain...
+	if ( $stuka )
+	{
+		thread gags/t2l4_end.scr::GuysShootPlane $stuka
+		$stukabombtrigger3 thread gags/t2l4_newstuka.scr::stukabombtrigger gags/t2l4_newstuka.scr::killcaptain
+		$stuka waitthread gags/t2l4_newstuka.scr::stukabombrun $bombrun1
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// stuka bombing run
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stukabombrun local.spath:
+
+	self hide
+	waitframe
+	self.origin = local.spath.origin
+	self.angles = local.spath.angles
+	self anim idle
+	self show
+	self takedamage
+
+//	self loopsound stuka_loop
+//	$player playsound stuka_by
+	$stuka_marker playsound stuka_by1
+	self followpath local.spath
+	self waitmove
+
+	if ( self )
+	{
+		self stoploopsound
+		self nodamage
+//		self hide
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// stuka bombing run, stuka hits trigger
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stukabombtrigger local.chainthread:
+
+	while ( $stuka && ($stuka.canbomb == 1) && !($stuka istouching self) )
+	{
+		waitframe
+	}
+
+	if ( $stuka && ($stuka.canbomb == 1) )
+	{
+		local.ent = spawn script_model "spawnflags" "2"
+		local.ent.origin = $stuka gettagposition "tag_bomb"
+		local.ent.angles = $stuka.angles
+
+		local.ent model "ammo/stuka_bomb.tik"
+		local.ent notsolid
+		local.ent scale 1
+
+		$stuka anim bomb
+
+		local.ent playsound drop_bomb
+	
+		local.bpath = $(self.target)
+		local.bpath.origin = local.ent.origin
+
+		local.ent flypath local.bpath 1500 20000 500
+		local.ent waitmove
+
+		exec global/model.scr local.ent.origin "models/fx/bombblast_snow.tik"
+		radiusdamage local.ent.origin 800 500
+
+		local.ent remove
+
+		if ( local.chainthread != NIL )
+			thread local.chainthread
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// stuka strafing run
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stukastraferun local.spath local.bullet_wait:
+
+	thread DoStukaBullets local.bullet_wait
+
+	self hide
+	waitframe
+	self.origin = local.spath.origin
+	self.angles = local.spath.angles
+	self anim idle
+	self show
+	self takedamage
+
+//	self loopsound stuka_loop
+	$stuka_marker playsound stuka_by2
+
+
+	self followpath local.spath
+	self waitmove
+
+	if ( self )
+	{
+		self stoploopsound
+		self nodamage
+//		self hide
+	}
+
+
+end
+
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// stuka strafing run, stuka hits trigger
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stukastrafetrigger local.burst local.targl local.targr:
+
+	while ( $stuka && !($stuka istouching self) )
+	{
+		waitframe
+	}
+
+	if ( $stuka )
+	{
+		$stuka anim fire
+
+		local.tent = waitthread createstrafetarget local.targl 2500
+		level.stukagunl aimtarget local.tent
+		local.tent = waitthread createstrafetarget local.targr 2500
+		level.stukagunr aimtarget local.tent
+
+		level.stukagunl on
+		level.stukagunr on
+
+		if ( local.burst == NIL )
+			local.burst = 3.0
+
+		wait local.burst
+
+		if ( $stuka )
+			$stuka anim idle
+		level.stukagunl off
+		level.stukagunr off
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// creates and moves a target for the strafing gunfire
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+createstrafetarget local.spath local.speed:
+
+	local.tent = spawn script_object
+	local.tent.origin = local.spath.origin
+	local.tent.angles = local.spath.angles
+	local.tent flypath local.spath local.speed 100000 250
+	local.tent thread movestrafetarget
+
+end local.tent
+
+movestrafetarget:
+
+	self waitmove
+	self remove
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// start the pole falling gag
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+polefallgag:
+
+	$phonepole thread polefallanim
+	
+	end
+
+polefallanim:
+
+	if ( self.delay != NIL )
+		local.delay = self.delay
+	else
+		local.delay = 0.50
+
+	self playsound lightpole_fall1
+	self anim fall
+	wait local.delay
+
+	if ( (self.target != NIL) && $(self.target) )
+	 self.target thread polefallanim
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+killcaptain:
+
+	local.org = $cappy.origin
+	$cappy takedamage
+	radiusdamage local.org 500 10000
+	wait 2
+//	dprintlnbold "captain got bombed "
+	//Mission Failure Kill Cappy
+	missionfailed
+
+end
+
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+crashstuka1 local.start local.hdeck:
+
+//	if ( local.hdeck == NIL )
+//		$stuka remove
+
+//	dprintln "CRASHSTUKA1"
+
+	local.ent = spawn "models/vehicles/stuka_wing_d.tik" targetname 
+	local.ent.origin = local.start.origin
+	local.ent.angles = local.start.angles
+//	local.ent playsound ?
+
+	// create the stuka_crash script_origin for the guys to look at
+	waitthread DoStukaAimAtSchool
+
+
+	thread gags/t2l4_end.scr::GuysShootPlane $stuka_crash
+
+
+	$stuka_marker playsound stuka_crash_street
+	local.ent moveanim 24P011_expl01
+	local.ent waittill animdone
+	local.ent remove
+
+	level.finalgag = 1
+	thread gags/t2l4_captain.scr::CappyDoFinalDialog
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+crashstuka2 local.start local.hdeck:
+
+//	if ( local.hdeck == NIL )
+//		$stuka remove
+
+//	dprintln "CRASHSTUKA2"
+
+	local.ent = spawn "models/vehicles/stuka_wing_d2.tik" targetname 
+	local.ent.origin = local.start.origin
+	local.ent.angles = local.start.angles
+//	local.ent playsound ?
+
+	// create the stuka_crash script_origin for the guys to look at
+	waitthread DoStukaAimAtStreet
+
+	thread gags/t2l4_end.scr::GuysShootPlane $stuka_crash
+
+	$stuka_marker playsound stuka_crash_school
+	local.ent moveanim 24P012_expl02
+	local.ent waittill animdone
+	local.ent remove
+
+	level.finalgag = 1
+	thread gags/t2l4_captain.scr::CappyDoFinalDialog
+
+
+end
+
+
+//-----------------------------------------------------------------
+DoStukaBullets local.bullet_wait:
+//-----------------------------------------------------------------
+
+	wait local.bullet_wait
+
+	local.done = 0
+	local.ent	= $strafe_1
+	while ( local.ent!=NIL && local.ent!=NULL )
+	{
+		local.o = local.ent.origin
+
+		local.hit = spawn script_model model fx/strafe_snow1.tik origin local.ent.origin
+
+	//	wait 0.1
+		wait 0.05
+
+		if ( local.ent.target!=NIL )
+			local.ent = local.ent.target
+		else
+			local.ent = NULL
+	}
+
+	end
+
+//-----------------------------------------------------------------
+DoStukaAimAtSchool:
+// create the stuka_crash script_origin for the guys to look a
+//-----------------------------------------------------------------
+
+//	dprintln "Doing aim school"
+
+	spawn script_origin targetname stuka_crash origin $stuka_aim_school.origin
+	$stuka_crash time 3.5
+	$stuka_crash moveto $stuka_aim_street
+	$stuka_crash move
+
+	end
+
+//-----------------------------------------------------------------
+DoStukaAimAtStreet:
+// create the stuka_crash script_origin for the guys to look a
+//-----------------------------------------------------------------
+
+//	dprintln "Doing aim street"
+
+	spawn script_origin targetname stuka_crash origin $stuka_aim_street.origin
+	$stuka_crash time 3.5
+	$stuka_crash moveto $stuka_aim_school
+	$stuka_crash move
+
+	end

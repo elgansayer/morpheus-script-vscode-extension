@@ -1,0 +1,181 @@
+//
+// storm.scr
+//
+
+init:
+	if (level.noStorm)
+		end
+
+	level.stormFadeInTime = 4
+	level.stormFadeOutTime = 4
+	level waittill spawn
+
+	$FinalBunkerDoorStormEffect hide
+
+	$killstorm thread doKillStormTrigger
+	$startstorm thread doStartStormTrigger
+	level.stormVisible = 1
+end
+
+//-----------------------------------------------------------------------------
+
+createStorm:
+	spawn models/emitters/emitters_cube.tik targetname storm
+	$storm notsolid
+	if (level.stormVisible)
+		$storm anim fog_normal
+	else 
+		$storm hide
+end
+
+SwitchTurrets local.turret:
+	$storm attach local.turret "eyebone" 1 ( 0 0 0 )
+end
+
+
+AttachStorm:
+	if (level.noStorm == 1)
+		end
+
+	if ($storm == NULL) 
+		waitthread createStorm
+
+	$storm detach
+	$storm unglue
+	$storm unbind
+	if (self == $player) {
+		// attach directly to the player
+		$storm attach $player "eyes bone" 1 ( 0 0 0 )
+	}
+	else if (self == $playerTank) {
+		// attach to the player while riding on the tank
+		local.turret = self QueryTurretSlotEntity 0
+		local.turret setswitchthread SwitchTurrets
+		$storm attach local.turret "eyebone" 1 ( 0 0 0 )
+	}
+	else if (self == $jeepCamera) {
+		// attach to the intro camera
+		$storm glue self
+	}
+	else if (self == $scene3Cannon1 || self == $scene3Cannon2) {
+		// attach to flak cannon
+		local.turret = self QueryTurretSlotEntity 0
+		$storm attach local.turret "eyebone" 1 ( 0 0 0 )
+	}
+	$storm notsolid
+end
+
+SafeStormTankTransitionStart:
+	if (level.stormVisible == 1)
+		$storm hide
+end
+
+SafeStormTankTransitionEnd:
+	if (level.stormVisible == 1)
+		$storm show
+end
+
+//-----------------------------------------------------------------------------
+
+killStorm:
+	if (level.noStorm == 1)
+		end
+
+	level.stormdest = 0
+
+	if (level.stormVisible == 0)
+		end
+
+	if (level.stormdelta == -1)
+		end
+
+	while (level.stormdelta == 1)
+		waitframe
+
+	if (level.stormdest == 1)
+		end
+
+	level.stormdelta = -1
+
+	//iprintlnbold "killing"
+	level.stormVisible = 0
+	$storm alpha 1
+	$storm anim fog_fadeout
+	for (local.alpha=1.0; local.alpha > 0.0; local.alpha -= 0.0125 )
+	{
+		if (level.stormVisible == 1)
+			end
+		$storm alpha local.alpha
+		waitframe
+	}	
+	$storm hide
+	$storm anim fog_normal
+	$storm alpha 0.0
+
+	level.stormdelta = 0
+end			
+
+startStorm:
+	if (level.noStorm == 1)
+		end
+
+	if ($storm == NULL) 
+		waitthread createStorm
+
+	level.stormdest = 1
+
+	if (level.stormVisible == 1)
+		end
+
+	if (level.stormdelta == 1)
+		end
+
+	while (level.stormdelta == -1)
+		waitframe
+
+	if (level.stormdest == 0)
+		end
+
+	level.stormdelta = 1
+
+	//iprintlnbold "starting"
+	level.stormVisible = 1
+	$storm alpha 0
+	$storm anim fog_fadein
+	waitframe
+	$storm show
+	for (local.alpha=0.0; local.alpha < 1.0; local.alpha += 0.0125 )
+	{
+		if (level.stormVisible == 0)
+			end
+		$storm alpha local.alpha
+		waitframe
+	}	
+	$storm alpha 1.0
+	if (level.stormVisible == 1) {
+		$storm anim fog_normal
+		//iprintlnbold "start done"
+	}
+
+	level.stormdelta = 0
+end
+
+doKillStormTrigger:
+	while (1) {
+		self waittill trigger
+		thread killStorm
+		if (self.set == 666)
+			$FinalBunkerDoorStormEffect show			
+	}
+end
+
+doStartStormTrigger:
+	while (1) {
+		self waittill trigger
+		thread startStorm
+		if (self.set == 666)
+			$FinalBunkerDoorStormEffect hide			
+	}
+end
+
+ 

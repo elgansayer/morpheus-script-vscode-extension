@@ -1,0 +1,107 @@
+start:
+
+level waittill prespawn
+drawhud 0
+
+level waittill spawn
+	exec global/briefing_save.scr
+
+// spawn the thread that will allow the player to skip the briefing
+thread briefingskip
+
+// prevent the player from trying to move around
+$player physics_off
+thread freezeplayerview
+
+//starts music track for mission briefing
+//$player stufftext "tmstartloop sound/music/mus_SniperTown_01a.mp3"
+$player playsound mb5_music
+
+$player playsound slide_advance
+
+showmenu briefing5a 1
+
+$player playsound mb_501
+wait 10
+
+
+$player playsound slide_advance
+
+showmenu briefing5a2 1
+hidemenu briefing5a 1
+wait 8
+
+$player playsound slide_advance
+
+showmenu briefing5a3 1
+hidemenu briefing5a2 1
+wait 4
+
+$player playsound slide_advance
+
+showmenu briefing5b 1
+hidemenu briefing5a3 1
+wait 8
+
+$player playsound slide_advance
+
+showmenu briefing5c 1
+hidemenu briefing5b 1
+
+$player playsound mb_502 wait
+$player waittill sounddone
+
+$player playsound slide_advance
+
+showmenu briefing5d 1
+hidemenu briefing5c 1
+
+$player playsound mb_503 wait
+$player waittill sounddone
+
+$player playsound slide_advance
+
+showmenu briefing5e 1
+hidemenu briefing5d 1
+
+$player playsound mb_504 wait
+$player waittill sounddone
+
+goto endbriefing
+
+end
+
+//-----------------------------------------------------------------------------
+
+endbriefing:
+
+$player stufftext "spmap m5l1a"
+
+end
+
+//-----------------------------------------------------------------------------
+
+briefingskip:
+
+	if($player.fireheld)
+	{
+		goto endbriefing
+	}
+	
+	// check again next server frame
+	wait 0.01
+	
+	goto briefingskip
+
+end
+
+//-----------------------------------------------------------------------------
+
+freezeplayerview:
+
+	$player.viewangles = (0 0 0)
+	
+	wait 0.01
+	goto freezeplayerview
+
+end

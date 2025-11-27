@@ -1,0 +1,103 @@
+
+t2l3_captainruntalk_init local.captain local.finaldest:
+	level.captaintalkspawner = waitthread global/spawner.scr::spawner_create local.captain
+	level.captaintalkfinaldest = local.finaldest
+end
+
+t2l3_triggercaptainruntalk:
+	if (level.captaintalkspawner == NIL)
+	{
+		// println "************Captain run and talk was not initialized!!!"
+		end
+	}
+	if (level.captaintalkfinaldest == NIL)
+	{
+		// println "************Captain run and talk got invalid destination!!!"
+		end
+	}
+	local.ent = waitthread global/spawner.scr::spawner_activate level.captaintalkspawner
+	local.ent svflags "+broadcast"
+	local.ent nodamage
+	local.ent thread t2l3_executecaptainruntalk
+	level.globalcaptainike = local.ent
+end
+
+t2l3_executecaptainruntalk:
+	self.movedoneradius = 150.0
+	self exec global/disable_ai.scr
+	waitframe
+	self runto $captainiketalk
+	self waittill movedone
+	self turnto $s1
+	self anim 23A837_captaindialoge
+	self waittill animdone
+	thread maps/t2l3.scr::setobjective 4
+	level.randombarrage = 1
+	self.movedoneradius = 150.0
+	self runto level.captaintalkfinaldest
+	self waittill movedone
+	level.randombarrage = 0
+	self exec global/crouch.scr
+	self resetleash
+	self.fixedleash = 1
+	wait 2
+	self exec global/enable_ai.scr
+end
+
+t2l3_executecaptainwave2:
+	
+	level.globalcaptainike.movedoneradius = 150.0
+	level.globalcaptainike exec global/disable_ai.scr
+	waitframe
+	level.globalcaptainike runto $player
+	waitthread t2l3_gettotheplayer
+	level.globalcaptainike resetleash
+	level.globalcaptainike.fixedleash = 1
+end
+
+t2l3_gettotheplayer:
+
+	local.length = vector_length( level.globalcaptainike.origin - $player.origin )
+	local.length2 = vector_length( level.globalcaptainike.origin - $anchor3.origin )
+
+	if (local.length2 < 2500)
+	{	
+		if (local.length < 150)
+		{
+			level.globalcaptainike runto $player
+			level.globalcaptainike waittill movedone
+			level.globalcaptainike turnto $v6
+			level.globalcaptainike anim 23A837_captaindialogepartdeux
+			wait 5.5
+			thread maps/t2l3.scr::kommanderstartattack2
+			thread maps/t2l3.scr::sayleftflank
+			thread maps/t2l3.scr::setobjective 5
+			level.globalcaptainike.movedoneradius = 150.0
+			level.globalcaptainike runto $anchor3
+			level.globalcaptainike waittill movedone
+			level.globalcaptainike exec global/crouch.scr
+			level.globalcaptainike resetleash
+			level.globalcaptainike.fixedleash = 1
+			level.globalcaptainike exec global/enable_ai.scr	
+		}
+		else
+		{
+			wait 0.1
+			goto t2l3_gettotheplayer
+		}
+	}
+	else
+	{
+		level.globalcaptainike.movedoneradius = 150.0
+		level.globalcaptainike runto $anchor3
+		level.globalcaptainike waittill movedone
+		thread maps/t2l3.scr::kommanderstartattack2
+		thread maps/t2l3.scr::sayleftflank
+		thread maps/t2l3.scr::setobjective 5
+		level.globalcaptainike exec global/crouch.scr
+		level.globalcaptainike resetleash
+		level.globalcaptainike.fixedleash = 1
+		level.globalcaptainike exec global/enable_ai.scr	
+	}
+
+end

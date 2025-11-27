@@ -1,0 +1,311 @@
+/////////////////////////////////////////////////
+// t2l3_blitzkrieg
+/////////////////////////////////////////////////
+
+// barrage R us
+
+/*	
+
+$barrage1
+$barrage2
+$barrage3
+
+*/
+
+BarrageInit:
+
+	level.DoNewBarrageIsOn = 0 
+
+	level.randombarrage = 0
+	level.ambientbarrage = 0
+	level.startbarrage = 0
+	level.foundmedic = 0
+	level.foundsarg = 0
+
+	level.bduration = 12
+	level.binterval = 8
+
+	level.barragerunning = 0
+
+	level.return = 0
+
+	level.pocketflashes = 0
+	level.objective1set = 0
+
+
+	thread BarrageThink
+	thread pocketflashesInit	
+end
+
+barrage_dialogue_init:
+	
+	// make sure this matches the projectile generator max time key value pair
+	level.barrage_dialogue_time = level.time + 15
+
+end
+
+barrage_dialogue:
+
+	if (level.foundmedic == 1)
+		end
+	
+	$player playsound dfr_T2L3_barrage
+
+	local.time = randomint(5) + 3
+	
+	wait local.time
+	goto barrage_dialogue
+
+end
+
+
+artillery_barrage_checker:
+	
+	level.barragerunning = 1
+
+	wait 60.0
+	
+	//start the END artillery attack ambience
+	//forcemusic aux2 aux2
+	level.barragerunning = 0
+end
+
+
+BarrageThink:
+
+	while (level.startbarrage == 0)
+		wait 1
+
+	level.pocketflashes = 1
+			
+	// println ( "trigger trigger6 " )
+	trigger $trigger6
+	
+	thread artillery_barrage_checker
+
+	thread barrage_dialogue
+
+	local.timer = level.time + 15
+	
+	while (local.timer > level.time)
+		wait 1
+
+	level.captainlivetime = level.captainlivetime + level.findcaptaintime
+
+	thread gags/t2l3_medic.scr::t2l3_iscaptainalive
+
+	if ( level.objective1set == 0 )
+	{	
+		level.objective1set = 1
+		thread maps/t2l3.scr::setobjective 1
+	}
+	$randombarrage turnoff
+	
+	level.startbarrage = 0
+
+	while (level.foundsarg == 0)
+		wait 1
+
+dprintln "start new artillery system"
+
+	thread DoNewBarrage 
+
+	while (level.ambientbarrage == 0)
+	{
+		wait 1
+	}
+dprintln "start ambient barrage"
+	$ambientbarrage turnon
+	while (level.randombarrage == 0)
+	{
+		wait 1
+	}
+	$ambientbarrage turnoff
+dprintln "start random barrage"
+	$randombarrage turnon
+	while (level.randombarrage == 1)
+	{
+		wait 1
+	}
+	$randombarrage turnoff 
+end
+
+DoNewBarrageDelay local.delay:
+	//dprintln "barrage is off run for cover!!"
+	while (local.delay > level.time)
+	{	
+		waitframe
+	}		
+end
+
+DoNewBarrageDuration local.duration:
+	//dprintln "are we starting the new barrage?"
+
+	level.DoNewBarrageIsOn = 1 
+	
+	$player playsound arty_leadin05
+		
+	while (local.duration > level.time)
+	{
+		if (level.medicforcebarrageon == 0)
+		{
+			$barrage1 turnoff
+			$barrage2 turnoff
+			$barrage3 turnoff
+			end
+		}
+		if (level.medicforcebarrageon == 1)
+		{
+			$barrage1 turnon
+			wait 1
+		}
+		$barrage1 turnoff
+		if (level.medicforcebarrageon == 1)
+		{
+			$barrage2 turnon
+			wait 1
+		}
+		$barrage2 turnoff
+		if (level.medicforcebarrageon == 1)
+		{
+			$barrage3 turnon
+			wait 1
+		}
+		$barrage3 turnoff
+	}
+	//dprintln "turn the barrage off"
+
+	level.DoNewBarrageIsOn = 0 
+
+end
+	
+DoNewBarrage:
+
+	while (level.newbarrageon == 1)
+	{
+		
+		local.duration = level.bduration + level.time
+		waitthread DoNewBarrageDuration local.duration
+		local.delay = level.binterval + level.time
+		waitthread DoNewBarrageDelay local.delay
+		waitframe
+	}
+	
+	while (level.newbarrageon == 0)
+	{
+		wait 1
+	}
+
+	waitframe 
+
+	goto DoNewBarrage
+
+end
+
+DoNewBarrageOn:
+
+//iprintlnbold "DoNewBarrageOn"
+
+	level.newbarrageon = 1
+end
+
+DoNewBarrageOff:
+
+//iprintlnbold "DoNewBarrageOff"
+
+	level.newbarrageon = 0
+end
+
+DoNewMedicBarrageOff:
+	level.newbarrageon = 0
+	level.medicforcebarrageon = 0
+end
+
+randombarrageoff:
+	level.randombarrage = 0
+end
+
+ModifyReturnBarrage1:
+
+	if (level.return == 1)
+	{
+		level.bduration = 15
+		level.binterval = 7
+	}
+
+end
+
+ModifyReturnBarrage2:
+
+	if (level.return == 1)
+	{
+		level.bduration = 20
+		level.binterval = 6
+	}
+
+end
+
+pocketflashesInit:
+
+	local.delay = 3
+	
+	if ($pocketflashes.size)
+	{
+		local.count = $pocketflashes.size+1
+		// dprintln "Local count is " local.count
+		for (local.i=1;local.i<local.count;local.i++)		
+		{
+			 $pocketflashes[local.i].time = level.time +  randomint(3) + local.delay
+		}
+	}
+	else
+	{
+		dprintln ( " There are no pocket flashes on the level " )
+	}
+
+	thread pocketflashesRun
+end
+
+pocketflashesRun:
+	local.count = $pocketflashes.size+1
+	wait 1
+	while (level.pocketflashes == 1)
+	{
+		for (local.i=1;local.i<local.count;local.i++)		
+		{
+			if($pocketflashes[local.i].time < level.time)
+			{
+				$pocketflashes[local.i] thread pocketflashFx models/fx/fx_pocketflash.tik
+				$pocketflashes[local.i].time = level.time +  randomint(3)
+				/*
+				local.rval = randomint(100)
+				if(local.rval > 50)
+					$pocketflashes[local.i] playsound tree_explode1
+				else
+					$pocketflashes[local.i] playsound tree_explode2
+				*/
+			}
+		}
+		waitframe
+	}
+
+	while (level.pocketflashes == 0)
+		waitframe
+
+	waitframe
+	goto pocketflashesRun
+
+end
+
+pocketflashFx local.fx:
+	local.x = 128 - randomint(256)
+	local.y = 128 - randomint(256)
+	local.z = randomint(128)
+	local.temp = spawn script_model model local.fx
+	local.temp notsolid
+	local.temp.origin = ( self.origin + (local.x local.y local.z)) 
+	local.temp anim start
+	local.temp notsolid
+	waitframe
+	local.temp remove
+end

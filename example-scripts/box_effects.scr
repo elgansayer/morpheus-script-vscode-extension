@@ -1,0 +1,136 @@
+//
+// Automatically generates a repeating effect in a bounding box.
+//
+// To use:
+//			- Place a box that is a "script_model" in the level.
+//			- Give the box a $targetname of something.
+//			- Spawn a thread for the box, similar to the following:
+//					"thread gags/box_effects.scr::execute_fx_region $bob models/fx/exp_flak_far1.tik   1  10"
+//			- Exec the script at the beginning of the level script, i.e.:
+//					"exec gags/box_effects.scr"
+//			- To end, call the stop_all_fx_region thread.
+//
+// To use the player effect:
+//			- Call as follows:
+//					"thread gags/box_effects.scr::execute_player_fx models/fx/exp_flak_near1.tik  1  4	300	 600"
+//
+// Arguments:
+//			- The first numerical argument is the minimum time between bursts.
+//			- The second is the maximum time between bursts.
+//			- For execute_player_fx only: the third is the minimum distance from the player it can explode.
+//			- For execute_player_fx only: the fourth is the maximum distance from the player.
+//
+// For an explosion on a specific location, use:
+//
+//			thread gags/box_effects.scr::execute_target_flak models/fx/exp_flak_near.tik $flakspot 2
+//															 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^ ^
+//																		tiki			   target  delay
+//
+// The target (e.g., "$flakspot") should be a script_origin object of that $targetname.
+//
+	level.skyshow = 1
+end
+
+execute_fx_region local.box local.fx local.mindelay local.maxdelay:
+
+	local.origin = local.box.origin
+	local.mins = local.box.getmins
+	local.maxs = local.box.getmaxs
+	local.bounds = local.maxs - local.mins
+	local.delay = local.maxdelay - local.mindelay
+
+	while (level.skyshow == 1)
+	{
+		local.temp = spawn script_model model local.fx
+
+		local.x = randomint(local.bounds[0]) - (local.bounds[0] / 2)
+		local.y = randomint(local.bounds[1]) - (local.bounds[1] / 2)
+		local.z = randomint(local.bounds[2]) - (local.bounds[2] / 2)
+		local.temp.origin = local.origin + (local.x local.y local.z)
+
+		local.temp notsolid
+		local.temp anim start
+		local.waittime = local.mindelay + randomfloat(local.delay)
+		wait local.waittime
+		local.temp remove
+	}
+
+end
+
+
+execute_player_fx local.fx local.mindelay local.maxdelay local.mindist local.maxdist:
+
+	local.delay = local.maxdelay - local.mindelay
+
+	while (level.skyshow == 1)
+	{
+		local.temp = spawn script_model model local.fx
+
+		local.origin = $player.origin
+
+		local.x	= randomfloat(2) - 1.0
+		local.y	= randomfloat(2) - 1.0
+		local.z	= randomfloat(2) - 1.0
+
+		local.magsq = local.x * local.x + local.y * local.y + local.z * local.z
+		if (local.magsq < 0.05)
+		{
+			local.x = 0.0
+			local.y = 0.0
+			local.z = 1.0
+		}
+
+		local.vDir		= ( local.x local.y local.z )
+
+		local.vDir		= vector_normalize local.vDir
+		local.mag		= randomfloat(local.maxdist - local.mindist )
+		local.mag		+= local.mindist
+
+		local.temp.origin = vector_scale local.vDir local.mag
+		local.temp.origin += local.origin
+
+
+		local.temp notsolid
+		local.temp anim start
+		local.waittime = local.mindelay + randomfloat(local.delay)
+		wait local.waittime
+		local.temp remove
+	}
+
+end
+
+
+restart_all_fx_region:
+	level.skyshow = 1
+end
+
+
+stop_all_fx_region:
+	level.skyshow = 0
+end
+
+execute_target_flak local.fx local.infonull local.delay:
+	wait local.delay
+	local.temp = spawn script_model model local.fx
+	local.temp.origin = local.infonull.origin
+	local.temp notsolid
+	local.temp anim start
+	thread Flash
+	wait 5
+	local.temp remove
+end
+
+
+//-------------------------------------------------------------------
+Flash:
+//-------------------------------------------------------------------
+
+
+	fadein 0.3 1 1 1 .75
+	wait .1
+	fadein 0.1 .48 .22 .03 .75
+	wait .2
+	fadein 0.2 0 0 0 0
+	//fadein 0.2 1 1 1 0
+
+End

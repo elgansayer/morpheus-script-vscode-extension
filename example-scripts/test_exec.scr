@@ -1,0 +1,13 @@
+// This script tests the exec command validation
+// The following line should NOT produce an error after the fix
+exec global/missioncomplete.scr m5l2a
+
+// The following line SHOULD produce an error (thread to missing label)
+thread missing_label
+
+// The following line should be fine (thread to existing label)
+thread existing_label
+
+existing_label:
+    println "Hello"
+    end

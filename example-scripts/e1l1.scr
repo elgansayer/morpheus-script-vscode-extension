@@ -1,0 +1,588 @@
+//-----------------------------------------------------------------------------
+//
+// e1l1.scr
+//
+//-----------------------------------------------------------------------------
+
+// This stuff in hacks.scr now
+
+level.farDist = 1500
+level.fogBias = 50
+level.fogColor = ( .35 .24 .16 )
+
+//-----------------------------------------------------------------------------
+main:
+//-----------------------------------------------------------------------------
+	level.music  = "e1l1"
+
+	thread trackPrespawn
+	exec maps/e1l1/hacks.scr
+	if ( int( getcvar( r_usepixo )) != 0 )
+	{
+		level.noStorm = 1
+	}
+
+	level.largemap = getcvar r_largemap
+	if (level.largemap == "0") {
+		level.slowMachine = 1
+	}
+	else
+		level.slowMachine = 0
+
+	thread maps/e1l1/storm.scr::init
+	exec global/auto.scr
+
+
+	println "------------------------------------------------------------------------------------"
+	println "------------------------------------------------------------------------------------"
+	println "------------------------------------------------------------------------------------"
+
+	println "level.slowMachine = " level.slowMachine ", " level.largemap
+
+	level.script = "maps/e1l1.scr"
+	exec maps/e1l1/explosion.scr::init
+	//exec global/machinegunner.scr
+	exec global/door_locked.scr::lock
+	exec global/fogtrigger.scr
+	exec maps/e1l1/CollisionHull.scr
+	//exec global/FakeGunfire.scr
+	exec global/machinegunner.scr
+
+	spawn trigger_once targetname "fuchesDoneTrigger"
+	spawn trigger_once targetname "jeepRideStart"
+	spawn trigger_once targetname "jeepFinalApproach"
+	spawn trigger_once targetname "jeepArrivedAtBattle"
+	spawn trigger_once targetname "generalFinishedBabbling"
+	spawn trigger_once targetname "jeepLeavingBattlefield"
+	spawn trigger_once targetname "beginFrontLineBattle"
+	spawn trigger_relay targetname "tankCommanderDoneTalking"
+	spawn trigger_relay targetname "MedalParadeGuysDeadTrigger"
+
+
+	// setup the lights
+	thread maps/e1l1/light.scr::init
+
+	waitthread maps/e1l1/objectives.scr::init
+	thread monitorEntityCount
+
+	thread maps/e1l1/scene1.scr::Init   // Jeep ride to the Front
+	thread maps/e1l1/scene2.scr::Init   // 1st scripted fight, on the way to the panzer
+	thread maps/e1l1/scene3.scr::Init   // get in the panzer, player tank battle, get off the tank
+	thread maps/e1l1/scene4.scr::Init   // trench fighting
+	thread maps/e1l1/scene5.scr::Init   // bunkers and command center
+	thread maps/e1l1/scene6.scr::Init   // Level ending
+
+
+	waitthread InitLevel
+
+	if (level.warpToFrontLine) {
+		level waittill spawn
+		$player.origin = ( -5271 1125 250 )
+		level.skipFadeIn = 1
+	}
+
+	if (level.warpToTankRide) {
+		level waittill spawn
+		$player.origin = ( 580 2289 288 )
+		level.skipJeepRide = 1
+		level.skipFadeIn = 1
+		$player waitthread maps/e1l1/storm.scr::AttachStorm
+	}
+
+	if (level.warpToRadioShack) {
+		level waittill spawn
+		$player.origin = ( 3944 2365 385 )
+		//$player.origin = ( 3004 1242 384 )
+		level.skipJeepRide = 1
+		level.skipFadeIn = 1
+		$storm remove
+	}
+
+	if (level.warpToTankRideEnd) {
+		level waittill spawn
+		$player.origin = ( -1059 -2993 228 )
+		level.skipJeepRide = 1
+		level.skipFadeIn = 1
+		$player waitthread maps/e1l1/storm.scr::AttachStorm
+	}
+
+	if (level.warpToLevelEnd) {
+		level waittill spawn
+		trigger $everythingDoneTrigger
+		//$player.origin = ( 5592 -2480 264 )
+		//$player.origin = ( 2832 768 160 )
+		$player.origin = ( 5377 2777 440 )
+		level.skipJeepRide = 1
+		level.skipFadeIn = 1
+	}
+
+	if (level.warpToBunkerEntrance) {
+		level waittill spawn
+		$player.origin = ( 3112 -3352 280 )			//( 2832 768 160 )
+		level.skipJeepRide = 1
+		level.skipFadeIn = 1
+	}
+
+	if (level.walkThroughIntro) {
+		level waittill spawn
+		//$player.origin = ( -5594 -2142 249 )
+		//$player.origin = ( -1691 -5603 290 )
+		//$player.origin = ( 3249 511 318 )
+		//level.skipJeepRide = 1
+		level.skipFadeIn = 1
+	}
+	level.lastTankDead = 0
+
+	if (level.skipFadeIn == 0) {
+		fadeout 0.1 0 0 0 1
+	}
+
+	level waittill spawn
+	waitthread maps/e1l1/scene1.scr::prepJeepRide
+
+	thread doMusic
+
+	thread FadeIn
+	//level waittill spawn
+
+	thread StartStormOnJeep
+
+	if (!level.skipFadeIn) 
+		wait 5
+	level.jeepRideStartTime = level.time
+	thread ArmPlayer
+
+	thread warpObjectives
+
+	if (level.warpToTankRide == 0 && level.warpToTankRideEnd == 0 && level.warpToBunkerEntrance	== 0 && level.warpToRadioShack == 0 && level.warpToLevelEnd	== 0)
+		waitthread maps/e1l1/scene1.scr::rollJeepRide
+	waitthread maps/e1l1/objectives.scr::transition "didIntro"
+
+	// attach storm to player, no longer to camera
+	if (!level.noStorm) 
+		$player waitthread maps/e1l1/storm.scr::AttachStorm
+
+	// wait until the player gets near the tank
+	$tankCommanderDoneTalking waittill trigger
+	// make moving the tank the current objective
+	waitthread maps/e1l1/objectives.scr::transition "commanderGagEnd"
+
+	// wait until the player reaches the bunkers 
+	$reachedBunkerTrigger waittill trigger
+	waitthread maps/e1l1/objectives.scr::transition "reachedBunkers"
+	exec global/autosave.scr 4
+
+	waitthread maps/e1l1/scene6.scr::waitForLevelEnd
+
+	waitthread NextLevel
+end
+
+//-----------------------------------------------------------------------------
+StartStormOnJeep:
+//-----------------------------------------------------------------------------
+
+/*
+iprintlnbold "**** HERFLE"
+	wait 10
+iprintlnbold "**** TERFLE"
+	if (!level.noStorm) 
+		$jeep waitthread maps/e1l1/storm.scr::AttachStorm
+//		$jeepCamera waitthread maps/e1l1/storm.scr::AttachStorm
+iprintlnbold "**** JERFLE"
+*/
+
+end
+
+
+
+//-----------------------------------------------------------------------------
+InitLevel:
+//-----------------------------------------------------------------------------
+//	println "Got here"
+	thread InitMineFields
+	waitthread InitEnvironment
+	thread InitFriends
+	thread InitEnemies
+	thread InitPlayer
+	setcvar g_mission 1
+
+	// turn the gate lights on/off
+	$gate_light_open thread light_show
+	$gate_light_closed thread light_hide
+
+
+	level.gate_switch_toggle = 1
+
+	$gate_switch bind $gate_switch_origin
+
+
+	$bunkerAlarm thread doBunkerAlarm
+	waitthread maps/e1l1/aicleanup.scr::init
+
+end
+
+//-----------------------------------------------------------------------------
+doBunkerAlarm:
+//-----------------------------------------------------------------------------
+	thread doSound self.origin e1l1_alarm
+end
+
+//-----------------------------------------------------------------------------
+doSound local.origin local.sound:
+//-----------------------------------------------------------------------------
+	local.soundorigin = spawn script_model model "fx/dummy.tik"
+	local.soundorigin.origin = local.origin
+	local.soundorigin loopsound local.sound
+	local.soundorigin notsolid
+end
+
+//-----------------------------------------------------------------------------
+InitEnvironment:
+//-----------------------------------------------------------------------------
+	if (level.nofog)
+		level.farDist = 4000
+
+	$world farclipoverride level.farDist
+	$world farplane level.farDist
+	$world farplane_bias level.fogBias
+	if (level.fogColor != NIL) 
+		$world farplane_color level.fogColor
+end
+
+//-----------------------------------------------------------------------------
+InitFriends:
+//-----------------------------------------------------------------------------
+	level waittill prespawn
+
+	// guy at beginning of bunker that gives you objectives...
+	$bunkerallie_speaker hide
+	$bunkerallie_speaker ai_off
+	$bunkerallie_speaker nodamage
+	$bunkerallie_speaker.enableEnemy = 0
+
+end
+
+//-----------------------------------------------------------------------------
+InitEnemies:
+//-----------------------------------------------------------------------------
+	level waittill prespawn
+	//MG42s
+	if ( $mg42 != NIL )
+	{
+		for (local.i=1;local.i<$mg42.size+1;local.i++)
+		{
+			// level.spot_burstmin level.spot_burstmax level.spot_burstdownmin level.spot_burstdownmax	
+			$mg42[local.i] burstfiresettings 1 3 1.5 3
+			$mg42[local.i] maxyawoffset 60.0
+			$mg42[local.i] pitchcaps "-20 20 0"
+			$mg42[local.i] convergetime 0.25
+
+			switch (level.skill)
+			{
+			case 0:
+				$mg42[local.i] aibulletspread 450 275
+				break;
+			case 1:
+				$mg42[local.i] aibulletspread 400 225
+				break;
+			case 2:
+				$mg42[local.i] aibulletspread 300 125
+				break;
+			}
+		}
+	}
+end
+
+//-----------------------------------------------------------------------------
+InitPlayer:
+//-----------------------------------------------------------------------------
+	level waittill prespawn
+	println "Initing Player"
+	$player heal 1
+//	thread maps/e1l1/storm.scr::init
+end
+
+//-----------------------------------------------------------------------------
+FadeIn:
+//-----------------------------------------------------------------------------
+	if (!level.skipFadeIn) 
+	{
+		exec global/fadein.scr
+		waitframe
+		waitthread global/fadein.scr::DoFadeIn e1l1_1 e1l1_2 e1l1_3 NIL 0
+	}
+	else 
+	{
+		// for some reason we need to do this when skipping fade in...
+		//level waittill prespawn
+		level waittill spawn
+	}
+	$player.viewangles = $jeep.angles
+end
+
+//-----------------------------------------------------------------------------
+NextLevel:
+//-----------------------------------------------------------------------------
+	exec global/missioncomplete.scr e1l2 1
+end
+
+//-----------------------------------------------------------------------------
+ArmPlayer:
+//-----------------------------------------------------------------------------
+	
+	// "carcano": models/weapons/It_W_Carcano.tik
+	// "bomba": models/weapons/It_W_Bomba.tik
+
+	if (level.skipJeepRide == 0)
+		$jeepArrivedAtBattle waittill trigger
+	//println "Here ya go!"
+
+	waitexec global/loadout.scr
+	waitthread global/items.scr::blank_items
+
+
+	if (level.giveAllWeapons) {
+		$player give all
+		$player useweaponclass mg
+	}
+	else
+		$player useweaponclass smg
+
+	drawhud 1
+
+end
+
+//-----------------------------------------------------------------------------
+InitMineFields:
+//-----------------------------------------------------------------------------
+	if ($mineTrigger != NULL && $mineTrigger != NIL)
+		$mineTrigger thread doMineField
+end
+
+//-----------------------------------------------------------------------------
+doMineField:
+//-----------------------------------------------------------------------------
+
+	self waittill trigger
+
+	local.spawned = spawn script_origin targetname 
+	local.spawned.origin = $player.origin
+	local.spawned.origin += ( 25 25 0)
+    local.spawned.damage = 1000 // bump up the damage caused
+    local.spawned.radius = 500  // bump up the radius affected
+	thread maps/e1l1/explosion.scr::big local.spawned
+	$player damage $world 5000 $world (0 0 0) (0 0 0) (0 0 0) 0 9 0 0	// kill the bastard outright, that'll learn 'im!
+	wait 0.5
+	local.spawned remove
+
+
+/*		-- old not-necessarily-fatal version
+	while (1) {
+		self waittill trigger
+		self.playerInTrigger = 1
+		thread playerOutOfTrigger
+		while (self.playerInTrigger) {
+			wait 1
+			if ((randomint 100) < 75) {
+				local.spawned = spawn script_origin targetname 
+				local.spawned.origin = $player.origin
+				local.spawned.origin += ( 25 25 0)
+                local.spawned.damage = 1000 // bump up the damage caused
+                local.spawned.radius = 500  // bump up the radius affected
+				thread maps/e1l1/explosion.scr::big local.spawned
+				wait 0.5
+				local.spawned remove
+			}
+		}			
+	}
+*/
+end
+
+//-----------------------------------------------------------------------------
+checkLastTriggerTime:
+//-----------------------------------------------------------------------------
+
+	self.checkTriggerThread = local
+	while (1) {
+		self waittill trigger
+		self.lastTriggerTime = level.time
+	}
+end
+
+//-----------------------------------------------------------------------------
+playerOutOfTrigger:
+//-----------------------------------------------------------------------------
+
+	self.lastTriggerTime = level.time
+	thread checkLastTriggerTime
+	while ((level.time - self.lastTriggerTime) < 0.5) 
+		wait 0.1		
+	self.checkTriggerThread delete
+	self.playerInTrigger = 0
+end
+
+//-----------------------------------------------------------------------------
+doMusic:
+//-----------------------------------------------------------------------------
+	// jeep ride, mellow music
+	waitthread global/music.scr::PlaySongLoop "sound/music/E1L1_Rescue_G3.mp3"
+
+	$beginFrontLineBattle waittill trigger
+
+	// front line battle, intense music
+	waitthread global/music.scr::StopSong 1
+	waitthread global/music.scr::PlaySongLoop "sound/music/mus_Schmerzen_01a.mp3"
+
+	$scene2MainExitTrigger waittill trigger
+	// front line battle over, go back to mellow music
+	waitthread global/music.scr::StopSong 1
+	waitthread global/music.scr::PlaySongLoop "sound/music/Kleveburg.mp3"
+
+	$scene3Trigger waittill trigger
+
+	// tank ride, intense music again
+	wait 4
+	waitthread global/music.scr::StopSong 1
+	waitthread global/music.scr::PlaySongLoop "sound/music/Halftrack.mp3"
+
+	$scene3Trigger7 waittill trigger
+
+	// trenches, pseudo mellow music
+	waitthread global/music.scr::StopSong 4
+	waitthread global/music.scr::PlaySongLoop "sound/music/Emmerich.mp3"
+
+	$reachedBunkerTrigger waittill trigger
+
+	// bunker, intense music again
+	waitthread global/music.scr::StopSong 1
+	waitthread global/music.scr::PlaySongLoop "sound/music/mus_Schmerzen_01a.mp3"
+end
+
+
+//-----------------------------------------------------------------------------
+MedalParadeGuysDead:
+//-----------------------------------------------------------------------------
+
+	trigger $MedalParadeGuysDeadTrigger
+
+end
+
+//-----------------------------------------------------------------------------
+toggle_gatecontrol:
+//
+//	an evil setthread that is called when the player uses the gatecontrol...
+//-----------------------------------------------------------------------------
+
+
+	if ( level.gate_control )
+	{
+		// make sure we don't get in here again while we're moving the switch...
+		end
+	}
+
+
+	level.gate_control = 1
+
+	if ( level.gate_switch_toggle == 1 )
+	{
+		trigger $scene3Flak88Trigger
+
+		$gate_switch_origin speed 2
+		$gate_switch_origin rotatexdownto 180
+		$gate_switch_origin waitmove
+		$gate_switch_origin playsound e1l1_GateSwitch
+		level.gate_switch_toggle = 0
+		exec global/autosave.scr 3
+		$tankgate open $player
+		$tankgate playsound largegate
+		$tankgate waittill done
+
+		$gate_light_open thread light_hide
+		$gate_light_closed thread light_show
+		waitthread maps/e1l1/objectives.scr::transition "openedGate"
+
+		// spawn "round-the-corner" guys
+		waitthread global/ai.scr::spawnset 0123346 "chunkStyle0123346"
+
+	}
+	/*  jsl--> only want to be able to open the door...
+	else
+	{
+		$gate_switch_origin speed 2
+		$gate_switch_origin rotatexupto -90
+		$gate_switch_origin waitmove
+		$gate_switch_origin playsound e1l1_GateSwitch
+		level.gate_switch_toggle = 1
+		$tankgate close $player
+		$tankgate playsound largegate
+		$tankgate waittill done
+		$gate_light_open thread light_hide
+		$gate_light_closed thread light_show
+	}
+	*/
+
+	level.gate_control = 0
+
+end
+
+//-----------------------------------------------------------------------------
+light_show:
+//-----------------------------------------------------------------------------
+	self show
+end
+
+//-----------------------------------------------------------------------------
+light_hide:
+//-----------------------------------------------------------------------------
+	self hide
+end
+
+
+warpObjectives:
+	wait 1
+	if (level.warpToTankRideEnd || level.warpToBunkerEntrance || level.warpToRadioShack	|| level.warpToLevelEnd) {
+		trigger $tankCommanderDoneTalking 
+		waitframe
+		waitthread maps/e1l1/objectives.scr::transition "didIntro"
+		waitthread maps/e1l1/objectives.scr::transition "commanderGagStart"
+		waitthread maps/e1l1/objectives.scr::transition "commanderGagEnd"
+		waitthread maps/e1l1/objectives.scr::transition "hitGateTrigger"
+		waitthread maps/e1l1/objectives.scr::transition "openedGate"
+
+		if (level.warpToBunkerEntrance || level.warpToRadioShack	|| level.warpToLevelEnd) {
+			waitthread maps/e1l1/objectives.scr::transition "seizedFlaks"
+				
+			if (level.warpToRadioShack || level.warpToLevelEnd) {
+				trigger $reachedBunkerTrigger 
+				waitthread maps/e1l1/objectives.scr::transition "foundBunker"
+				waitthread maps/e1l1/objectives.scr::transition "reachedBunkers"
+				waitthread maps/e1l1/objectives.scr::transition "talkedToSoldier"
+
+				if (level.warpToLevelEnd) {
+					waitthread maps/e1l1/objectives.scr::transition "killedRadios"
+					waitthread maps/e1l1/objectives.scr::transition "foundDocs"
+				}				
+			}
+		}
+	}
+end
+
+trackPrespawn:
+	level waittill prespawn
+	level.prespawnDone = 1
+end
+
+monitorEntityCount:
+	end
+	while (1) {
+		local.count = 0
+		for (local.i = 0; local.i < 1024; local.i++) {
+			local.e = getentbyentnum local.i
+			if (local.e != NULL)
+				local.count++
+		}
+		//		iprintlnbold "count = " local.count
+		println "count = " local.count
+		wait 2
+	}
+end

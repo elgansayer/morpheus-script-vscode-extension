@@ -1,0 +1,1085 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// t1l3.scr
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+	//Set farplane and farplane_color
+	$world farplane 4000
+	$world farplane_color (.13 .19 .27)
+
+	exec global/auto.scr t1l3
+	exec global/loadout.scr maps/t1l3.scr
+	exec global/bomber.scr
+
+level waittill prespawn
+
+	drawhud 0
+	exec global/ambient.scr t1l3
+
+	$world northyaw $northyaw.angle
+
+	fadeout .001 0 0 0 1
+	exec gags/T1L3_BoatRide.Scr
+
+level waittill spawn
+
+	setcvar g_mission 1
+
+	level.levelsounds = 0
+	level.boatsounds = 1
+	level.docksounds = 2
+	level.exteriorsounds = 3
+	level.interiorsounds = 4
+
+	//add in our kill brush around the bridge area
+	local.killbrush = spawn trigger_hurt
+	local.killbrush damage 10000
+	local.killbrush.origin = ( 2012 -4352 -124 )
+	local.killbrush setsize ( 0 -2816 -228 ) ( 2084 0 0 )
+
+	//add in our clip brushes
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 4080 4128 -16 )
+	local.clipbrush setsize ( 0 0 0 ) ( 42 152 568 )
+	local.clipbrush solid
+
+
+
+//	$removabletrigger solid
+	$world farplane_cull 2
+
+	$player takeall
+	$player item items/binoculars.tik
+
+	$player item weapons/Webley_Revolver.tik 
+	$player item weapons/enfield.tik 
+	$player item weapons/sten.tik 
+	$player item weapons/mills_grenade.tik   
+	$player item weapons/M18_smoke_grenade.tik  
+
+	$player ammo pistol 32
+	$player ammo smg 128
+	$player ammo rifle 49
+	$player ammo smokegrenade 3
+	$player ammo grenade 3
+
+	
+	$tank1 model models/vehicles/tiger_base.tik
+	$truck_1 vehicleanim idlenolights
+	$truck_1 nodamage
+
+	thread gags/t1l3_BoatRide.scr::DoBoatRide
+	exec gags/t1l3_colonel.scr $officer $bmw $friendlycaptain $friendlyprivate
+	exec gags/t1l3_tank.scr $tank1
+	exec gags/t1l3_flak_cannon.scr $flakcannon $flakcharge
+	exec gags/t1l3_mg_gunners.scr $gunner1 $gunner2
+	exec gags/t1l3_captain_jump_balcony.scr
+	exec gags/t1l3_bridge.scr $bridgebase $bridge $train
+	exec gags/t1l3_misc.scr::fix_exploders
+	exec gags/t1l3_misc.scr::initcommfloor
+
+	level.enemytankspeed = 280
+	level.enemytankspeed_reverse = -40
+	level.lookahead = 300
+
+	level.captain gun sten
+	level.private gun ""
+
+	level.skill = getcvar(skill)
+	if ( level.skill == "0" )
+	{
+		level.captain.health = level.captain.health * 1.5
+		level.private.health = level.private.health * 1.5
+	}
+
+	// BRIDGECHARGE <init>
+	level.charge1 = 0
+	level.charge2 = 0
+	level.charge3 = 0
+	level.charge4 = 0
+	level.chargecount = 0
+	level.chargedelay = 10
+	level.chargesexploded = 0
+
+	$flakcannon_turret0 maxyawoffset 35.0
+	$flakcannon_turret0 pitchcaps "-20 20 0"
+	$flakcannon_turret0 turnspeed 15
+	$flakcannon_turret0 pitchspeed 7.5
+	$flakcannon_turret0 viewjitter 7
+	$flakcannon_turret0 firedelay 4
+	$flakcannon_turret0.collisionent = $flak88_turret_collision
+	$flakcannon.collisionent = $flak88_collision
+
+
+	$bmw2 nodamage
+
+	thread initmg42s
+	thread aihider
+
+	// initialize the objective list
+	waitthread initobjectives
+	waitthread initambienttriggers
+
+	$balcony_death_nazi thread balcony_death_nazi_deathcheck
+
+	thread stayonpathguys
+
+	$player stufftext "tmstop; tmstart sound/music/mus_t1l3_playerstart.mp3"
+
+	$wallcharge triggered 1
+	$wallcharge thread wallchargedialog
+
+	$pushtank.collisionent = $pushtank.target
+	$deadtank1.collisionent = $deadtank1.target
+	$deadtank2.collisionent = $deadtank2.target
+//	$deadtruck.collisionent = $deadtruck1.target
+	$truck_1.collisionent = $truck_1.target
+
+	$player fullheal
+
+	wait 2.5
+	fadein 3.5 0 0 0 1
+	thread gags/t1l3_misc.scr::pushfarplane 600 4000 20.0 15.0
+	wait 3.0
+	drawhud 1
+
+	releaseplayer
+
+	$player useweaponclass smg
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// misc. triggered threads
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stayonpathguys:
+
+	thread triggerstayonpath $porchtrigger 3.0 waitporchtrigger
+	thread triggerstayonpath $diningroomguytrigger 1.5
+	thread triggerstayonpath $bybarnguytrigger 3.0
+	thread triggerstayonpath $sidehouseguystrigger 2.0
+	thread triggerstayonpath $mg42rusherstrigger 10.0
+	thread triggerstayonpath $platformguys1trigger 4.0
+	thread triggerstayonpath $platformguys2trigger 4.0
+	thread triggerstayonpath $balconystairguystrigger 4.0
+	thread triggerstayonpath $inhouseguytrigger 2.0
+	thread triggerstayonpath $backyardguytrigger 2.5
+	thread triggerstayonpath $bazookadudetrigger 1.5 waitbazookatrigger
+
+end
+
+
+firstautosave:
+
+	exec global/autosave.scr 1
+end
+
+
+thirdautosave:
+
+	exec global/autosave.scr 3
+end
+
+
+waitporchtrigger:
+
+	self waittill trigger
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~ waitporchtrigger"
+	if ( level.nashtyboy == 1 )
+	{
+		local.count = $PorchGuys.size
+
+		if ( local.count > 0 )
+		{
+			for ( local.i = 1; local.i <= local.count; local.i++ )
+			{
+				trigger $PorchGuys[local.i]
+			}
+		}
+	}
+
+end
+
+
+waitbazookatrigger:
+
+	self waittill trigger
+
+	if ( level.returnpath == 0 )
+	{
+		// player wants some?
+		local.count = $bazookadude.size
+
+		if ( local.count > 0 )
+		{
+			for ( local.i = 1; local.i <= local.count; local.i++ )
+			{
+				trigger $bazookadude[local.i]
+			}
+		}
+	}
+
+end
+
+
+//// ambient sound threads
+initambienttriggers:
+
+	if ( $ambient_trigger )
+	{
+		for ( local.i = 1; local.i <= $ambient_trigger.size; local.i++ )
+		{
+			for ( local.j = 1; local.j <= $ambient_trigger.size; local.j++ )
+			{
+				if ( ($ambient_trigger[local.i].set == $ambient_trigger[local.j].set) && (local.i != local.j) )
+				{
+					$ambient_trigger[local.i].link = $ambient_trigger[local.j]
+				}
+			}
+		}
+	}
+
+end
+
+
+boatsounds:
+
+	if ( level.levelsounds != level.boatsounds )
+	{
+		if ( (self.link == NIL) || !(self.link istouching $player) )
+		{
+			forcemusic aux1 aux1
+			level.levelsounds = level.boatsounds
+		}
+	}
+
+end
+
+
+docksounds:
+
+	if ( level.levelsounds != level.docksounds )
+	{
+		if ( (self.link == NIL) || !(self.link istouching $player) )
+		{
+			forcemusic aux3 aux3
+			level.levelsounds = level.docksounds
+		}
+	}
+
+end
+
+
+exteriorsounds:
+
+	if ( level.levelsounds != level.exteriorsounds )
+	{
+		if ( (self.link == NIL) || !(self.link istouching $player) )
+		{
+			forcemusic aux5 aux5
+			level.levelsounds = level.exteriorsounds
+		}
+	}
+
+end
+
+
+interiorsounds:
+
+	if ( level.levelsounds != level.interiorsounds )
+	{
+		if ( (self.link == NIL) || !(self.link istouching $player) )
+		{
+			forcemusic aux6 aux6
+			level.levelsounds = level.interiorsounds
+		}
+	}
+
+end
+
+
+pushtankthread:
+
+	if (parm.other.owner == $pushtank)
+		end
+
+	$removableclip notsolid	
+	$pushtank moveanim 13P008_tankpushedaside
+	$pushtank playsound king_vehicle_crash5
+	$pushtank notsolid
+	self delete
+
+end
+
+
+flakblown:
+
+	$flakcannon thread global/stationaryweapons.scr::SpawnCollision $flak88_destroyed_collision
+	exec gags/t1l3_flak_cannon.scr::flak_destroyed
+
+end
+
+
+meetcaptain3:
+
+	if ( level.tankdestroyed == 1 )
+	{
+		exec gags/t1l3_flak_cannon.scr::lock_cannon
+		waitthread gags/t1l3_tank.scr::meetcaptain3
+		exec gags/t1l3_flak_cannon.scr::enable_charge
+		thread objective3
+	}
+
+end
+
+
+airdrop:
+
+	if ( level.flakdestroyed == 1 )
+	{
+		self remove
+		exec gags/t1l3_flak_cannon.scr::airdropdialog
+	}
+
+end
+
+
+wallcharge:
+
+	thread gags/t1l3_misc.scr::wallcharge $wallcharge 5 77
+
+end
+
+
+wallchargedialog:
+
+	local.spoken = 0
+	while ( self && ( local.spoken == 0 ) && (isAlive level.captain) )
+	{
+//		local.a = vector_length(self.origin - $player.origin)
+//		local.b = vector_length($player.origin - level.captain.origin)
+//		dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ wallchargedialog, chargetoplayer is " local.a ", playertocaptain is " local.b
+		if ( (vector_length(self.origin - $player.origin) < 300.0) && (vector_length($player.origin - level.captain.origin) < 300.0) )
+		{
+			if ( level.objective4 == 0 )
+			{
+				// we'll need explosives from...
+				level.captain say dfr_T1L3_BC6965
+//				level.captain playsound dfr_T1L3_BC6965
+				local.spoken = 1
+			}
+			else
+			{
+				// use one of the demo charges...
+				level.captain say dfr_T1L3_BC6966
+//				level.captain playsound dfr_T1L3_BC6966
+				local.spoken = 2
+			}
+		}
+		wait 0.2
+	}
+
+end
+
+
+initmg42s:
+
+	local.count = $mg42.size
+	if ( local.count > 0 )
+	{
+		for ( local.i = 1; local.i <= local.count; local.i++ )
+		{
+			$mg42[local.i] maxyawoffset 60.0
+			$mg42[local.i] pitchcaps "-20 20 0"
+			$mg42[local.i] convergetime 0.25
+			if ( $mg42[local.i].set == 1 )
+				$mg42[local.i] AIbulletspread 350 175
+			if ( $mg42[local.i].set == 2 )
+				$mg42[local.i] AIbulletspread 10 5
+		}
+	}
+
+end
+
+
+aihider:
+
+	$bunkergunner thread gags/t1l3_misc.scr::aihider
+	$gunner1 thread gags/t1l3_misc.scr::aihider
+	$gunner2 thread gags/t1l3_misc.scr::aihider
+	$bridgegunner1 thread gags/t1l3_misc.scr::aihider
+	$bridgegunner2 thread gags/t1l3_misc.scr::aihider
+//	$gazebogunner thread gags/t1l3_misc.scr::aihider
+
+end
+
+
+shabbadoo:
+
+	if ( (level.shabbadoo == NIL) || (level.shabbadoo == 0) )
+	{
+		level.shabbadoo = 1
+
+		for ( local.i = 1; local.i <= $enemyspawnertrigger.size; local.i++ )
+		{
+			if ( $enemyspawnertrigger[local.i].shabbadoo != NIL )
+			{
+				trigger $enemyspawnertrigger[local.i]
+				break;
+			}
+		}
+	}
+	self remove
+
+end
+
+
+clickitem:
+
+	self thread gags/t1l3_misc.scr::kalimbasays
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Objectives
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+initobjectives:
+
+	// add the first objective - This is added at level start
+	waitthread global/objectives.scr::add_objectives 1 1 "Track and Eliminate the Colonel"
+
+	// add the second objective - This should be added when the captain tells the player to man
+	// the gun and destroy the tank
+	waitthread global/objectives.scr::add_objectives 2 1 "Destroy the Tiger Tank with the Flak Cannon"
+
+	// add the third objective - This should be added when the tank is destroyed
+	waitthread global/objectives.scr::add_objectives 3 1 "Use a Demolition Charge to Destroy the Flak Cannon" $flakcannon.origin
+
+	// add the fourth objective - This is added after the plane flies overhead
+	waitthread global/objectives.scr::add_objectives 4 1 "Acquire Explosives from the Air Drop" $objective5ontrig.origin
+
+	// add the fifth objective - This is added when the demo charges are picked up
+	waitthread global/objectives.scr::add_objectives 5 1 "Plant Demolition Charges on the Bridge [4 Remaining]"
+
+	// add the sixth objective - This is added when the demo charges are all planted
+	waitthread global/objectives.scr::add_objectives 6 1 "Return to the Captain Before the Charges Blow" $captainbridgenode.origin
+
+	level.objective1 = 0
+	level.objective2 = 0
+	level.objective3 = 0
+	level.objective4 = 0
+	level.objective5 = 0
+
+end
+
+objective1:
+
+	waitthread global/objectives.scr::add_objectives 1 2 //turns on obj 1
+	waitthread global/objectives.scr::current_objectives 1
+
+	while ( isAlive level.colonel )
+	{
+		if ( level.ridingbmw == 1 )
+		{
+			set_objective_pos level.bmw.origin
+		}
+		else
+		{
+			set_objective_pos $officer.origin
+		}
+		waitframe
+	}
+
+	level.objective1 = 1
+	wait 1.0
+	waitthread global/objectives.scr::add_objectives 1 3
+	clear_objective_pos
+
+	$player stufftext "tmstop; tmstart sound/music/mus_t1l3_DeadOfficer.mp3"
+
+	while ( level.captrunning == 0 )
+	{
+		wait 0.5
+	}
+
+	thread objective2
+
+end
+
+objective2:
+
+	waitthread global/objectives.scr::add_objectives 2 2 //turns on obj 2
+	waitthread global/objectives.scr::current_objectives 2
+
+	while ( level.tankdestroyed == 0 )
+	{
+		set_objective_pos level.tank.origin
+		waitframe
+	}
+
+	level.objective2 = 1
+	wait 1.0
+	waitthread global/objectives.scr::add_objectives 2 3
+	clear_objective_pos
+
+end
+
+objective3:
+
+	waitthread global/objectives.scr::add_objectives 3 2 //turns on obj 3
+	waitthread global/objectives.scr::current_objectives 3
+
+	while ( level.flakdestroyed == 0 )
+	{
+		waitframe
+	}
+
+	level.objective3 = 1
+	thread gags/t1l3_mg_gunners.scr::remove_gunners
+
+	wait 1.0
+	waitthread global/objectives.scr::add_objectives 3 3
+	clear_objective_pos
+
+end
+
+objective4:
+
+	waitthread global/objectives.scr::add_objectives 4 2 //turns on obj 4
+	waitthread global/objectives.scr::current_objectives 4
+
+	$objective5ontrig waittill trigger
+	wait .25
+	$player playsound explosives_pu
+
+	for (local.demochargeleft = $demochargepickup.size; local.demochargeleft > 0; local.demochargeleft--)
+	{
+		$demochargepickup[local.demochargeleft] remove
+	}
+
+	level.objective4 = 1
+	waitthread global/objectives.scr::add_objectives 4 3
+
+	thread objective5
+
+	waitthread global/democharge.scr::charge_switch 0 5
+
+	if ( level.captain )
+	{
+		level.captain say dfr_T1L3_BC6921
+	}
+
+end
+
+objective5:
+
+	waitthread global/objectives.scr::add_objectives 5 2 //turns on obj 5
+	waitthread global/objectives.scr::current_objectives 5
+
+	while ( level.chargestriggered == 0 )
+	{
+		if ( level.charge1 == 0 )
+		{
+			set_objective_pos $explosive1.origin
+			wait 0.75
+		}
+		if ( level.charge2 == 0 )
+		{
+			set_objective_pos $explosive2.origin
+			wait 0.75
+		}
+		if ( level.charge3 == 0 )
+		{
+			set_objective_pos $explosive3.origin
+			wait 0.75
+		}
+		if ( level.charge4 == 0 )
+		{
+			set_objective_pos $explosive4.origin
+			wait 0.75
+		}
+		waitframe
+	}
+
+	level.objective5 = 1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Shore Guys
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+shoreguyswalk:
+
+	$shoreguy1 thread walkonpath
+	wait 4
+	$shoreguy2 thread walkonpath
+
+end
+
+walkonpath:
+
+	self walkto $shoreguyspath
+	self waittill movedone
+	if ( parm.movedone == 1 )
+	{
+		self delete
+	}
+
+end
+
+killshoreguys:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ killshoreguys"
+	self remove
+	if ( isAlive $shoreguy1 )
+		$shoreguy1 thread gags/t1l3_misc.scr::shoreguy_run 1
+	if ( isAlive $shoreguy2 )
+		$shoreguy2 thread gags/t1l3_misc.scr::shoreguy_run 3
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Colonel triggers
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+officer_trig1:
+
+//	dprintln "              hit officer trigger #1"
+	if ( level.nashtyboy == 1 )
+		thread gags/t1l3_colonel.scr::trigger1
+	else
+		thread gags/t1l3_colonel.scr::trigger1alt
+	thread objective1
+
+end
+
+
+officer_trig2:
+
+//	dprintln "              hit officer trigger #2"
+	thread gags/t1l3_colonel.scr::trigger2
+
+end
+
+
+officer_runtrig2:
+
+	self remove
+	level.runtrigger2 = 1
+
+end
+
+
+officer_trig3:
+
+//	dprintln "              hit officer trigger #3"
+	thread gags/t1l3_colonel.scr::trigger3
+
+end
+
+
+officer_runtrig3:
+
+	self remove
+	level.runtrigger3 = 1
+
+end
+
+
+officer_trig4:
+
+//	dprintln "              hit officer trigger #4"
+	thread gags/t1l3_colonel.scr::trigger4
+
+end
+
+
+officer_runtrig4:
+
+	self remove
+	level.runtrigger4 = 1
+
+end
+
+officer_trig5:
+
+//	dprintln "              hit officer trigger #5"
+	thread gags/t1l3_colonel.scr::trigger5
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// tank gag triggers
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+private_trig1:
+
+	thread gags/t1l3_tank.scr::private1
+
+end
+
+private_trig2:
+
+	thread gags/t1l3_tank.scr::private2
+
+end
+
+private_trig3:
+
+	thread gags/t1l3_tank.scr::private3
+
+end
+
+tank_trig1:
+
+	thread gags/t1l3_tank.scr::tank1
+
+end
+
+wall_trig1:
+
+	thread gags/t1l3_tank.scr::walltrigger1
+
+end
+
+wall_trig2:
+
+	thread gags/t1l3_tank.scr::walltrigger2
+
+end
+
+wall_trig3:
+
+	thread gags/t1l3_tank.scr::walltrigger3
+
+end
+
+tank_3rd:
+
+	thread gags/t1l3_tank.scr::tank_3rdshot
+
+end
+
+
+flakcannon:
+
+	thread gags/t1l3_tank.scr::returntrigger
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// BRIDGECHARGE <start>
+// bridge explosives
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+placeexplosive1:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~ explosive charge 1 placed"
+	level.charge1 = 1
+	level.chargecount++
+	thread explosiveplaced
+
+end
+
+
+placeexplosive2:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~ explosive charge 2 placed"
+	level.charge2 = 1
+	level.chargecount++
+	thread explosiveplaced
+
+end
+
+
+placeexplosive3:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~ explosive charge 3 placed"
+	level.charge3 = 1
+	level.chargecount++
+	thread explosiveplaced
+
+end
+
+
+placeexplosive4:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~ explosive charge 4 placed"
+	level.charge4 = 1
+	level.chargecount++
+	thread explosiveplaced
+
+end
+
+explosiveplaced:
+
+	if ( level.chargecount == 1 )
+	{
+		waitthread global/objectives.scr::add_objectives 5 2 "Plant Demolition Charges on the Bridge [3 Remaining]."
+		thread global/democharge.scr::charge_switch 4 3 0.25 0.75
+	}
+	else if ( level.chargecount == 2 )
+	{
+		waitthread global/objectives.scr::add_objectives 5 2 "Plant Demolition Charges on the Bridge [2 Remaining]."
+		thread global/democharge.scr::charge_switch 3 2 0.25 0.75
+	}
+	else if ( level.chargecount == 3 )
+	{
+		waitthread global/objectives.scr::add_objectives 5 2 "Plant Demolition Charges on the Bridge [1 Remaining]."
+		thread global/democharge.scr::charge_switch 2 1 0.25 0.75
+	}
+	else
+	{
+		waitthread global/objectives.scr::add_objectives 5 3 "Plant Demolition Charges on the Bridge."
+		waitthread global/objectives.scr::add_objectives 6 2
+		waitthread global/objectives.scr::current_objectives 6
+		thread global/democharge.scr::charge_switch 1 0
+		exec gags/t1l3_bridge.scr::bridge_gag_timer
+	}
+
+end
+
+checkcharges:
+
+	exec gags/t1l3_bridge.scr::bridge_gag_check
+
+end
+
+blowbridge:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ blowbridge"
+	if ( level.bridgestate == 0 )
+	{
+		level.bridgestate = 1
+		exec gags/t1l3_bridge.scr::bridge_collapse
+	}
+	else if ( level.bridgestate == 1 )
+	{
+		level.bridgestate = 2
+		$train anim idle
+		$bridge anim idle
+		cueplayer
+	}
+	else if ( level.bridgestate == 2 )
+	{
+		level.bridgestate = 3
+		exec gags/t1l3_bridge.scr::bridge_intact
+	}
+	else if ( level.bridgestate == 3 )
+	{
+		level.bridgestate = 0
+		$train anim idle
+		$bridge anim idle
+		cueplayer
+	}
+
+end
+
+bridgegunnerson:
+
+	thread gags/t1l3_bridge.scr::gunnerson
+
+end
+
+bridgegunnersoff:
+
+	thread gags/t1l3_bridge.scr::gunnersoff
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// BRIDGECHARGE <end>
+// bridge explosives
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// balcony nazi - special death
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+balcony_death_nazi_deathcheck:
+
+	self.health = 10000
+	self.nolongpain = 1
+	self.ainocrouch = 1
+	self.ainoprone = 1
+	self.ainododge = 1
+	self.ainohopforward = 1
+	self.ainohopbackward = 1
+	self.ainointerval = 1
+	self.type_grenade = balcony_grenade
+
+	local.health = self.health
+
+	while ( local.health == self.health )
+	{
+		waitframe
+	}
+
+	self nodamage
+	self thread balcony_death_nazi_deathanim
+
+	wait 0.75
+	self pophelmet
+	self playsound snd_crate_wood3
+	thread global/exploder.scr::explode 6
+
+end
+
+balcony_death_nazi_deathanim:
+
+	self exec global/disable_ai.scr
+	self anim 13A401_fall
+	self waittill animdone
+	self notsolid
+	self bedead
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// captain balcony jump
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger_captain_jump:
+
+	exec gags/t1l3_captain_jump_balcony.scr::t1l3_captain_jump
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// stay on path enemies
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stayonpath local.dumbdelay:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " self.targetname " waiting to stayonpath"
+	local.bias = self.threatbias
+
+	self exec global/disable_ai.scr 
+	self notsolid
+	self hide
+	self threatbias ignoreme
+	self ai_off
+
+	self waittill trigger
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " self.targetname " was triggered to stayonpath, will wait " local.dumbdelay " to activate AI"
+
+	self solid
+	self show
+	self threatbias local.bias
+	self ai_on
+
+	self runto self.target
+	wait local.dumbdelay
+
+	self exec global/enable_ai.scr 
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+groupstayonpath local.group local.dumbdelay:
+
+	if ( local.group != NIL )
+	{
+		local.count = local.group.size
+
+		if ( local.count > 0 )
+		{
+			for ( local.i = 1; local.i <= local.count; local.i++ )
+			{
+				local.group[local.i] thread stayonpath local.dumbdelay
+			}
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+triggerstayonpath local.trigger local.dumbdelay local.triggerthread:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ triggerstayonpath " local.trigger
+	if ( local.trigger != NIL )
+	{
+		if ( local.trigger.target != NIL )
+		{
+			local.count = $(local.trigger.target).size
+
+			if ( local.count > 0 )
+			{
+				local.targs = exec global/makearray.scr $(local.trigger.target)
+				for ( local.i = 1; local.i <= local.count; local.i++ )
+				{
+					local.targs[local.i] thread stayonpath local.dumbdelay
+				}
+			}
+
+			if ( local.triggerthread != NIL )
+			{
+				local.trigger.target = NULL
+				local.trigger thread local.triggerthread
+			}
+//			else
+//			{
+//				local.trigger waittill trigger
+//				waitframe
+//				local.trigger remove
+//			}
+		}
+	}
+
+end

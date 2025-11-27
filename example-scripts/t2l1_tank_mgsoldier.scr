@@ -1,0 +1,220 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t2l1_tank_mgsoldier.scr
+//
+// when you want the soldier to spawn from the tank,
+//   run the mgsoldier_spawn thread on the tank object as follows:
+//
+// 	$tank thread gags/t2l1_tank_mgsoldier.scr::mgsoldier_spawn
+//
+// everything from that point on is handled in this script
+//
+// TODO:
+// - verify all functionality with new panzer asset, including:
+//   - proper soldier position & attachment
+//   - add audio for talk below animation?
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// 21G301_OpenHatch
+// 21G302_Pause
+// 21G303_Fire
+// 21G304_TalkBelow
+// 21G305_Death
+// 21G306_DeathL
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the tank when the soldier is to spawn
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mgsoldier_spawn:
+
+////	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~ mgsoldier_spawn"
+
+	local.turret = self queryturretslotentity 0
+
+	// <TWEAK> this is the soldier to spawn
+	local.spawnsoldier = human/german_winter_Artillery-Crew
+
+
+	// spawn and position the soldier
+	local.ent = spawn local.spawnsoldier
+	local.ent.origin = local.turret gettagposition "tag_start"
+	local.ent.angles = local.turret gettagangles "tag_start"
+
+	local.ent thread gags/t2l1_Tank.scr::mg42_guy_death_check
+
+
+	// attach the soldier to the turret
+	local.ent physics_off
+	local.ent attach local.turret "tag_start" 0
+
+	// configure the soldier (copied from vehicle_thinkers -- dunno if appropriate)
+	local.ent noticescale 1
+	local.ent sight 4500
+	local.ent mindist 2024
+	local.ent maxdist 2448
+	local.ent leash 10000
+	local.ent.accuracy = 10
+
+	// give the soldier an MP40
+	local.ent gun MP40
+
+	// turn off the ai
+	local.ent exec global/disable_ai.scr
+
+	// turn off collision, so the opening animation plays uninterrupted
+	local.ent notsolid
+	
+	// animate the turret hatch opening
+	local.turret anim open
+	//local.turret waittill animdone
+	wait 0.5
+	
+	// play the soldier hatch opening animation
+	local.ent anim_noclip 21G301_OpenHatch
+//	dprintln "soldier gag - did it get this far1?"
+	local.ent waittill animdone
+//	dprintln "soldier gag - did it get this far2?"
+	// turn collision back on
+	
+	local.ent shootableonly
+	local.ent solid
+	local.ent dontdropweapons
+	
+	local.ent thread soldier_tank_attack local.turret
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the spawned soldier
+//
+// it controls the animation of the soldier
+//   according to the animation state chart
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+soldier_tank_attack local.turret:
+
+	local.lastaction = 0
+	local.attackcount = 0
+
+	// start the thread that monitors the gunfire
+	level.tanksoldierusemg = 0
+	self thread soldier_tank_attack_firemg
+
+	// override the normal death anim
+	self.deathanim = 21G305_Death
+
+	while ( isAlive self )
+	{
+		// <TWEAK> randomize and play animations based on state chart
+		local.rnd = randomint( 100 )
+		if ( (local.rnd < 60) && (local.attackcount > 1) )
+		{
+			// prevent repeated firing
+			local.rnd = 61
+		}
+		if ( local.rnd < 60 )
+		{
+			// attack 60%
+			local.lastaction = 1
+			local.attackcount++
+			self turnto $player
+
+			// <TWEAK> select random aim and fire times
+			local.aimtime = 0.50 + (randomint(50) / 100)
+			local.firetime = 2 + (randomint(200) / 100)
+
+			self aimat $player
+			wait local.aimtime
+			level.tanksoldierusemg = 1
+			wait local.firetime
+			level.tanksoldierusemg = 0
+
+//			level.tanksoldierusemg = 1
+//			self anim 21G303_Fire
+//			self waittill animdone
+//			level.tanksoldierusemg = 0
+		}
+		else if ( local.rnd < 80 )
+		{
+			// pause 20%
+			local.lastaction = 2
+			local.attackcount = 0
+			self turnto NULL
+			self aimat NULL
+			self anim 21G302_Pause
+			self waittill animdone
+		}
+		else if ( local.lastaction != 3 )
+		{
+			// talk below 20%
+			local.lastaction = 3
+			local.attackcount = 0
+			self turnto NULL
+			self aimat NULL
+			self anim 21G304_TalkBelow
+			self waittill animdone
+		}
+	}
+
+	wait 3
+	self remove
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~ end thread soldier_tank_attack"
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the spawned soldier
+//
+// it causes the soldier to fire the machine gun
+//   when the level.tanksoldierusemg variable is set to 1.
+// if the thread detects a drop in health, the firing
+//   will cease for 2 seconds. this is a hack since there
+//   is no way to determine if the soldier is taking a hit.
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+soldier_tank_attack_firemg:
+
+	local.health = self.health
+
+	while ( isAlive self )
+	{
+		if ( self.health < local.health )
+		{
+			wait 2.0
+			local.health = self.health
+		}
+		if ( level.tanksoldierusemg == 1 )
+		{
+			// <TWEAK> fire shot, wait cycle
+			self fire
+			wait 0.1
+		}
+		else
+		{
+			waitframe
+		}
+	}
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~ end thread soldier_tank_attack_firemg"
+
+end

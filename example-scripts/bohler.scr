@@ -1,0 +1,246 @@
+/* example initialization, with:
+
+	level.bohlerDelay	the time between shots with the gun if it is crewed and the crew is in position
+	$bohler:  		the gun
+	$bohler_turret0: 	the turret
+	$bohlerguy1:		the default crew member
+	$bohlerguy2:		the backup crew member
+	$bohlerCrewPosition	the spot for the crew member to stand to operate the gun
+	$bohlerGuysGo		trigger to make the crew member man the gun and start shooting at the player
+	$bohlerGuysStop:	trigger to make the crew dismount the gun and attack the player
+
+
+//--------------------------------------
+initBohlers:
+//--------------------------------------
+	level.bohlerDelay = 2
+	
+	$bohlerGuysGo waittill trigger
+	waitframe
+	$bohler thread initGun $bohlerGuysStop $bohler_turret0 $bohlerguy1 $bohlerguy2 $bohlerCrewPosition $bohlerCrewPosition
+end
+
+*/
+
+//--------------------------------------
+initGun local.stopTrigger local.turret local.crew1 local.crew2 local.crewPosition:
+//--------------------------------------
+	
+	if (local.crew1 == NULL || local.crew1 == NIL)
+	{
+//		iprintln "ERROR!  CREW MEMBER NOT SPAWNED!"
+		end
+	}
+	else
+//		iprintln ("crew1.targetname = " + local.crew1.targetname )
+	local.crew1 exec global/disable_ai.scr
+	local.crew2 exec global/disable_ai.scr
+	local.crew1 gun "none"
+	local.crew2 gun "none"
+	
+	self.view = local.crewPosition.origin + (0 0 150)
+	self.hasFiredOnce = 0
+	self.crew = local.crew1
+	self.crew.inPosition = 0
+	self.wantsToShoot = 1
+	self.turret = local.turret
+	self.firePosition = local.crewPosition
+	
+	self thread bohlerCrap local.stopTrigger local.crew1 local.crew2
+end
+
+//--------------------------------------
+bohlerCrap local.stopTrigger local.crew1 local.crew2:	
+//--------------------------------------
+
+	
+	local.crew1 thread crewThink
+	local.crew2 thread crewThink
+
+	self thread bohlerThink local.crew1 local.crew2
+	self thread stopOnProximity local.stopTrigger local.crew1 local.crew2
+//	$bohlerguy2 exec global/enable_ai.scr
+end
+
+//--------------------------------------
+stopOnProximity local.trigger local.crew1 local.crew2:
+//--------------------------------------
+	local.trigger waittill trigger
+	self thread playerUseBohlerThread
+	
+	//iprintln "DEBUG: PROXIMITY"
+	self.wantsToShoot = 0
+	local.crew1 thread crewAttack
+	local.crew2 thread crewAttack
+end
+
+//--------------------------------------
+crewThink local.gun:
+//--------------------------------------
+	self takedamage
+	self waittill pain
+//	iprintln "DEBUG: OW!!!!!!!!"
+	self thread crewAttack
+end
+
+//--------------------------------------
+crewAttack:
+//--------------------------------------
+	self exec global/enable_ai.scr
+	self gun "Mauser KAR 98K"
+	self attackplayer
+end
+
+//--------------------------------------
+bohlerThink local.crew1 local.crew2:
+//--------------------------------------
+//	iprintln "DEBUG: thinking"
+
+	while (self.wantsToShoot == 1 && (isAlive local.crew1 || isAlive local.crew2))
+	{
+		if (self.crew && isAlive self.crew)
+			if (self.crew.inPosition == 1)
+			{
+				self waitthread fireBohler
+				wait level.bohlerDelay
+			}
+			else
+				self.crew waitthread getInPosition self
+		else
+		{
+			self.crew.inPosition = 0
+			local.crew2 exec global/disable_ai.scr
+			self.crew = local.crew2
+		}
+		
+		waitframe
+	}
+
+end
+
+//--------------------------------------
+getInPosition local.gun:
+//--------------------------------------
+//	iprintln "DEBUG: getting in position"
+	self runto local.gun.firePosition
+	self waittill movedone
+	self turnto $player
+	self waittill turndone
+	self.inPosition = 1
+end
+
+//--------------------------------------
+fireBohler:
+//--------------------------------------
+//	iprintln "DEBUG: firing bohler"
+	local.target = $player.origin
+	
+	local.tankTop = $tank2.origin + (0 0 150)
+	
+	local.canSeeTank = sighttrace local.tankTop self.view
+
+	if (self.hasFiredOnce == 0)
+	{
+		if (local.canSeeTank == 1)
+			local.target = $tank2.origin
+			 
+		self.hasFiredOnce = 1
+		self.hackTarget = spawn script_origin 
+		self.hackTarget.origin = local.target
+		self.turret setaimtarget self.hackTarget
+	}
+	
+	self.turret waittill ontarget
+	self.crew thread bohlerCrewFire
+	while (level.fireWeapon == 0)
+		waitframe
+	self.turret shoot
+	self.turret anim fakefire
+	level.fireWeapon = 0
+
+	
+	self.hackTarget delete
+	self.hackTarget = spawn script_origin 
+
+	if (local.canSeeTank == 1)
+			local.target = $tank2.origin
+			
+	self.hackTarget.origin = local.target
+	self.turret setaimtarget self.hackTarget
+
+end
+
+//--------------------------------------		
+bohlerCrewFire:
+//--------------------------------------
+	self thread global/loopanim.scr::LoopAnimStop
+	self anim A_12_bohler_fire
+	self waittill animdone
+	level.fireWeapon = 1
+	self thread global/loopanim.scr::LoopAnim A_13_bohler_idle	
+end
+
+//-------------------------------------
+playerUseBohlerThread:
+//-------------------------------------
+	self lock
+	
+	local.backward  = -1 * angles_toforward self.angles 
+	
+	while (self) 
+	{
+		local.usekey = getboundkey1 "+use"
+		local.playerClose = 0
+		
+		while (1)
+		{
+			while (local.playerClose == 0)
+			{
+				if (vector_length ($player.origin - self.origin) < 200)
+					local.playerClose = 1
+				waitframe
+			}
+			
+			while (local.playerClose == 1)
+			{
+				if (vector_length (self.origin - $player.origin) > 200)
+					local.playerClose = 0
+				
+				else if ($player.useheld)
+				{
+
+					local.vObjDir = vector_subtract $player.origin self.origin
+					local.vObjDir = vector_normalize local.vObjDir
+				
+					local.dot = vector_dot local.vObjDir local.backward
+					
+					if (local.dot > .707)
+						break
+				}
+				
+				waitframe
+			}
+			
+			if (local.playerClose == 1)
+				break
+		}
+		
+		local.playerAngles = $player.viewangles
+		self unlock
+		self doUse $player
+		self lock
+		
+		wait .25
+		
+		while (!($player.useheld))
+			waitframe
+		
+		self unlock
+		self doUse $player
+		self lock
+		
+		$player.viewangles = local.playerAngles
+		
+		wait .25
+	}
+end

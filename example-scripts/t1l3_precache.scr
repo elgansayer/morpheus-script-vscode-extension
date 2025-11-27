@@ -1,0 +1,198 @@
+println Doing PreCACHE
+
+exec global/loadout_precache.scr maps/t1l3.scr
+
+cache models/player/american_army.tik
+cache models/player/american_army_fps.tik
+
+
+
+cache models/human/allied_uk_capt-paratrooper.tik
+cache models/human/animation/scripted/bmwbike.tik
+cache models/human/allied_uk_paratrooper2.tik
+cache models/human/german_waffenss_officer.tik
+cache models/human/animation/scripted/train.tik
+cache models/human/animation/scripted/traincar_coalcar.tik
+cache models/human/animation/scripted/traincar_coalcar.tik
+cache models/human/animation/scripted/traincar_boxcar.tik
+cache models/human/animation/scripted/traincar_flatbed_empty.tik
+cache models/human/animation/scripted/traincar_caboose.tik
+cache models/human/animation/scripted/rowboat.tik
+cache models/human/animation/scripted/bmwprop.tik
+cache models/human/german_wehrmact_soldier.tik
+cache models/human/german_misc_worker.tik
+cache models/human/german_wehrmact_nco.tik
+cache models/human/german_wehrmact_officer.tik
+
+
+cache models/static/1_3_bridge.tik
+cache models/animate/1_3_bridge.tik
+
+cache models/items/item_25_healthbox.tik
+cache models/items/pulse_explosive.tik
+cache models/items/item_100_healthbox.tik
+cache models/items/item_50_healthbox.tik
+cache models/items/item_mg_ammobox.tik
+cache models/items/cigarette.tik
+cache models/items/explosive.tik
+cache models/items/item_smg_ammobox.tik
+cache models/items/binoculars.tik
+cache models/fx/searchlight.tik
+
+
+cache models/vehicles/tigertank_destroyed_base.tik
+cache models/vehicles/shermantank_damaged.tik
+cache models/vehicles/european_delivery_truck_red3.tik
+cache models/vehicles/opeltruck.tik
+cache models/vehicles/european_delivery_truck_green.tik
+cache models/vehicles/european_car_silver.tik
+cache models/vehicles/tigertank_destroyed_cannon.tik
+cache models/vehicles/c47fly.tik
+cache models/vehicles/tigertank.tik
+cache models/vehicles/tigercannon.tik
+cache models/vehicles/vehiclesoundentity.tik
+cache models/vehicles/tigertank_d.tik
+cache models/vehicles/panzer_iv_d.tik
+cache models/vehicles/opeltruckgreen_d.tik
+
+cache models/static/supplydropcrate.tik
+cache models/static/switch2.tik
+cache models/static/switch1.tik
+cache models/miscobj/radio_military.tik
+cache models/miscobj/phone_roundbase.tik
+cache models/static/microphone.tik
+cache models/furniture/bunkerchairstool.tik
+
+cache models/statweapons/flak88_d.tik
+cache models/statweapons/p_flak88.tik
+cache models/statweapons/p_flak88_cannon.tik
+cache models/statweapons/flak88turret.tik
+cache models/statweapons/flak88base.tik
+cache models/statweapons/mg42_gun.tik
+
+
+cache models/weapons/p38.tik
+cache models/weapons/kar98.tik
+cache models/weapons/m1_garand.tik
+cache models/weapons/nebelhandgranate_start.tik
+cache models/weapons/smokegrenade_start.tik
+cache models/weapons/webley_revolver.tik
+cache models/weapons/enfield.tik
+cache models/weapons/sten.tik
+cache models/weapons/mills_grenade.tik
+cache models/weapons/m18_smoke_grenade.tik
+cache models/weapons/mp40.tik
+cache models/weapons/mp44.tik
+cache models/weapons/m18_smoke_grenade_start.tik
+
+
+cache models/gear/german_helmet.tik
+cache models/gear/german_ssofficercap.tik
+
+
+cache models/ammo/enfield_clip1.tik
+cache models/ammo/sten_clip.tik
+cache models/ammo/enfield_clip2.tik
+
+
+cache models/projectiles/steilhandgranate_ai.tik
+cache models/projectiles/m2fgrenade_ai.tik
+cache models/emitters/explosion_tank.tik
+cache models/emitters/breath_emitter.tik
+cache models/emitters/lightswarmers_small.tik
+cache models/emitters/cheapsmoke.tik
+cache models/emitters/mortar_higgins.tik
+cache models/animate/fx_explosion_tank.tik
+cache models/fx/fx_fence_wood.tik
+cache models/fx/heavyshellexp_base.tik
+cache models/fx/windows/debris_0.tik
+cache models/fx/trainsmoke.tik
+cache models/fx/bh_paper_lite.tik
+cache models/fx/bh_paper_hard.tik
+cache models/fx/bh_wood_lite.tik
+cache models/fx/bh_wood_hard.tik
+cache models/fx/bh_metal_lite.tik
+cache models/fx/bh_metal_hard.tik
+cache models/fx/bh_stone_lite.tik
+cache models/fx/bh_stone_hard.tik
+cache models/fx/bh_dirt_lite.tik
+cache models/fx/bh_dirt_hard.tik
+cache models/fx/bh_grass_lite.tik
+cache models/fx/bh_grass_hard.tik
+cache models/fx/bh_mud_lite.tik
+cache models/fx/bh_mud_hard.tik
+cache models/fx/bh_water_lite.tik
+cache models/fx/bh_water_hard.tik
+cache models/fx/bh_glass_lite.tik
+cache models/fx/bh_glass_hard.tik
+cache models/fx/bh_sand_lite.tik
+cache models/fx/bh_sand_hard.tik
+cache models/fx/bh_foliage_lite.tik
+cache models/fx/bh_foliage_hard.tik
+cache models/fx/bh_snow_lite.tik
+cache models/fx/bh_snow_hard.tik
+cache models/fx/bh_carpet_lite.tik
+cache models/fx/bh_carpet_hard.tik
+cache models/fx/bh_human_uniform_lite.tik
+cache models/fx/bh_human_uniform_hard.tik
+cache models/fx/water_trail_bubble.tik
+cache models/fx/grenexp_base.tik
+cache models/fx/bazookaexp_base.tik
+cache models/fx/grenexp_paper.tik
+cache models/fx/grenexp_wood.tik
+cache models/fx/grenexp_metal.tik
+cache models/fx/grenexp_stone.tik
+cache models/fx/grenexp_dirt.tik
+cache models/fx/grenexp_grass.tik
+cache models/fx/grenexp_mud.tik
+cache models/fx/grenexp_water.tik
+cache models/fx/grenexp_gravel.tik
+cache models/fx/grenexp_sand.tik
+cache models/fx/grenexp_foliage.tik
+cache models/fx/grenexp_snow.tik
+cache models/fx/grenexp_carpet.tik
+cache models/fx/water_ripple_still.tik
+cache models/fx/water_ripple_moving.tik
+cache models/fx/barrel_oil_leak_big.tik
+cache models/fx/barrel_oil_leak_medium.tik
+cache models/fx/barrel_oil_leak_small.tik
+cache models/fx/barrel_oil_leak_splat.tik
+cache models/fx/barrel_water_leak_big.tik
+cache models/fx/barrel_water_leak_medium.tik
+cache models/fx/barrel_water_leak_small.tik
+cache models/fx/barrel_water_leak_splat.tik
+cache models/fx/fs_light_dust.tik
+cache models/fx/fs_heavy_dust.tik
+cache models/fx/fs_dirt.tik
+cache models/fx/fs_grass.tik
+cache models/fx/fs_mud.tik
+cache models/fx/fs_puddle.tik
+cache models/fx/fs_sand.tik
+cache models/fx/fs_snow.tik
+cache models/fx/dummy.tik
+cache models/fx/tankexp_base.tik
+cache models/fx/tankexp_dirt.tik
+cache models/fx/tankexp_stone.tik
+cache models/fx/sustainedfire.tik
+
+
+
+cache models/vehicles/tigertank_destroyed_vehicle.tik
+cache models/fx/democharge_bridge.tik
+cache models/fx/bridge_splash01.tik
+cache models/fx/bridge_splash02.tik
+cache models/miscobj/canteen.tik
+cache models/fx/fallingdirt_wide.tik
+cache models/fx/trainsteam_collision.tik
+cache models/fx/trainsparks_collision.tik
+cache models/fx/heavyshellexp_dirt.tik
+cache models/fx/heavyshellexp_stone.tik
+cache models/fx/heavyshellexp_snow.tik
+cache models/fx/tankexp_snow.tik
+cache models/fx/bazookaexp_dirt.tik
+cache models/fx/bazookaexp_stone.tik
+cache models/fx/bazookaexp_snow.tik
+
+
+println "Done with PreCACHE"
+

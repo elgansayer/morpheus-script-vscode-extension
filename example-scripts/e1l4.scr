@@ -1,0 +1,382 @@
+//
+// el14.scr
+//
+
+main:
+	exec global/auto.scr e1l4
+	waitexec maps/e1l4/hacks.scr
+	level waittill prespawn
+	exec global/ambience.scr e1l4
+	
+	// this is what scales the enemy health, 1.0 = 100%
+	level.enemyhealthscalar = 0.8
+
+	spawn trigger_once targetname "musicTransitionCoverBlown"
+	spawn trigger_once targetname "musicTransitionKnockedOut"
+
+	level.playerBoardedShip = 0
+	waitthread maps/e1l4/Intro.scr::InitIntro
+	waitthread maps/e1l4/PreShip.scr::InitPreShip
+	waitthread maps/e1l4/Ship.scr::InitShip
+	waitthread maps/e1l4/Maproom.scr::InitMaproom	
+	waitthread maps/e1l4/SunkShip.scr::InitSunkShip
+	waitthread maps/e1l4/PostShip.scr::InitPostShip
+	waitthread maps/e1l4/Escape.scr::InitEscape  //car chase
+	waitthread animateFans
+	waitthread InitLevel
+
+	$mg42 thread initMg42
+
+	level waittill spawn
+
+	// have hack, have gun...
+	if (level.skipintro != 0 || 
+		level.skipobtainpapers != 0 || 
+		level.skipboardship != 0 || 
+		level.skipobjmaproom != 0 || 
+		level.skipfindexplosives != 0 || 
+		level.skipshipexplode != 0 || 
+		level.skipescapeship != 0 || 
+		level.skipreturntoklaus != 0 ||
+		level.skipescapetown != 0)
+	{
+		// Hand the player the gun
+		$player item weapons/silencedpistol.tik  
+		$player ammo pistol 16
+		$player item weapons/Uk_W_Vickers.tik
+		$player ammo mg 500
+	}
+
+	// Intro
+	waitthread maps/e1l4/Intro.scr::DoIntro
+
+	exec global/autosave.scr level.autosave	//"Arrival"
+	level.autosave++
+
+	// Find a way aboard the ship...
+	waitthread global/objectives.scr::add_objectives level.objObtainPapers 2
+	waitthread global/objectives.scr::current_objectives level.objObtainPapers
+	//waitthread maps/e1l4/PreShip.scr::ObtainPapers
+	waitthread maps/e1l4/PreShip.scr::ObtainPapers
+
+	// move the compass to point to the ship
+	waitthread global/objectives.scr::add_objectives level.objObtainPapers 2 level.objObtainPapersText $shipentrance.origin
+	waitthread global/objectives.scr::current_objectives level.objObtainPapers
+
+	// Board Ship
+//	waitthread global/objectives.scr::add_objectives level.objBoardShip 2
+//	waitthread global/objectives.scr::current_objectives level.objBoardShip
+	waitthread maps/e1l4/PreShip.scr::ObjectiveBoardShip
+//	waitthread global/objectives.scr::add_objectives level.objBoardShip 3
+
+	level.playerBoardedShip = 1
+
+	waitthread global/objectives.scr::add_objectives level.objObtainPapers 3
+
+	exec global/autosave.scr level.autosave	//"All Aboard"
+	level.autosave++
+
+	// Steal Documents
+	waitthread global/objectives.scr::add_objectives level.objStealDocuments 2
+	waitthread global/objectives.scr::current_objectives level.objStealDocuments
+	if (!level.skipobjmaproom)
+		thread maps/e1l4/Ship.scr::compassTracker level.objStealDocuments level.objStealDocumentsText $documents[1].origin
+	waitthread maps/e1l4/MapRoom.scr::ObjectiveStealDocuments
+	waitthread global/objectives.scr::add_objectives level.objStealDocuments 3
+
+
+	// Find Explosives
+	waitthread global/objectives.scr::add_objectives level.objFindExplosives 2
+	waitthread global/objectives.scr::current_objectives level.objFindExplosives
+	if (!level.skipfindexplosives)
+		thread maps/e1l4/Ship.scr::compassTracker level.objFindExplosives level.objFindExplosivesText $bombs[1].origin 
+	waitthread maps/e1l4/Ship.scr::ObjectiveFindExplosives
+	waitthread global/objectives.scr::add_objectives level.objFindExplosives 3
+
+
+	// Place Explosives
+	waitthread global/objectives.scr::add_objectives level.objPlaceExplosives 2
+	waitthread global/objectives.scr::current_objectives level.objPlaceExplosives
+	if (!level.skipshipexplode)
+		thread maps/e1l4/Ship.scr::compassTracker level.objPlaceExplosives level.objPlaceExplosivesText $engineroom.origin 
+	waitthread maps/e1l4/Ship.scr::ObjectivePlaceExplosives
+	waitthread global/objectives.scr::add_objectives level.objPlaceExplosives 3
+
+	// Return to extraction
+	waitthread global/objectives.scr::add_objectives level.objReturnToSpy 2
+	waitthread global/objectives.scr::current_objectives level.objReturnToSpy
+	thread maps/e1l4/Ship.scr::compassTracker level.objReturnToSpy level.objReturnToSpyText $deck1.origin
+
+	// Explode the ship
+	waitthread maps/e1l4/SunkShip.scr::ExplodeShip
+
+	exec global/autosave.scr level.autosave	//"Scuttled"
+	level.autosave++
+
+	thread autoSaveAtBoatExit
+	
+	level.abortCompassTracker = 1
+	waitframe
+	waitthread global/objectives.scr::add_objectives level.objReturnToSpy 2 level.objReturnToSpyText $t491.origin
+	waitthread global/objectives.scr::current_objectives level.objReturnToSpy
+
+	// Go find Klaus
+	waitthread maps/e1l4/PostShip.scr::ObjectiveReturnToSpy
+	waitthread global/objectives.scr::add_objectives level.objReturnToSpy 3
+
+	exec global/autosave.scr level.autosave	//"The Edge of Town"
+	level.autosave++
+
+	// Escape!
+	waitthread global/objectives.scr::add_objectives level.objEscape 2
+	waitthread global/objectives.scr::current_objectives level.objEscape
+
+// ----FIXME
+//	exec global/autosave.scr level.autosave	//"The Getaway"
+//	level.autosave++
+
+	// (instead of TruckRide) Escape town with Klaus in tow (after meeting him at crashed truck)
+	waitthread maps/e1l4/Escape.scr::Escape
+
+//	// Truck ride up till Klaus parks it
+//	waitthread maps/e1l4/Escape.scr::TruckRide
+
+// ----FIXME
+//	exec global/autosave.scr level.autosave	//"The Edge of Town"
+//	level.autosave++
+
+//	// Blow up the arch!
+//	waitthread global/objectives.scr::add_objectives level.objDestroyArch 2
+//	waitthread global/objectives.scr::current_objectives level.objDestroyArch
+//	waitthread maps/e1l4/Escape.scr::ObjectiveDestroyArch
+//	waitthread global/objectives.scr::add_objectives level.objDestroyArch 3
+//
+//	// Get back in the truck!
+//	waitthread global/objectives.scr::add_objectives level.objReturnToTruck 2 "Get back in the truck" $endtruck.origin
+//	waitthread global/objectives.scr::current_objectives level.objReturnToTruck
+//	waitthread maps/e1l4/Escape.scr::ObjectiveReturnToTruck
+//	waitthread global/objectives.scr::add_objectives level.objReturnToTruck 3
+//
+//	// Make the jump!
+//	waitthread maps/e1l4/Escape.scr::Outro
+	waitthread global/objectives.scr::add_objectives level.objEscape 3
+	wait 0.5
+
+	//end level
+	setcvar "g_medalbt3" "1" //Africa Star
+	exec global/missioncomplete.scr briefing/briefinge2
+end
+
+Fadein:
+	thread doMusic
+	waitframe
+	$player physics_off
+	
+	
+	thread RealFadein
+//  8/17/03 JP - I took this out to replace a bug about a really long fadein as well as the fact that there is no date for the beginning
+//  of this level. I replaced it with the RealFadein thread which just does enough of a fade in to hide stuff moving.
+
+//	exec global/fadein.scr
+//	waitframe
+//	waitthread global/fadein.scr::DoFadeIn e1l4_1 e1l4_2 e1l4_3 NIL 1
+	$player.viewangles = "0 3 0"  //undo any mousemovment during the hud stuff
+end
+
+RealFadein:
+	fadeout .001 0 0 0 1
+	drawhud 0
+	wait 1.5
+	fadein 2 0 0 0 1
+End
+
+InitLevel:
+	level.script = "maps/e1l4.scr"
+	//level.music  = ""
+	waitthread InitFriends
+	waitthread InitEnemies
+	waitthread InitObjectives
+	waitthread InitPlayer
+	waitexec maps/e1l4/light_e1l4.scr
+	setcvar g_mission 1
+	level.autosave = 1
+end
+
+InitPlayer:
+	$player heal 1
+	waitthread Fadein
+	$player physics_on
+	waitthread GiveObjectives
+	waitexec global/loadout.scr
+
+end
+
+ArmPlayer:
+
+	$player takeall
+	$player item weapons/M18_smoke_grenade.tik
+ 	$player item weapons/silencedpistol.tik  
+	//waitthread global/items.scr::blank_items 
+ 	$player ammo pistol 80
+ 	$player ammo smokegrenade 3
+
+end
+
+InitFriends:
+	//none of these
+end
+
+InitEnemies:
+
+end
+
+InitObjectives:
+	level.objObtainPapers = 1
+//	level.objBoardShip = 2
+	level.objStealDocuments = 2
+	level.objFindExplosives = 3
+	level.objPlaceExplosives = 4
+	level.objReturnToSpy = 5
+	level.objEscape = 6
+//	level.objDestroyArch = 7
+//	level.objReturnToTruck = 8
+//	level.objEscape = 9
+end
+
+GiveObjectives:
+	level.objObtainPapersText = "Find a Way Aboard the Freighter"
+	level.objStealDocumentsText = "Obtain the Troop Roster"
+	level.objFindExplosivesText = "Search the Freighter for Explosive Charges"
+	level.objPlaceExplosivesText = "Locate Engine Room and Set Explosives"
+	level.objReturnToSpyText = "Rendezvous with Klaus"
+
+	waitthread global/objectives.scr::add_objectives level.objObtainPapers 1 level.objObtainPapersText $goodpapers.origin
+//	waitthread global/objectives.scr::add_objectives level.objBoardShip 1 "Board the German Ship" $shipentrance.origin
+	waitthread global/objectives.scr::add_objectives level.objStealDocuments 1 level.objStealDocumentsText $documents[1].origin
+	waitthread global/objectives.scr::add_objectives level.objFindExplosives 1 level.objFindExplosivesText  $getbombs.origin
+	waitthread global/objectives.scr::add_objectives level.objPlaceExplosives 1 level.objPlaceExplosivesText $engineroom.origin
+	waitthread global/objectives.scr::add_objectives level.objReturnToSpy 1 level.objReturnToSpyText $EscapeKlausWaitLocation.origin
+//	waitthread global/objectives.scr::add_objectives level.objDestroyArch 1 "Stop your pursuers" $archexplosive.origin
+//	waitthread global/objectives.scr::add_objectives level.objReturnToTruck 1
+	waitthread global/objectives.scr::add_objectives level.objEscape 1 "Escape the City" $cityexit.origin
+
+end
+
+UpdateObtainPapers:
+
+	if (level.currentobjective == level.objObtainPapers)
+	{
+		waitthread global/objectives.scr::add_objectives level.objObtainPapers 2 level.objReturnToSpyText $(self.target).origin
+		waitthread global/objectives.scr::current_objectives level.objObtainPapers
+	}
+
+End
+
+
+//---------------------------------------------------------------------
+
+doMusic:
+	$player stufftext "tmstop; tmstartloop sound/music/Kleveburg.mp3"
+
+	$musicTransitionCoverBlown waittill trigger
+	$player stufftext "tmstop; tmstartloop sound/music/E1L4_Rjuken.mp3"
+
+	$musicTransitionKnockedOut waittill trigger
+	$player stufftext "tmstop; tmstartloop sound/music/mus_01a_suspense.mp3"
+
+	$CompassTargetKlausTrigger waittill trigger
+	$player stufftext "tmstop; tmstartloop sound/music/E1L4_Rjuken.mp3"
+end
+//-----------------------------------------------------------------------------
+
+
+animateFans:
+	$fanblade1a bind $fanbase1
+	$fanblade1b bind $fanbase1
+	$fanblade1c bind $fanbase1
+	$fanblade1d bind $fanbase1
+	$fanbase1 rotatey 250
+
+	$fanblade2a bind $fanbase2
+	$fanblade2b bind $fanbase2
+	$fanblade2c bind $fanbase2
+	$fanblade2d bind $fanbase2
+	$fanbase2 rotatey 250
+
+	$fanblade3a bind $fanbase3
+	$fanblade3b bind $fanbase3
+	$fanblade3c bind $fanbase3
+	$fanblade3d bind $fanbase3
+	$fanbase3 rotatey 250
+
+	$fanblade4a bind $fanbase4
+	$fanblade4b bind $fanbase4
+	$fanblade4c bind $fanbase4
+	$fanblade4d bind $fanbase4
+	$fanbase4 rotatey 250
+
+	$fanblade5a bind $fanbase5
+	$fanblade5b bind $fanbase5
+	$fanblade5c bind $fanbase5
+	$fanblade5d bind $fanbase5
+	$fanbase5 rotatey 250
+
+	$fanblade6a bind $fanbase6
+	$fanblade6b bind $fanbase6
+	$fanblade6c bind $fanbase6
+	$fanblade6d bind $fanbase6
+	$fanbase6 rotatey 250
+
+	$fanblade7a bind $fanbase7
+	$fanblade7b bind $fanbase7
+	$fanblade7c bind $fanbase7
+	$fanblade7d bind $fanbase7
+	$fanbase7 rotatey 250
+
+	$fanblade8a bind $fanbase8
+	$fanblade8b bind $fanbase8
+	$fanblade8c bind $fanbase8
+	$fanblade8d bind $fanbase8
+	$fanbase8 rotatey 250
+end
+
+
+setKlausWaypoint:
+	if (level.currentobjective == level.objReturnToSpy)
+	{
+		waitthread global/objectives.scr::add_objectives level.objReturnToSpy 2 level.objReturnToSpyText self.target.origin
+		waitthread global/objectives.scr::current_objectives level.objReturnToSpy
+	}
+end
+
+alarmSwitch:
+	thread maps/e1l4/ship.scr::AlarmSounded
+end
+
+initMg42:
+	// level.spot_burstmin level.spot_burstmax level.spot_burstdownmin level.spot_burstdownmax	
+	self burstfiresettings 1 3 1.5 3
+	self maxyawoffset 60.0
+	self pitchcaps "-20 20 0"
+	self convergetime 0.25
+
+	switch (level.skill)
+	{
+	case 0:
+		self aibulletspread 450 275
+		break;
+	case 1:
+		self aibulletspread 400 225
+		break;
+	case 2:
+		self aibulletspread 300 125
+		break;
+	}
+end
+
+autoSaveAtBoatExit:
+	local.trigger = waitthread global/FindTrigger.scr::FindTrigger "deleteguy4spawner"
+	local.trigger waittill trigger
+	exec global/autosave.scr level.autosave	//"The Getaway"
+	level.autosave++
+end 

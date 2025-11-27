@@ -1,0 +1,636 @@
+//------------------------------------------------------------------------------
+//	T3L1_EnemySpawn.Scr
+//
+//	Jeff Leggett
+//	July 2, 2002
+//
+//	Functions to be called externally:
+//
+//		Init
+//		DoSanta
+//		DoStaticTruck
+//		DoTruck local.health local.nPassengers:
+//		TruckDrive local.path local.sightdist local.speed local.removewhendone local.viewangle local.reverseviewangle:
+//
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+Init:
+//
+//	call this after waittill prespawn...
+//------------------------------------------------------------------------------
+
+	// don't let jeep explode until we're good and ready...
+	level.bJeepCanExplode = 0
+
+	$santatarget thread JeepExplosion
+
+	// make sure these guys stick to the program until santa starts up...
+	$startingsolidier6 exec global/disable_ai.scr
+	$startingsolidier7 exec global/disable_ai.scr
+
+
+	End
+
+//------------------------------------------------------------------------------
+DoSanta:
+//	1. Shoot at our target
+//	2. Turn on AI...
+//
+//	Execute command:
+//		gags/T3L1_EnemySpawn.scr::DoSanta
+//
+//------------------------------------------------------------------------------
+
+	// enable AI of our starting soldiers...
+	$startingsolidier6 exec global/enable_ai.scr
+	$startingsolidier7 exec global/enable_ai.scr
+
+	$santa exec global/disable_ai.scr
+	$santa gun "Panzerschrek"
+	$santa accuracy 100
+
+	thread global/exploder.scr::explode 210
+	thread DoGermanWave1
+
+	
+	// make sure santa gets to do his gag... (ignore me is a keyword...)
+	$santa threatbias ignoreme
+
+	$santa exec global/aimat.scr $santatarget
+	wait 1.0
+
+	$santa exec global/shoot.scr
+
+	$santa threatbias 50000
+
+	wait 1
+	level.bJeepCanExplode = 1
+
+	// just get rid of this guy...
+	$santa delete
+
+
+	wait 4
+
+	$santa exec global/enable_ai.scr
+	$santa accuracy 75
+
+	End
+
+//------------------------------------------------------------------------------
+DoClosetGermans:
+//------------------------------------------------------------------------------
+	waitthread global/ai.scr::spawnset 151 wave3
+
+	
+	for (local.i=1;local.i<=$wave3.size;local.i++)
+	{
+		$wave3[local.i] exec global/disable_ai.scr
+		$wave3[local.i] sight 2048
+		$wave3[local.i] hearing 2048
+
+		if ( $wave3[local.i].target!=NIL )
+		{
+			$wave3[local.i] runto $wave3[local.i].target
+		}
+		else
+		{
+			$wave3[local.i] runto $wave2dest
+		}
+	}
+
+	// how long to wait before attacking.
+	wait 8
+
+	for (local.i=1;local.i<=$wave3.size;local.i++)
+	{
+		$wave3[local.i] exec global/enable_ai.scr
+	}
+
+	End
+
+//------------------------------------------------------------------------------
+DoGermanWave1:
+//
+//	Spawns in the first wave of germans...(at beginning of level..)
+//
+//	Execute command:
+//		gags/T3L1_EnemySpawn.scr::DoGermanWave1
+//
+//	notes:
+//		Name germans you want spawned in enemyspawner
+//		give them $enemyname of wave1
+//		give them #set of 150
+//		targetname the node you want them to run to "wave1dest"
+//------------------------------------------------------------------------------
+
+	wait 1
+	// spawn in set 150
+	thread DoClosetGermans
+
+	wait 4.5
+
+	waitthread global/ai.scr::spawnset 150 wave1
+	
+	if ($wave1==NIL)
+	{
+		dprintln "DoGermanWave1 not setup correctly. (wave1)"
+		End
+	}
+
+
+	for (local.i=1;local.i<=$wave1.size;local.i++)
+	{
+		$wave1[local.i] exec global/disable_ai.scr
+		$wave1[local.i] sight 2048
+		$wave1[local.i] hearing 2048
+		if ( $wave1[local.i].target!=NIL )
+			$wave1[local.i] runto $wave1[local.i].target
+		else
+			$wave1[local.i] runto $wave1dest
+	}
+
+	// how long to wait before attacking.
+	wait 8
+
+	for (local.i=1;local.i<=$wave1.size;local.i++)
+	{
+		$wave1[local.i] exec global/enable_ai.scr
+	}
+
+	wait 15
+
+	thread DoGermanWave2
+
+
+	End
+
+//------------------------------------------------------------------------------
+DoGermanWave2:
+//
+//	Spawns in the second wave of germans...(at beginning of level..)
+//
+//	Execute command:
+//		gags/T3L1_EnemySpawn.scr::DoGermanWave2
+//
+//	notes:
+//		Name germans you want spawned in enemyspawner
+//		give them $enemyname of wave1
+//		give them #set of 150
+//		targetname the node you want them to run to "wave1dest"
+//------------------------------------------------------------------------------
+
+	// spawn in set 150
+	waitthread global/ai.scr::spawnset 150 wave2
+	
+	if ($wave2==NIL)
+	{
+		dprintln "DoGermanwave2 not setup correctly. (wave2)"
+		End
+	}
+
+
+	for (local.i=1;local.i<=$wave2.size;local.i++)
+	{
+		$wave2[local.i] exec global/disable_ai.scr
+		$wave2[local.i] sight 2048
+		$wave2[local.i] hearing 2048
+	
+		if ( $wave2[local.i].target!=NIL )
+			$wave2[local.i] runto $wave2[local.i].target
+		else
+			$wave2[local.i] runto $wave1dest
+	}
+
+	// how long to wait before attacking.
+	wait 5
+
+	for (local.i=1;local.i<=$wave2.size;local.i++)
+	{
+		$wave2[local.i] exec global/enable_ai.scr
+	}
+
+
+	End
+
+//------------------------------------------------------------------------------
+DeleteGermanWaves:
+//
+//	gags/T3L1_enemyspawn.scr::DeleteGermanWaves
+//------------------------------------------------------------------------------
+
+	for (local.i=$wave1.size;local.i>0;local.i--)
+	{
+		$wave1[local.i] delete
+	}
+
+	for (local.i=$wave2.size;local.i>0;local.i--)
+	{
+		$wave2[local.i] delete
+	}
+
+	for (local.i=$wave3.size;local.i>0;local.i--)
+	{
+		$wave3[local.i] delete
+	}
+
+	End
+
+//------------------------------------------------------------------------------
+DoStaticTruck local.health:
+//
+//		Use this for trucks that don't move.
+//
+//------------------------------------------------------------------------------
+	self waitthread SetupTruck local.health
+
+	End
+
+
+//------------------------------------------------------------------------------
+DoTruck local.health local.nPassengers local.bSmartPassengers local.passenger_health local.bFriendly:
+//
+// example:
+//
+//		$truck1 thread gags/t3l1_enemyspawn.scr::DoTruck 2000 3 1
+//
+//		bSmartPassengers means they'll stop the truck if they get hurt or die.
+//------------------------------------------------------------------------------
+
+	if ( local.bFriendly==NIL )
+		local.bFriendly = 0
+
+	if ( local.bSmartPassengers==NIL )
+		local.bSmartPassengers	= 1
+
+	self waitthread SetupTruckPass local.health local.nPassengers local.bFriendly
+
+
+	for (local.i = 1; local.i<= self.passenger_count; local.i++)
+	{
+		if ( local.bSmartPassengers	== 1 )
+		{
+			self.passenger[local.i] exec global/disable_ai.scr
+			self.passenger[local.i] thread StopTruckOnDeath self
+			self.passenger[local.i] thread StopTruckOnPain self
+
+			if ( local.passenger_health!=NIL )
+				self.passenger[local.i].health = local.passenger_health
+		}
+	}
+
+	if ( local.bSmartPassengers	== 1 )
+		self.driver thread StopTruckOnDeath self
+
+	End
+	
+
+//------------------------------------------------------------------------------
+TruckDrive local.path local.sightdist local.speed local.removewhendone local.viewangle local.reverseviewangle:
+//
+//	Call this thread when you want truck to start driving...
+//------------------------------------------------------------------------------
+
+	if ( local.speed==NIL )
+		local.speed = 220
+
+	if ( local.removewhendone==NIL )
+		local.removewhendone = 0
+
+	if ( local.sightdist!=0 )
+	{
+		self thread TruckLookForPlayer local.sightdist local.viewangle local.reverseviewangle
+	}
+
+	self drive local.path local.speed (local.speed / 5) 200 256
+	self waittill drive
+
+	if ( local.removewhendone==1 && self.stopped==0 )
+	{
+		for ( local.i=1;local.i<=self.passenger_count;local.i++ )
+		{
+			self.passenger[local.i] delete
+		}
+
+		self.driver delete
+
+		self delete
+	}
+	else
+	{
+		// when we stop, boot out the soldiers...
+		wait 1 // enuf time to stop...
+		self thread TruckStop 0
+	}
+	
+	/*
+	if ( self.stopped==0 )
+		self thread TruckStop
+	  */
+
+	End
+
+
+//------------------------------------------------------------------------------
+JeepExplosion:
+//
+//		Do our explosion when we are damaged...
+//------------------------------------------------------------------------------
+
+	while (level.bJeepCanExplode==0)
+	{
+		self waittill damage
+		// don't let anyone but santa blow us up...
+		self health 3000
+	}
+
+	$startingsolidier6 takedamage
+	$startingsolidier7 takedamage
+
+	radiusdamage (self.origin + (0 0 256) ) 700 800 1
+
+	self playsound explode_truck
+	exec global/earthquake.scr .2 4 0 0	
+	local.explosion1 = spawn script_model model models/fx/fx_truck_explosion.tik
+	local.explosion1.origin = self.origin	// self gettagposition "engine1"
+//	local.explosion1.angles = self gettagangles "engine1"
+	local.explosion1 anim start
+	local.explosion1 notsolid
+
+	wait .4
+
+	/*
+	self playsound explode_truck
+	exec global/earthquake.scr .2 4 0 0	
+	local.explosion2 = spawn script_model model models/fx/fx_truck_explosion.tik
+	local.explosion2.origin = self gettagposition "engine2"
+	local.explosion2.angles = self gettagangles "engine2"
+	local.explosion2 anim start
+	local.explosion2 notsolid
+	*/
+
+
+
+////////////	self.collisionent disconnect_paths
+
+	local.name = self
+	local.angles = self.angles
+	local.origin = self.origin
+//	self hide
+//	self notsolid
+
+	// note: update this to a damaged jeep when we get one....
+//	self.damaged = thread global/vehicles_thinkers.scr::spawn_damaged_new models/vehicles/opeltruck_d.tik local.angles local.origin
+	self model "models/vehicles/opeltruck_d.tik"
+
+	wait 10
+	local.explosion1 remove
+//	local.explosion2 remove
+
+	End
+
+//------------------------------------------------------------------------------
+TruckBlowUp:
+//
+// Setup so the truck will blow up when it dies...
+//------------------------------------------------------------------------------
+
+	self waittill death
+
+//	dprintln "Truck blow up!"
+	radiusdamage (self.origin + (0 0 256)) 128 350 1
+	
+	self thread global/vehicles_thinkers.scr::truck_killed "notgreen"
+
+
+	End
+
+//------------------------------------------------------------------------------
+SetupTruck local.hp:
+//------------------------------------------------------------------------------
+	self.health = local.hp
+//	if (self.target)
+//	{
+	//	self.collisionent = self.target
+	//	self.collisionent hide
+//	}
+
+	self waitthread global/vehicles_thinkers.scr::truck_INIT
+	
+	// setup our explosion...
+	self thread TruckBlowUp
+
+	End
+
+//------------------------------------------------------------------------------
+SetupTruckPass local.hp local.passengers local.bFriendly:
+//
+//	load up the passengers in the truck.
+//
+//------------------------------------------------------------------------------
+	if ( local.bFriendly==NIL )
+		local.bFriendly = 1
+
+	self waitthread SetupTruck local.hp
+
+	if ( local.bFriendly==1 )
+	{
+		self waitthread global/vehicles_thinkers.scr::truck_load local.passengers "models/human/soviet_infantry3" NIL
+	}
+	else
+	{
+		self waitthread global/vehicles_thinkers.scr::truck_load local.passengers "models/human/german_wehrmact_soldier" NIL
+	}
+
+	self.stopped	= 0
+	
+	// create the thread that will do the explosion of the truck...
+/////////	self thread global/vehicles_thinkers.scr::enemy_truck_think local.hp local.passengers nil NIL NIL "models/human/german_wehrmact_soldier" NIL local.passenger_name local.driver_name
+
+	End
+
+
+//------------------------------------------------------------------------------
+TruckStop local.bStop:
+//------------------------------------------------------------------------------
+
+	if ( self.stopped==1 )
+	{
+		End
+	}
+
+	self.stopped = 1
+
+	if ( local.bStop )
+	{
+		self stop
+	}
+
+	if ( self.collisionent!=NIL && self.collisionent!=NULL)
+		self.collisionent disconnect_paths
+
+	self thread global/vehicles_thinkers.scr::truck_unload
+
+	End
+
+//------------------------------------------------------------------------------
+EvacuateTruck:
+//------------------------------------------------------------------------------
+	
+	wait 3
+	self thread global/vehicles_thinkers.scr::truck_unload
+
+	End
+
+//------------------------------------------------------------------------------
+TruckLookForPlayer local.sightdist local.viewangle local.reverseviewangle:
+//
+//		note: viewangle is the cosine of the angle you want the truck to see at...
+//------------------------------------------------------------------------------
+	self.playerlook		= 1
+
+	if ( local.sightdist==NIL )
+	{
+		println "invalid sight dist!"
+		local.sightdist = 1024
+	}
+
+	// make up for adjustment down below
+	local.sightdist += 90
+
+	if ( local.reverseviewangle==NIL )
+		local.reverseviewangle = 0
+
+	local.reverseviewangle = local.reverseviewangle * -1
+
+	while (IsAlive self && self.playerlook==1)
+	{
+		local.bCanSee = waitthread global/vehicle_warning.scr::CanSeeTarget $player local.sightdist local.viewangle 0
+
+		if ( local.bCanSee==0 && local.reverseviewangle!=0 )
+		{
+			// check behind us...
+			local.bCanSee = waitthread global/vehicle_warning.scr::CanSeeTarget $player local.sightdist local.reverseviewangle 1
+		}
+
+		if ( local.bCanSee==1 )
+		{
+			// they are within the sightdist and viewangle.  Now see if anything
+			// is in the way...
+			if ( sighttrace $player.origin (self.origin + (0 0 150)) 1 )
+			{
+				// we can see the player...
+				self thread TruckStop 1
+				End
+			}
+		}
+
+		wait 0.35
+	}
+
+	if ( self && self.playerlook==1 )
+	{
+		// truck blew up... time to evacuate...
+		self thread EvacuateTruck
+	}
+	
+	End
+
+//------------------------------------------------------------------------------
+TankLookForPlayer local.sightdist local.viewangle local.reverseviewangle:
+//
+//		note: viewangle is the cosine of the angle you want the truck to see at...
+//
+//	Tanks just stop when they see the player....
+//------------------------------------------------------------------------------
+
+	if ( local.sightdist==NIL )
+	{
+		println "invalid sight dist!"
+		local.sightdist = 1024
+	}
+
+	if ( local.reverseviewangle==NIL )
+		local.reverseviewangle = 0
+
+	local.reverseviewangle = local.reverseviewangle * -1
+
+	while (IsAlive self && self.driving==1)
+	{
+		local.bCanSee = waitthread global/vehicle_warning.scr::CanSeeTarget $player local.sightdist local.viewangle 0
+
+		if ( local.bCanSee==0 && local.reverseviewangle!=0 )
+		{
+			// check behind us...
+			local.bCanSee = waitthread global/vehicle_warning.scr::CanSeeTarget $player local.sightdist local.reverseviewangle 1
+		}
+
+		if ( local.bCanSee==1 )
+		{
+			// they are within the sightdist and viewangle.  Now see if anything
+			// is in the way...
+			if ( sighttrace $player.origin (self.origin + (0 0 64)) 1 )
+			{
+				dprintln "STOPPING TANK -- FOUND PLAYER!"
+				// we can see the player...
+				self stop
+				End
+			}
+		}
+		wait 0.35
+	}
+	
+	End
+
+
+//------------------------------------------------------------------------------
+StopTruckOnDeath local.ent:
+//
+//	If driver gets shot, we should stop the truck...
+//------------------------------------------------------------------------------
+	self waittill death
+
+	if ( isalive local.ent )
+	{
+		local.ent.playerlook = 0
+		local.ent thread TruckStop 1
+	}
+
+	End
+
+//------------------------------------------------------------------------------
+StopTruckOnPain local.ent:
+//
+//	If driver gets shot, we should stop the truck...
+//------------------------------------------------------------------------------
+
+	self waittill pain
+
+	if ( isalive local.ent )
+	{
+		local.ent.playerlook = 0
+		local.ent thread TruckStop 1
+	}
+
+	End
+
+//------------------------------------------------------------------------------
+SetupTankPass local.nPassengers:
+//
+//	Put some passengers on the tank....
+//------------------------------------------------------------------------------
+
+	self thread global/guys_on_tank.scr::LoadPassengers	local.nPassengers NIL NIL NIL NIL
+
+	// setup all of their hitpoints...
+
+	for (local.i=1;local.i<=local.nPassengers;local.i++)
+	{
+		local.random = randomint (10)
+		local.random += 65
+		self.passenger[local.i].health = local.random
+	}
+
+	End
+

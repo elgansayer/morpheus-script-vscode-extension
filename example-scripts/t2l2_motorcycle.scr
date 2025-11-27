@@ -1,0 +1,105 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t2l2_motorcycle.scr
+//
+// author: Michael Goodwin
+//
+// run the appropriate thread on the level object (after spawn) as follows:
+//
+//   exec gags/t2l2_motorcycle.scr::gag1 $cycle $driver "optional modelname"
+//
+// or
+//
+//   exec gags/t2l2_motorcycle.scr::gag2 $cycle $driver "optional modelname"
+//
+// everything from that point on is handled in this script
+//
+// description:
+//
+// the motorcycle attaches a rider and plays synchronized canned
+//   animations on both objects.
+//
+// setup:
+//
+// - place the motorcycle vehicle and assign a unique $targetname
+// - place the motorcycle rider and assign a unique $targetname <OR>
+//   pass NULL as the second parameter and the model name as the third
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main local.driver:
+
+	if ( local.driver != NIL )
+	{
+		local.driver exec global/disable_ai.scr
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the level or trigger
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gag1 local.cycle local.driver local.spawndriver:
+
+	if ( local.spawndriver != NIL )
+	{
+		local.driver = spawn local.spawndriver
+	}
+
+	// configure driver
+	local.driver physics_off
+	local.driver.angles = (0 0 0)
+	local.driver exec global/disable_ai.scr
+	local.driver holster
+	local.driver attach local.cycle "passenger1" 1
+
+	// synchronize the animations
+	local.cycle runsounds 1
+	local.cycle moveanim 22P001_motorcycle
+	local.driver anim_noclip 22A101_rider
+	local.driver waittill animdone
+	local.cycle runsounds 0
+
+	// TEMP - should become AI?
+	local.driver bedead
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the level or trigger
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gag2 local.cycle local.driver local.spawndriver:
+
+	if ( local.spawndriver != NIL )
+	{
+		local.driver = spawn local.spawndriver
+	}
+
+	// configure driver
+	local.driver physics_off
+	local.driver.angles = (0 0 0)
+	local.driver exec global/disable_ai.scr
+	local.driver attach local.cycle "passenger1" 1
+
+	// synchronize the animations
+	local.cycle runsounds 1
+	local.cycle moveanim 22P002_motorcycle
+	local.driver anim_noclip 22A102_rider
+	local.driver waittill animdone
+	local.cycle runsounds 0
+
+	// TEMP - should become AI?
+	local.driver bedead
+
+end

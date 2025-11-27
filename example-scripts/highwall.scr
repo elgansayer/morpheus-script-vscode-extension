@@ -1,0 +1,17 @@
+//-----
+// High-wall attack behavior
+//-----
+
+waitexec anim/stand.scr::transition
+
+while (1)
+{
+	if (self cansee self.enemy)
+	{
+		waitexec anim/shoot.scr
+	}
+	else
+	{
+		waitexec anim/aim.scr
+	}
+}

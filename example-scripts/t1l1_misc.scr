@@ -1,0 +1,697 @@
+///////////////////////
+// t1l1_misc.scr
+///////////////////////
+
+main:
+	level.playerisinplane = 0
+	level.parachuteisopen = 0
+	level.pocketflashes = 0
+	level.searchlights = 0
+	level.whistlesfx = 0
+	level.privategetweapons = 0
+	level.wakeupfieldguys = 0
+	level.dontshootwindow = 0
+	
+	//thread camerashakeforplaneon
+	//thread camerashakeforplane
+	thread whistleblowerstart
+	thread windowguy
+	thread newguyinit
+	thread searchlights
+end
+
+///////////////////////
+// camerashake
+///////////////////////
+
+// How to use:
+// 
+// camerashake must have the following values passed to it:
+// 
+// local.delay will wait for the specified time before doing the shake range 0.0 - 99.99 seconds
+// local.duration determins how long this effect will last 0.0 to 99.99 seconds is valid
+// local.no_rampup	flags to control if you want rampup or not
+// local.no_rampdown	flag to control if you want rampdown or not
+//
+// ei.
+// camerashake 0.1 5 4 0 0	
+// this will wait a 10th of a second before starting the effect it will last for 5 seconds
+// the effect will have a magnitude 4 and it will rampup and rampdown normaly
+//
+
+camerashake local.delay local.duration local.magnitude local.no_rampup local.no_rampdown:
+	
+	// wait for this long before you enable the effect
+	if (local.delay > 0)
+		wait local.delay
+
+	exec global/earthquake.scr local.duration local.magnitude local.no_rampup local.no_rampdown
+
+end
+
+/////////////////////////////
+// camerashakeforplane
+/////////////////////////////
+
+//
+// turn on the effect like this
+// place a triggermultiple call this setthread gags/t1l1_misc.scr::camerashakeforplaneon
+//
+camerashakeforplaneon:
+	level.playerisinplane = 1
+end
+
+//
+// turn off the effect like this
+// place a triggermultiple call this setthread gags/t1l1_misc.scr::camerashakeforplaneoff
+//
+camerashakeforplaneoff:
+	level.playerisinplane = 0
+end
+
+//
+// you can control how much the ambient shake will be just modify 
+// local.shaketheplane the bigger the number the more violent the shake 
+//
+camerashakeforplane:
+	local.shaketheplane = 0.3
+	while (level.playerisinplane == 1)
+	{
+		local.fval = randomfloat 0.5
+		local.fval += local.shaketheplane
+		exec global/earthquake.scr 0.1 local.fval 0 0
+		wait 0.3
+	}
+end
+
+/////////////////////////
+// pocketflashes
+/////////////////////////
+
+//
+// the type of light flash is in the models/fx/pocketflash.tik 
+//
+
+// turn on the effect like this
+// place a triggermultiple call this setthread gags/t1l1_misc.scr::pocketflasheson
+//
+pocketflasheson:
+	level.pocketflashes = 1	
+	//dprintln "pocketflashes are turning on"
+end
+
+// turn off the effect like this
+// place a triggermultiple call this setthread gags/t1l1_misc.scr::pocketflashesoff
+//
+pocketflashesoff:
+	level.pocketflashes = 0
+end
+
+pocketflash_fx local.fx:
+	local.temp = spawn script_model model local.fx
+	local.temp notsolid
+	local.temp.origin = self.origin
+	local.temp anim start
+	local.temp notsolid
+	wait 3
+	local.temp remove
+end
+			
+pocketflashes:
+
+	local.delay = 3
+	
+	if ($pocketflashes.size)
+	{
+		local.count = $pocketflashes.size+1
+		
+		for (local.i=1;local.i<$pocketflashes.size+1;local.i++)		
+		{
+			 $pocketflashes[local.i].set = level.time +  randomint(local.count) + local.delay
+		}
+
+		while (level.pocketflashes == 1)
+		{
+			for (local.i=1;local.i<$pocketflashes.size+1;local.i++)		
+			{
+				if($pocketflashes[local.i].set < level.time)
+				{
+					$pocketflashes[local.i] thread pocketflash_fx models/fx/fx_pocketflash.tik
+					$pocketflashes[local.i].set += level.time
+				}
+			}
+		}
+	}
+	else
+	{
+		dprintln ( " There are no pocket flashes on the level " )
+	}
+end
+
+/////////////////////////////////////
+// searchlights
+/////////////////////////////////////
+
+// we need two animated search light models with different tracking paths
+//
+// models/emitters/searchlights1.tik			
+// models/emitters/searchlights2.tik			
+
+// turn on the effect like this
+// place a triggermultiple call this setthread gags/t1l1_misc.scr::searchlightson
+//
+
+searchlightson:
+	level.searchlights = 1	
+end
+
+searchlightsoff:
+	level.searchlights = 0
+end
+
+searchlightanimate:
+
+	local.animspeed = 0.06
+	local.pitch = randomfloat (20.0) - 40.0
+	local.yaw = randomfloat (360.0)
+	local.dir = randomint (1)
+
+	while(level.searchlights == 1)
+	{
+		if (local.dir == 1)
+		{
+			local.pitch +=local.animspeed
+			if (local.pitch > 45)
+				local.dir = 0
+		}
+		else
+		{
+			local.pitch -=local.animspeed
+			if (local.pitch < 0) 
+				local.dir = 1
+		}
+				
+		local.yaw +=local.animspeed
+
+		self.angles = (local.pitch local.yaw 0)
+
+		waitframe
+	}
+
+	for (local.i=1;local.i<$searchlights.size+1;local.i++)		
+		$searchlights[local.i] remove
+end
+
+searchlights:
+
+	if ($searchlights.size)
+	{
+		thread searchlightson
+
+		for (local.i=1;local.i<$searchlights.size+1;local.i++)		
+		{
+			$searchlights[local.i] notsolid
+			$searchlights[local.i] thread searchlightanimate
+		}
+	}
+	else
+	{
+//		dprintln ( " did someone forget to add search lights " )
+	}
+
+end
+
+/////////////////////////////////////////
+// whistlefx
+/////////////////////////////////////////
+
+// place a tigger multiple called $targetname whistleblowerstart
+// then target the whistleblower to the trigger
+// add an eneny give him a $targetname whistleblower
+// you also need to add info_notnull entities called:
+// $whistle1
+// $whistle2
+// $whistle3 .. etc
+// this is where the whistle sound will come from
+whistlesound local.ent:
+	
+	$player playsound whistle_blow
+	
+	level.whistlesfx = 1
+		
+end
+
+whistleblower_death:
+	self waittill death
+
+	$whistleblower playsound whistle_blow
+
+end
+
+whistleblower:
+	
+	if ($whistleblower)
+	{			  
+		$whistleblower.movedoneradius = 6
+		$whistleblower waitthread RunTo $whistleblowerdestination
+
+		wait 1
+		$whistleblower turnto $player
+		$whistleblower attackplayer
+		$whistleblower exec global/enable_ai.scr  
+
+		// sound the alarm
+		if (level.whistlesfx == 0)
+		{
+			$whistleblower playsound whistle_blow		
+		}
+	}
+	else
+		dprintln ( "level has no whistleblower " )
+end
+
+whistleblowerstart:
+	
+	$whistleblower exec global/disable_ai.scr
+	$whistleblower thread whistleblower_death
+	$whistleblower ai_off
+	$whistleblower waittill trigger
+
+	$whistleblower ai_on
+	level.wakeupfieldguys = 1
+
+	thread whistleblower
+
+	if (isalive $windowguy)
+	{
+		$whistleblower waittill trigger	
+		level.dontshootwindow = 1
+		trigger $windowguytrigger
+	}
+
+	// set obj#1 as current objective... (and make it viewable)
+	waitthread global/objectives.scr::add_objectives 1 2
+	waitthread global/objectives.scr::current_objectives 1
+
+end
+
+///////////////////////////////////////////////
+// Window Guy
+//////////////////////////////////////////////
+
+windowguy:
+	
+	$windowguy exec global/disable_ai.scr
+	$windowguy ai_off
+	$windowguy waittill trigger
+	//1 is how long he'll shoot
+	local.howlong = level.time + 2
+	$windowguy ai_on
+
+	if (level.dontshootwindow == 0) 
+	{
+		while (local.howlong > level.time)
+		{
+			$windowguy turnto $windowguyshootthis
+			$windowguy exec global/aimat.scr $windowguyshootthis
+			$windowguy exec global/shoot.scr
+			waitframe
+		}
+	}
+	$windowguy exec global/enable_ai.scr
+
+end
+
+////////////////////////////////////////////////
+// tiger tank
+////////////////////////////////////////////////
+
+//
+// place a trigger multiple called $targetname tigertanktrigger
+// this will set the tiger tank in motion when activated
+// if you place an vehicle trigger $targetname tigerdestination
+// it will remove the tank
+// please call the vehicle $targetname tiger
+ 
+
+drive_path local.path local.speed local.remove:
+
+	self.driving = 1
+	self drive local.path 80 30 50 256
+	self waittill drive
+
+	if (self)
+	{
+		self stop
+		self.driving = 0
+		if (local.remove == "remove")
+			self remove
+	}
+end
+
+///////////////////////////////////////////////////////
+// truck
+///////////////////////////////////////////////////////
+
+//
+// place a trigger multiple called $targetname opeltrucktrigger
+// this will set the tiger tank in motion when activated
+// if you place an vehicle trigger $targetname opeltruckdestination
+// it will remove the tank
+// please call the vehicle $targetname opeltruck
+
+opeltruck:
+
+	local.speed = 100
+	local.pathname = "opeltruck_path"
+	
+	// level waittill spawn	
+	
+//	$opeltruck rendereffects "+dontdraw"
+
+	$opeltrucktrigger waittill trigger
+	$opeltruck show
+	$opeltruck nodamage
+//	$opeltruck rendereffects "-dontdraw"
+	
+	$opeltruck.type = 0
+	$opeltruck rendereffects "-shadow"
+	
+	$opeltruck thread global/vehicles_thinkers.scr::enemy_truck_think 0
+	$opeltruck thread drive_path local.pathname local.speed
+	$opeltruck thread global/Vehicle_Warning.Scr::WarnFriendlies $enemy 800 0.707
+
+	if ($opeltruckdestination)
+	{
+		while (!($opeltruck istouching $opeltruckdestination))
+			wait 1
+
+		$opeltruck remove
+	}
+
+end
+
+////////////////////////////////////////////
+// aircraft
+////////////////////////////////////////////
+
+aircraft:
+	exec global/bomber.scr
+end
+
+
+//-------------------------------------------------------------------
+windmillbadguys:
+//
+//	called from bsp trigger..
+//-------------------------------------------------------------------
+	$nazi_start delete
+	thread gags/T1L1_End.Scr::StartGag
+	end
+
+
+///////////////////////////////
+// ai manager
+///////////////////////////////
+
+//-------------------------------------------------------------------
+newguyinit:
+//-------------------------------------------------------------------
+
+	// $[name of your new guy] thread newguymanager 
+	$forest_1 thread newguymanager 3.0
+	$road_1 thread newguymanager 4.0
+	$creek_1 thread newguymanager 2.0
+	$barn_door1 thread newguymanager 1.5
+	$barn_door2 thread newguymanager 3.5
+	$backdoor_1 thread newguymanager 3.5
+	$creek_back1 thread newguymanager 2.5
+	$fieldguy1 thread newguymanager_field 1.0
+	$fieldguy2 thread newguymanager_field 0
+	$fieldguy3 thread newguymanager 2.5
+	$fieldguy4 thread newguymanager 2.5
+	$mg42_parade1 thread newguymanager 6.0
+	$mger thread newguymanager 0
+	$runner thread tankrunner_init
+
+end
+
+//-------------------------------------------------------------------
+newguymanager local.delay:
+//-------------------------------------------------------------------
+	
+	self exec global/disable_ai.scr 
+	self rendereffects "+dontdraw"
+	self notsolid
+	self ai_off
+
+	self waittill trigger
+	self rendereffects "-dontdraw"
+	self solid
+	self ai_on
+	if (self.target!=NIL)
+	{
+		self runto self.target
+		wait local.delay
+	}
+
+	self exec global/enable_ai.scr 
+end
+
+//-------------------------------------------------------------------
+newguymanager_field local.delay:
+//-------------------------------------------------------------------
+	
+	self exec global/disable_ai.scr 
+	self rendereffects "+dontdraw"
+	self notsolid
+	self ai_off
+
+	self waittill trigger
+	self rendereffects "-dontdraw"
+	self solid
+	self ai_on
+	wait 0.5
+	if (self.target!=NIL)
+	{
+		self runto self.target
+		wait local.delay
+	}
+
+	self exec global/enable_ai.scr 
+end
+
+//-------------------------------------------------------------------
+tankrunner_init:
+//-------------------------------------------------------------------
+	self exec global/disable_ai.scr 
+	self rendereffects "+dontdraw"
+	self ai_off
+
+	end
+
+//-------------------------------------------------------------------
+tankrunner_run local.run_delay:
+//-------------------------------------------------------------------
+
+	wait 16
+
+	self ai_on
+	self rendereffects "-dontdraw"
+	if (self.target!=NIL)
+	{
+		self runto self.target
+		wait local.run_delay
+	}
+
+	$runner delete
+
+end
+
+//-------------------------------------------------------------------
+tigertank:
+//-------------------------------------------------------------------
+	wait 25.5
+	local.speed = 80
+	local.pathname = "tiger_path"
+//	$tigertanktrigger waittill trigger
+//	$tigertanktrigger delete	
+	$tiger show	
+	$tiger thread global/vehicles_thinkers.scr::enemy_tank_think 1 panzerwerfer
+	$tiger thread drive_path local.pathname local.speed
+	$tiger.health = 180
+	$tiger thread global/Vehicle_Warning.Scr::WarnFriendlies $enemy 800 0.707
+	$tiger waittill drive
+
+end
+
+//-------------------------------------------------------------------
+newguyturnoff:
+//-------------------------------------------------------------------
+	self exec global/disable_ai.scr 
+	self rendereffects "+dontdraw"
+	self notsolid
+end
+
+//-------------------------------------------------------------------
+newguyturnon:
+//-------------------------------------------------------------------
+	self rendereffects "-dontdraw"
+	self exec global/enable_ai.scr
+	self solid
+end
+
+
+	//-------------------------------------------------------------------
+	turnoff_barndoor:
+	//		gags/t1l1_misc.scr::turnoffnewguys
+	//-------------------------------------------------------------------
+		if ( $barn_door1!=NIL && $barn_door1!=NULL )
+			$barn_door1 thread newguyturnoff
+
+		if ( $barn_door2!=NIL && $barn_door2!=NULL )
+			$barn_door2 thread newguyturnoff
+
+		end
+	
+	//-------------------------------------------------------------------
+	turnon_barndoor:
+	//		gags/t1l1_misc.scr::turnonnewguys
+	//-------------------------------------------------------------------
+		if ( $barn_door1!=NIL && $barn_door1!=NULL )
+			$barn_door1 thread newguyturnon
+
+		if ( $barn_door2!=NIL && $barn_door2!=NULL )
+			$barn_door2 thread newguyturnon
+
+		end
+
+	//-------------------------------------------------------------------
+	turnoff_forest_1:
+	//		gags/t1l1_misc.scr::turnoffnewguys
+	//-------------------------------------------------------------------
+		if ( $forest_1!=NIL && $forest_1!=NULL )
+			$forest_1 thread newguyturnoff
+	
+		if ( $creek_1!=NIL && $creek_1!=NULL )
+			$creek_1 thread newguyturnoff
+
+		end
+	
+	//-------------------------------------------------------------------
+	turnon_forest_1:
+	//		gags/t1l1_misc.scr::turnonnewguys
+	//-------------------------------------------------------------------
+		if ( $forest_1!=NIL && $forest_1!=NULL )
+			$forest_1 thread newguyturnon
+	
+		if ( $creek_1!=NIL && $creek_1!=NULL )
+			$creek_1 thread newguyturnon
+
+		end
+
+	//-------------------------------------------------------------------
+	turnoff_road_and_mgparade:
+	//		gags/t1l1_misc.scr::turnoffnewguys
+	//-------------------------------------------------------------------
+		if ( $road_1!=NIL && $road_1!=NULL )
+			$road_1 thread newguyturnoff
+
+		if ( $mg42_parade1!=NIL && $mg42_parade1!=NULL )
+			$mg42_parade1 thread newguyturnoff
+
+		end
+	
+	//-------------------------------------------------------------------
+	turnon_road_and_mgparade:
+	//		gags/t1l1_misc.scr::turnonnewguys
+	//-------------------------------------------------------------------
+		if ( $road_1!=NIL && $road_1!=NULL )
+			$road_1 thread newguyturnon
+
+		if ( $mg42_parade1!=NIL && $mg42_parade1!=NULL )
+			$mg42_parade1 thread newguyturnon
+
+		end
+
+	//-------------------------------------------------------------------
+	turnoff_field_guys:
+	//		gags/t1l1_misc.scr::turnoffnewguys
+	//-------------------------------------------------------------------
+		
+		if ( $fieldguy1!=NIL && $fieldguy1!=NULL )
+			$fieldguy1 thread newguyturnoff
+	
+		if ( $fieldguy2!=NIL && $fieldguy2!=NULL )
+			$fieldguy2 thread newguyturnoff
+	
+		if ( $fieldguy3!=NIL && $fieldguy3!=NULL )
+			$fieldguy3 thread newguyturnoff
+	
+		if ( $fieldguy4!=NIL && $fieldguy4!=NULL )
+			$fieldguy4 thread newguyturnoff
+		
+
+		end
+	
+	//-------------------------------------------------------------------
+	turnon_field_guys:
+	//		gags/t1l1_misc.scr::turnonnewguys
+	//-------------------------------------------------------------------
+
+		
+		// jsl--> this stuff is old....
+
+		if ( $fieldguy1!=NIL && $fieldguy1!=NULL )
+			$fieldguy1 thread newguyturnon
+
+		if ( $fieldguy2!=NIL && $fieldguy2!=NULL )
+			$fieldguy2 thread newguyturnon
+
+		if ( $fieldguy3!=NIL && $fieldguy3!=NULL )
+			$fieldguy3 thread newguyturnon
+	
+		if ( $fieldguy4!=NIL && $fieldguy4!=NULL )
+			$fieldguy4 thread newguyturnon
+		
+
+		end
+
+
+//-------------------------------------------------------------------
+RunTo local.ent:
+//
+//	Updated runto that makes sure he gets there...
+//-------------------------------------------------------------------
+	if ( local.ent==NIL || local.ent==NULL )
+	{
+		dprintln "RunTo: entity is NULL: " local.ent
+		End
+	}
+
+	if ( self.runto_thread!=NIL && self.runto_thread!=NULL )
+	{
+		self.runto_thread delete
+	}
+
+	self.runto_thread	= local
+
+	self.movedoneradius	= 6
+	self.distance = 6
+
+	self runto local.ent
+	self waittill movedone
+
+	while ( parm.movedone!=1 )
+	{
+		self runto local.ent
+		self waittill movedone
+	}
+
+	self.runto_thread	= NULL
+
+	self.movedoneradius	= 250
+	self.distance = 250
+
+	end
+

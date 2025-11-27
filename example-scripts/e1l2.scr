@@ -1,0 +1,205 @@
+main:
+
+	println "-----------------------------------------------"
+	println "-----------------------------------------------"
+	println "-----------------------------------------------"
+	println "E1L2"
+	println "-----------------------------------------------"
+
+	exec global/auto.scr e1l2
+	exec global/ambience.scr e1l4
+
+	waitexec maps/e1l2/hacks.scr
+
+	level waittill prespawn
+
+	waitthread maps/e1l2/Intro.scr::InitIntro
+	waitthread maps/e1l2/Artillery.scr::InitArtillery
+	waitthread maps/e1l2/Crab.scr::InitCrab
+	waitthread maps/e1l2/Hideout.scr::InitHideout
+	
+	waitthread InitObjectives
+
+	fadein 5.0 0 0 0 1
+	level waittill spawn
+	waitthread InitLevel
+	
+	thread startMusic_e1l2_main
+
+
+	waitthread maps/e1l2/Intro.scr::DoIntro
+	
+	waitthread maps/e1l2/Artillery.scr::ObjectiveArtillery
+	waitthread global/objectives.scr::add_objectives level.ObjDestroyArtillery 3 "Destroy Enemy Artillery"
+
+	waitthread global/objectives.scr::add_objectives level.ObjEscortColumn 2 level.ObjEscortColumnText $commander
+	waitthread global/objectives.scr::current_objectives level.ObjEscortColumn
+	waitthread maps/e1l2/Crab.scr::ReturnToCrab
+
+	thread startMusic_e1l2_EscortTanks
+	waitthread maps/e1l2/Crab.scr::ObjectiveGuardCrab
+	waitthread maps/e1l2/Hideout.scr::DoHideoutIntro
+	waitthread global/objectives.scr::add_objectives level.ObjEscortColumn 3
+
+	waitthread global/objectives.scr::add_objectives level.ObjDestroyHideout 2 level.ObjDestroyHideoutText $bunkerentrance
+	waitthread global/objectives.scr::current_objectives level.ObjDestroyHideout
+	waitthread maps/e1l2/Hideout.scr::ObjectiveDestroyHideout
+	waitthread global/objectives.scr::add_objectives level.ObjDestroyHideout 3
+
+	waitthread global/objectives.scr::add_objectives level.ObjEscape 2 level.ObjEscapeText $escape1
+	waitthread global/objectives.scr::current_objectives level.ObjEscape
+	waitthread maps/e1l2/Hideout.scr::ObjectiveEscape
+	waitthread maps/e1l2/Hideout.scr::DoOutro
+	waitthread global/objectives.scr::add_objectives level.ObjEscape 3
+
+	exec global/missioncomplete.scr e1l3 1
+
+end
+
+
+// ------------------------------------------------
+// ------------------------------------------------
+startMusic_e1l2_main:
+// ------------------------------------------------
+	$player stufftext "tmstop; tmstartloop sound/music/Radar_Train.mp3; tmvolume 1.6"	
+end
+
+startMusic_e1l2_EscortTanks:
+	waitthread global/music.scr::StopSong 3
+	$player stufftext "tmstartloop sound/music/mus_18a_action.mp3" 
+End
+
+startMusic_e1l2_Escape:
+	$player stufftext "tmstop; tmstartloop sound/music/E3L1_TakingOver.mp3"
+End
+
+
+
+
+// ------------------------------------------------
+InitLevel:
+	level.script = "maps/e1l2.scr"
+	$player heal 1
+	setcvar g_mission 1
+	waitexec global/loadout.scr
+	level.autosave = 2 //1
+//	exec global/autosave.scr level.autosave	//"In the Canyon"
+//	level.autosave++
+
+	//Clip 1
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 4896  1408  80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 360 112 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip1"
+	
+	//Clip 2
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 4200   1456  80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 864 112 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip2"
+	
+	//Clip 3
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 3600  1520  80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 920 120 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip3"
+	
+	//Clip 4
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 5168  1328  80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 160 160 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip4"
+	
+	//Clip 5
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 5248   1288  80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 160 160 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip5"
+	
+	//Clip 6
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 5312   1240   80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 160 160 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip6"
+	
+	//Clip 7
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 5368   1192  80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 160 160 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip7"
+	
+	//Clip 8
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 5408   1128   80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 160 160 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip8"
+	
+	//Clip 9
+	local.clipbrush = spawn script_object
+	local.clipbrush.origin = ( 5448   952   80 )
+	local.clipbrush setsize ( 0 0 0 ) ( 168 248 608 )
+	local.clipbrush solid
+	local.clipbrush targetname "clip9"
+
+end
+
+InitObjectives:
+
+	level.ObjDestroyArtillery = 1
+	level.ObjEscortColumn = 2
+	level.ObjDestroyHideout = 3
+	level.ObjEscape = 4
+
+	level.ObjEscortColumnText = "Escort the Minesweeper Tank"
+	level.ObjDestroyHideoutText = "Locate and Detonate German Munitions Depot"
+	level.ObjEscapeText = "Rendezvous with Tank Convoy"
+
+	thread UpdateEscortObjectiveLocation
+
+end
+
+UpdateEscortObjectiveLocation:
+	while (1)
+	{
+		if (level.currentobjective == level.ObjEscortColumn)
+		{
+			if (level.compassPointAtTank == 1)
+			{
+				waitthread global/objectives.scr::add_objectives level.ObjEscortColumn 2 level.ObjEscortText $tank2
+				waitthread global/objectives.scr::current_objectives level.currentobjective
+			}
+			else
+			{
+				waitthread global/objectives.scr::add_objectives level.ObjEscortColumn 2 level.ObjEscortText $commander
+				waitthread global/objectives.scr::current_objectives level.currentobjective
+			
+			}
+		}
+		waitframe
+	}
+end
+
+UpdateHideoutObjective:
+	if (level.currentobjective == level.ObjDestroyHideout)
+	{
+		waitthread global/objectives.scr::add_objectives level.ObjDestroyHideout 2 level.ObjDestroyHideoutText $(self.target).origin
+		waitthread global/objectives.scr::current_objectives level.ObjDestroyHideout
+	}
+End
+
+UpdateEscapeObjective:
+	if (level.currentobjective == level.ObjEscape)
+	{
+		waitthread global/objectives.scr::add_objectives level.ObjEscape 2 level.ObjEscapeText $(self.target).origin
+		waitthread global/objectives.scr::current_objectives level.ObjEscape
+	}
+End
+

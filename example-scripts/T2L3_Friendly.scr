@@ -1,0 +1,279 @@
+//--------------------------------------------------------------------------------
+//	t2l3_Friendly.Scr
+//
+//
+//		Handles friendlies running around in T2L3....
+//
+//--------------------------------------------------------------------------------
+
+
+
+//--------------------------------------------------------------------------------
+Run_To local.dest local.anim:
+//
+//	AI will run to the destination and play the animation when he gets there.
+// 
+//	Examples:
+//	$FoxholeSoldier01 waitthread gags/t2l3_Friendly.Scr::Run_To $StopHere 23A810_Jump
+//	$FoxholeSoldier02 waitthread gags/t2l3_Friendly.Scr::Run_To $StopHere 23A811_Dive
+//	$FoxholeSoldier03 waitthread gags/t2l3_Friendly.Scr::Run_To $StopHere 23A812_Slide
+//
+// optionally, you may want to have them crouch with this command:
+//
+//		$FoxholeSoldier exec global/crouch.scr
+//
+//--------------------------------------------------------------------------------
+
+	if (local.dest==NIL)
+	{
+		// println "Invalid runto command in t2l3_friendly.scr!"
+		End
+	}
+
+	self exec global/disable_ai.scr
+
+	self runto local.dest
+	self waittill movedone
+
+	if ( local.anim!=NULL )
+	{
+		self.blendtime = 0.01
+		self anim local.anim
+		self waittill animdone
+		self.blendtime = 0.2
+
+		// do any other necessary things....
+	}
+
+	self exec global/enable_ai.scr
+
+
+	End
+
+/////////////////////////
+// tree guys init
+/////////////////////////
+tree_guys_init:
+
+	$TreeGuy1 holster
+	$TreeGuy2 holster
+
+	$TreeGuy1 notsolid
+	$TreeGuy2 notsolid
+	
+	$TreeFall nodamage
+	$TreeFall immune Explosion
+	$TreeFall immune rocket
+
+//	spawn throwobject model models/weapons/enfield.tik targetname TreeGuy1prop
+	spawn throwobject model models/heldProps/CoffeeMug.tik targetname TreeGuy1prop
+	$TreeGuy1prop attach $TreeGuy1 "Bip01 R Finger11" 1
+
+//	spawn throwobject model models/weapons/enfield.tik targetname TreeGuy2prop
+	spawn throwobject model models/heldProps/CoffeeMug.tik targetname TreeGuy2prop
+	$TreeGuy2prop attach $TreeGuy2 "Bip01 R Finger11" 1
+
+end
+
+//
+// Init the tree death guys.
+//
+tree_death_init:
+
+
+	$TreeGuy1 exec global/disable_ai.scr
+	$TreeGuy2 exec global/disable_ai.scr
+	$TreeGuy1.blendtime = 1.0
+	$TreeGuy2.blendtime = 1.0
+	$TreeGuy1 nodamage
+	$TreeGuy2 nodamage
+
+	$TreeGuy1 thread tree_death_guy_1_idle
+	level.treeguy1thread = parm.previousthread
+	$TreeGuy2 thread tree_death_guy_2_idle
+	level.treeguy2thread = parm.previousthread
+
+end
+
+tree_death_guy_1_idle:
+
+	print( "tree death guy 1 idles" )
+	while (1)
+	{
+		self anim 23A705_idle
+		self waittill animdone
+	}
+
+end
+
+tree_death_guy_2_idle:
+
+	print( "tree death guy 2 idles" )
+	while (1)
+	{
+		self anim 23A706_idle
+		self waittill animdone
+	}
+
+end
+
+removetheprop:
+	local.time = level.time + 5
+	while (local.time > level.time)
+		wait 1
+	self remove
+	self rendereffects "+dontdraw"
+end
+
+//--------------------------------------------------------------------------------
+TreeDeath local.death_anim local.death_loop:
+//
+//	Do a fox hole death animation followed by the passed death looping anim...
+//
+//	Examples:
+//
+//	$TreeVictim waitthread gags/t2l3_Friendly.Scr::TreeDeath 23A701_FoxHoleDeath 23A704_deathloop
+//	$TreeVictim waitthread gags/t2l3_Friendly.Scr::TreeDeath 23A702_FoxHoleDeath 23A704_deathloop
+//
+//	note: the tree is expected to be a script_model with the following model:
+//				human/animation/scripted/falling_tree.tik
+//	
+//--------------------------------------------------------------------------------
+	
+	$TreeGuy1prop detach
+	$TreeGuy1prop throw $TreeGuy1 100 $player
+	$TreeGuy1prop thread removetheprop
+
+	$TreeGuy2prop detach
+	$TreeGuy2prop throw $TreeGuy2 120 $player
+	$TreeGuy2prop thread removetheprop
+
+	print( "tree death guy dies" )
+	self anim local.death_anim
+	self waittill animdone
+	self ai_off
+
+	End
+
+
+
+//--------------------------------------------------------------------------------
+DoTreeFallGag:
+//
+//	$TreeFall (tree) falls on $TreeGuy1 and $TreeGuy2
+//--------------------------------------------------------------------------------
+
+	// Break the current idle thread for the guys.
+	level.treeguy1thread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+	level.treeguy2thread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+
+	$TreeFall anim death
+	wait 1.5
+	$TreeGuy1 thread TreeDeath 23A701_FoxHoleDeath 23A703_deathloop
+	$TreeGuy2 thread TreeDeath 23A702_FoxHoleDeath 23A704_deathloop
+
+	End
+
+
+//
+// Init the foxhole guys.
+//
+foxhole_guys_init:
+
+	level.FoxholeGuy1Spawner = waitthread global/spawner.scr::spawner_create $FoxholeGuy1
+	level.FoxholeGuy2Spawner = waitthread global/spawner.scr::spawner_create $FoxholeGuy2
+	level.FoxholeGuy3Spawner = waitthread global/spawner.scr::spawner_create $FoxholeGuy3
+
+	/*
+	$FoxholeGuy1 nodamage
+	$FoxholeGuy2 nodamage
+	$FoxholeGuy3 nodamage
+	*/
+end
+
+
+//--------------------------------------------------------------------------------
+DoFoxholeJump:
+//
+//	Have FoxholeGuy1 jump into foxhole at $FoxholeGuyDest1
+//
+//--------------------------------------------------------------------------------
+
+	local.foxguy1 = waitthread global/spawner.scr::spawner_activate level.FoxholeGuy1Spawner
+	local.foxguy1 nodamage
+	local.foxguy1 notsolid
+	level.foxguy1 = local.foxguy1
+
+	local.foxguy1 exec global/disable_ai.scr
+
+	local.foxguy1 waitthread Run_To $FoxholeGuyDest1 23A810_Jump
+	
+	
+	//while ( (level.barrage_dialogue_time > level.time) )
+	while (1)
+	{
+		//local.dist = vector_length(local.foxguy1.origin - $player.origin)
+		//if (local.dist > 128)
+		//	local.foxguy1 solid
+		local.foxguy1 anim 23A912_CowerA
+		local.foxguy1 waittill animdone
+	}
+	
+	local.foxguy1 exec global/enable_ai.scr
+	
+
+	End
+
+//--------------------------------------------------------------------------------
+DoFoxholeDive:
+//
+//	Have FoxholeGuy2 dive into foxhole at $FoxholeGuyDest2
+//
+//--------------------------------------------------------------------------------
+
+	local.foxguy2 = waitthread global/spawner.scr::spawner_activate level.FoxholeGuy2Spawner
+	local.foxguy2 nodamage
+	level.foxguy2 = local.foxguy2
+
+	local.foxguy2 waitthread Run_To $FoxholeGuyDest2 23A811_Dive
+
+	local.foxguy2 exec global/disable_ai.scr
+
+	// while ( (level.barrage_dialogue_time > level.time) )
+	while (1)
+	{
+		local.foxguy2 anim 23A912_CowerA
+		local.foxguy2 waittill animdone
+	}
+
+	local.foxguy2 exec global/enable_ai.scr
+
+	End
+
+//--------------------------------------------------------------------------------
+DoFoxholeSlide:
+//
+//	Have FoxholeGuy3 slide into foxhole at $FoxholeGuyDest3
+//
+//--------------------------------------------------------------------------------
+
+	local.foxguy3 = waitthread global/spawner.scr::spawner_activate level.FoxholeGuy3Spawner
+	local.foxguy3 nodamage
+	level.foxguy3 = local.foxguy3
+
+	local.foxguy3 waitthread Run_To $FoxholeGuyDest3 23A812_Slide
+
+	local.foxguy3 exec global/disable_ai.scr
+	
+	// while ( (level.barrage_dialogue_time > level.time) )
+	while (1)
+	{
+		local.foxguy3 anim 23A912_CowerA
+		local.foxguy3 waittill animdone
+	}
+
+	local.foxguy3 exec global/enable_ai.scr
+	
+	End

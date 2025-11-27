@@ -1,0 +1,565 @@
+//
+// Four soldiers talking.
+//
+// Interactions:
+//
+//		four_soldiers_talking		Input: call (using 'thread') to start the gag, should be called right at the beginning of the level.
+//		artillery_barrage_1			Output: calls this thread name when ready for the barrage.
+//		four_soldiers_talking_over	Input: call to end the gag, called at the end of the first artillery barrage.
+//
+// To add to map:
+//
+//		In this script, replace 'Holodeck_Talkers' in 'thread maps/Holodeck_Talkers.scr::artillery_barrage_1' with the actual
+//		name of the map.
+//
+//		In the main map script, add 'thread gags/t2l3_soldiers_talking.scr::four_soldiers_talking_over' when the bombing stops.
+//
+//		In the level add an info_notnull entity with the $targetname of "soldiertalkface". The surviving soldiers will face this
+//		direction when their animation finishes.
+//
+//		TODO: When we quit using temp assets, rename $talkingtreetemp to $talkingtree.
+//
+// Props:
+//
+//		$soldier01			// Holding a coffee cup, survives.
+//		$soldier02			// Holding a cigarette, survives.
+//		$soldier03			// Holding a coffee cup, dies.
+//		$soldier04			// Smoking a cigarette, dies.
+//		$soldier01weapon	// Weapon to be picked up by soldier01.
+//		$soldier02weapon	// Weapon to be picked up by soldier02.
+//		$talkingtree		// Tree destroyed by first explosion. (Now called $talkingtreetemp)
+//		$rattlelogs			// Logs moved by the initial explosion.
+//
+// Spawned Props:
+//
+//		$soldier01prop		// Coffee cup.
+//		$soldier02prop		// Cigarette.
+//		$soldier03prop		// Coffee cup.
+//		$soldier04prop		// None.
+//
+cache models/heldProps/CoffeeMug.tik
+cache models/heldProps/Cigarette.tik
+cache models/emitters/breath_emitter.tik
+level.delayframes = 1
+level.tickstoremoveguys = 800
+end
+
+
+// Talking guy initialization thread.
+four_soldiers_talking_init:
+	
+	// Initialize
+	$soldier01 exec global/disable_ai.scr
+	$soldier02 exec global/disable_ai.scr
+	$soldier03 exec global/disable_ai.scr
+	$soldier04 exec global/disable_ai.scr
+	
+	$soldier01.blendtime = 1.0
+	$soldier02.blendtime = 1.0
+	$soldier03.blendtime = 1.0
+	$soldier04.blendtime = 1.0
+
+	$soldier01 nodamage
+	$soldier02 nodamage
+	$soldier03 nodamage
+	$soldier04 nodamage
+
+	// Save the soldier's weapons, and disappear them.
+	level.soldier01weapon = $soldier01.weapon
+	$soldier01.weapon = "none"
+	level.soldier02weapon = $soldier02.weapon
+	$soldier02.weapon = "none"
+	level.soldier03weapon = $soldier03.weapon
+	$soldier03.weapon = "none"
+	level.soldier04weapon = $soldier04.weapon
+	$soldier04.weapon = "none"
+
+	//
+	// Make them hold stuff.
+	//
+
+	// Soldier 1 has a coffee cup.
+	spawn throwobject model models/heldProps/CoffeeMug.tik targetname soldier01prop
+	$soldier01prop attach $soldier01 "Bip01 R Finger11" 1
+
+	// Soldier 2 has a cigarette.
+	spawn throwobject model models/heldProps/Cigarette.tik targetname soldier02prop
+	$soldier02prop attach $soldier02 "Bip01 R Finger11" 1
+
+	// Soldier 3 has a coffee cup.
+	spawn throwobject model models/heldProps/CoffeeMug.tik targetname soldier03prop
+	$soldier03prop attach $soldier03 "Bip01 R Finger11" 1
+
+	// Initiate threads for the idle animation.
+	level.talkingsoldiersoneshot = 1
+	$soldier01 thread soldier01_idle_thread
+	level.soldier01thread = parm.previousthread
+	$soldier02 thread soldier02_idle_thread
+	level.soldier02thread = parm.previousthread
+	$soldier03 thread soldier03_idle_thread
+	level.soldier03thread = parm.previousthread
+	$soldier04 thread soldier04_idle_thread
+	level.soldier04thread = parm.previousthread
+	$talkingtreetemp thread talkingtree_idle_thread
+	level.talkingtreethread = parm.previousthread
+	$rattlelogs thread rattlelogs_idle_thread
+	level.rattlelogthread = parm.previousthread
+
+end
+
+
+// Main talking guy thread.
+four_soldiers_talking:
+
+	level.talkingsoldiersoneshot = 0
+
+end
+
+
+// Trigger called when the bombing is over.
+four_soldiers_talking_over:
+
+	// println ("Bombing stopped, four guys gag ends.")
+
+	// Break the cycle so soldiers 1 and 2 and switch back to AI.
+	level.soldier01thread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+	level.soldier02thread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+
+	// Initiate threads for the get out animation.
+	$soldier01 thread soldier01_getout_thread
+	level.soldier01thread = parm.previousthread
+	$soldier02 thread soldier02_getout_thread
+	level.soldier02thread = parm.previousthread
+
+	// println ("Everybody's out, gag over, man!")
+
+end
+
+
+//
+// Tree.
+//
+//	idle		falling_tree_idle.skc
+//	fall		falling_tree_fall.skc
+//	deadidle    falling_tree_idle.skc
+//
+
+talkingtree_idle_thread:
+
+	//while (1)
+	//{
+	//	self anim idle
+	//	self waittill animdone
+	//}
+
+end
+
+talkingtree_fall_thread:
+
+	// println( "Tree falls.")
+	$talkingtreetemp anim death
+	//$talkingtreetemp waittill animdone
+	wait 3.0
+	thread maps/t2l3.scr::barrage_dialogue_init
+	thread maps/t2l3.scr::barrage_dialogue
+
+end
+
+
+//
+// Logs.
+//
+//	idle		23P101_Idle.skc
+//	rattle		23P102_Rattle.skc
+//	deadidle	23P103_DeathL.skc
+//
+
+rattlelogs_idle_thread:
+
+	while (1)
+	{
+		self anim idle
+		self waittill animdone
+	}
+
+end
+
+rattlelogs_rattle_thread:
+
+	// println( "Logs rattle.")
+	self anim rattle
+
+end
+
+
+
+//
+// Soldier 1.
+//
+// 23A101_Idle				23A101_Idle.skc
+// 23A102_SipCoffee			23A102_SipCoffee.skc
+// 23A103_Dial1				23A103_Dial1.skc
+// 23A104_Toast				23A104_Toast.skc
+// 23A105_Lookat4			23A105_Lookat4.skc
+// 23A106_TakeCover			23A106_TakeCover.skc
+// 23A107_TakeCoverP		23A107_TakeCoverP.skc
+// 23A108_GetOut			23A108_GetOut.skc
+//
+
+soldier01_idle_thread:
+
+	while (1)
+	{
+		local.rand = randomint (100)
+		if (local.rand < 80)
+		{
+			self anim 23A101_Idle
+			self waittill animdone
+			self anim 23A101_Idle
+			self waittill animdone
+		}
+		else
+		{
+			self anim 23A102_SipCoffee
+			self waittill animdone
+		}
+
+		if (level.talkingsoldiersoneshot == 0)
+		{
+			level.delayframes = level.delayframes - 1
+
+			if (level.delayframes < 1)
+			{
+				// println ("Soldier 1 talks.")
+
+				// Play soldier 1's dialog.
+				level.talkingsoldiersoneshot = 1
+				self anim 23A103_Dial1
+				self waittill animdone
+
+				// Play soldier 2's dialog.
+				level.soldier02thread delete
+				waitexec anim/attack.scr::AttackDeleteSubThread
+				$soldier02 thread soldier02_dialog_thread
+				level.soldier02thread = parm.previousthread
+			}
+		}
+	}
+
+end
+
+soldier01_toast_thread:
+
+	// println ("Soldier 1 toasts")
+	self anim 23A104_Toast
+	self waittill animdone
+
+	// println ("Soldier 1 looks at soldier 4.");
+	self anim 23A105_Lookat4
+	self waittill animdone
+
+	// println ("Drop the coffee cup to the floor")
+	// Drop the coffee cup to the floor.
+	$soldier01prop detach
+	$soldier01prop throw $soldier01 500 $soldier01proptarget
+
+	// Trigger the tree to fall.
+	//level.talkingtreethread delete
+	//waitexec anim/attack.scr::AttackDeleteSubThread
+	$talkingtreetemp thread talkingtree_fall_thread
+
+	// Trigger the logs to rattle.
+	level.rattlelogthread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+	$rattlelogs thread rattlelogs_rattle_thread
+
+	// Turn the hud on to let the player know they can move.
+	drawhud 1
+	$soldier01prop remove
+	// hey at least they are not there anymore ;)
+	$soldier01prop rendereffects "+dontdraw"
+	
+	$soldier03prop remove
+	$soldier03prop rendereffects "+dontdraw"
+
+	// println ("Soldier 1 takes cover.");
+	self anim 23A106_TakeCover
+	self waittill animdone
+	
+	//
+	// Soldier 1 keeps under cover until the bombing stops,
+	// the thread will be interrupted by the explosions stop thread.
+	//
+	while (1)
+	{
+		self anim 23A107_TakeCoverP
+		self waittill animdone
+	}
+
+end
+
+soldier01_getout_thread:
+
+	// For now, keep him cowering.
+	while (1)
+	{
+		self anim 23A107_TakeCoverP
+		self waittill animdone
+	}
+
+	// Pick up weapon.
+	//$soldier01.weapon = level.soldier01weapon
+	//$soldier01weapon remove
+
+	//self anim 23A108_GetOut
+	//self waittill animdone
+
+	// Orient soldier.
+	//$soldier01 turnto soldiertalkface
+
+	// Turn on AI.
+	//$soldier01 exec global/enable_ai.scr
+
+end
+
+
+//
+// Soldier 2:
+//
+// 23A201_Idle			23A201_Idle.skc
+// 23A202_Drag			23A202_Drag.skc
+// 23A203_Dial2			23A203_Dial2.skc
+// 23A204_Toast			23A204_Toast.skc
+// 23A205_Lookat4		23A205_Lookat4.skc
+// 23A206_TakeCover		23A206_TakeCover.skc
+// 23A207_TakeCoverP	23A207_TakeCoverP.skc
+// 23A208_GetOut		23A208_GetOut.skc
+//
+
+soldier02_idle_thread:
+
+	while (1)
+	{
+		local.rand = randomint (100)
+		if (local.rand < 80)
+		{
+			self anim 23A201_Idle
+			self waittill animdone
+			self anim 23A201_Idle
+			self waittill animdone
+		}
+		else
+		{
+			self anim 23A202_Drag
+			self waittill animdone
+
+			// Smoke from mouth.
+			$soldier02 attachmodel models/emitters/breath_emitter.tik "Bip01 Head" 1 1
+		}
+	}
+
+end
+
+soldier02_dialog_thread:
+
+	// println ("Soldier 2 talks.");
+
+	self anim 23A203_Dial2
+	self waittill animdone
+
+	//
+	// Everybody toasts.
+	//
+
+	// Shutdown everybody's threads.
+	level.soldier01thread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+	level.soldier03thread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+	level.soldier04thread delete
+	waitexec anim/attack.scr::AttackDeleteSubThread
+
+	// Start everybody toasting.
+	$soldier01 thread soldier01_toast_thread
+	level.soldier01thread = parm.previousthread
+	$soldier03 thread soldier03_toast_thread
+	level.soldier03thread = parm.previousthread
+	$soldier04 thread soldier04_toast_thread
+	level.soldier04thread = parm.previousthread
+	self anim 23A204_Toast
+	self waittill animdone
+
+	// Play the distant boom.
+
+	// Smoke from mouth.
+	$soldier02 attachmodel models/emitters/breath_emitter.tik "Bip01 Head" 1 1
+
+	// println ("Soldier 2 looks at soldier 4.");
+	self anim 23A205_Lookat4
+	self waittill animdone
+
+	// println ("Soldier 2 takes cover.");
+	self anim_noclip 23A206_TakeCover
+	self waittill animdone
+
+	//
+	// Soldier 2 keeps under cover until the bombing stops,
+	// the thread will be interrupted by the explosions stop thread.
+	//
+	while (1)
+	{
+		self anim 23A207_TakeCoverP
+		self waittill animdone
+	}
+
+end
+
+soldier02_getout_thread:
+
+	// For now, keep him cowering.
+	while (1)
+	{
+		self anim 23A207_TakeCoverP
+		self waittill animdone
+	}
+
+	// Pick up weapon.
+	//$soldier02.weapon = level.soldier02weapon
+	//$soldier02weapon remove
+
+	//self anim 23A208_GetOut
+	//self waittill animdone
+
+	// Orient soldier.
+	//$soldier02 turnto soldiertalkface
+
+	// Turn on AI.
+	//$soldier02 exec global/enable_ai.scr
+
+end
+
+
+//
+// Soldier 3
+//
+// 23A301_Idle				23A301_Idle.skc
+// 23A302_SipCoffee			23A302_SipCoffee.skc
+// 23A303_Dial3				23A303_Dial3.skc
+// 23A304_Lookat4			23A304_Lookat4.skc
+// 23A305_Death				23A305_Death.skc
+//
+soldier03_idle_thread:
+
+
+	local.self exec global/disable_ai.scr
+	self.blendtime = 1.0
+	while (1)
+	{
+		local.rand = randomint (100)
+		if (local.rand < 80)
+		{
+			self anim 23A301_Idle
+			self waittill animdone
+			self anim 23A301_Idle
+			self waittill animdone
+		}
+		else
+		{
+			self anim 23A302_SipCoffee
+			self waittill animdone
+		}
+	}
+end
+
+soldier03_toast_thread:
+
+	// println ("Soldier 3 toasts, actually a bit of dialog")
+	// Soldier 3's toast is actually a bit of dialog.
+	self anim 23A303_Dial3
+	self waittill animdone
+
+	// println ("Soldier 3 looks at soldier 4.");
+	self anim 23A304_Lookat4
+	self waittill animdone
+
+	// Soldier 3 dies.
+	// println ("Soldier 3 dies.");
+	self anim_noclip 23A305_Death
+	self waittill animdone
+	self notsolid
+
+	// Keep him dead.
+	$soldier03 ai_off
+	for (local.i = 0; local.i < level.tickstoremoveguys; local.i++)
+	{
+		waitframe
+	}
+
+	self remove
+
+end
+
+
+//
+// Soldier 4 idle:
+//
+// 23A401_Idle				23A401_Idle.skc
+// 23A402_PickEye			23A402_PickEye.skc
+// 23A403_Toast				23A403_Toast.skc
+// 23A404_Dial4				23A404_Dial4.skc
+// 23A405_Death				23A405_Death.skc
+//
+soldier04_idle_thread:
+
+	local.self exec global/disable_ai.scr
+	self.blendtime = 1.0
+	while (1)
+	{
+		local.rand = randomint (100)
+		if (local.rand < 80)
+		{
+			self anim 23A401_Idle
+			self waittill animdone
+			self anim 23A401_Idle
+			self waittill animdone
+		}
+		else
+		{
+			self anim 23A402_PickEye
+			self waittill animdone
+		}
+	}
+
+end
+
+soldier04_toast_thread:
+
+	// println ("Soldier 4 toasts.")
+	self anim 23A403_Toast
+	self waittill animdone
+
+	// Soldier 4 swan song.
+	// println ("Soldier 4 swan song.")
+	self anim 23A404_Dial4
+	self waittill animdone
+
+	// Begin the first artillery barrage.
+	thread maps/t2l3.scr::artillery_barrage_1
+	
+	// Soldier 4 dies.
+	self anim_noclip 23A405_Death
+	self waittill animdone
+	self notsolid
+	
+	// Keep him dead.
+	$soldier04 ai_off
+	for (local.i = 0; local.i < level.tickstoremoveguys; local.i++)
+	{
+		waitframe
+	}
+
+	self remove
+
+end

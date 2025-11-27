@@ -1,0 +1,158 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Morpheus",
+	"scopeName": "source.morpheus",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#vectors"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#entities"
+		},
+		{
+			"include": "#variables"
+		},
+		{
+			"include": "#labels"
+		},
+		{
+			"include": "#external-scripts"
+		},
+		{
+			"include": "#operators"
+		}
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.double-slash.morpheus",
+					"match": "//.*$"
+				},
+				{
+					"name": "comment.block.morpheus",
+					"begin": "/\\*",
+					"end": "\\*/"
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.morpheus",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.morpheus",
+					"match": "\\\\."
+				}
+			]
+		},
+		"vectors": {
+			"name": "meta.vector.morpheus",
+			"begin": "\\(",
+			"end": "\\)",
+			"patterns": [
+				{
+					"include": "#numbers"
+				}
+			]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric.float.morpheus",
+					"match": "\\b\\d+\\.\\d+\\b"
+				},
+				{
+					"name": "constant.numeric.integer.morpheus",
+					"match": "\\b\\d+\\b"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control.morpheus",
+					"match": "\\b(if|else|while|for|thread|waitthread|wait|waitframe|waitexec|waittill|end|End|exec|exec_server|return|break|continue|goto|switch|case|dprintln|playmovie|landminedamage)\\b"
+				},
+				{
+					"name": "storage.type.morpheus",
+					"match": "\\b(local|level|game|parm|group|self)\\b"
+				},
+				{
+					"name": "keyword.other.morpheus",
+					"match": "\\b(spawn|delete|trigger|print|println|iprintln|iprintlnbold)\\b"
+				}
+			]
+		},
+		"entities": {
+			"patterns": [
+				{
+					"name": "variable.other.entity.morpheus",
+					"match": "\\$[a-zA-Z0-9_]+"
+				},
+				{
+					"name": "variable.other.entity.dynamic.morpheus",
+					"begin": "\\$\\(",
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "$self"
+						}
+					]
+				}
+			]
+		},
+		"variables": {
+			"patterns": [
+				{
+					"name": "variable.other.property.morpheus",
+					"match": "\\.[a-zA-Z0-9_]+"
+				},
+				{
+					"name": "variable.other.morpheus",
+					"match": "\\b[a-zA-Z0-9_]+\\b"
+				}
+			]
+		},
+		"labels": {
+			"patterns": [
+				{
+					"name": "entity.name.function.label.morpheus",
+					"match": "^\\s*[a-zA-Z0-9_]+(\\s+[a-zA-Z0-9_\\.]+)*:"
+				}
+			]
+		},
+		"external-scripts": {
+			"patterns": [
+				{
+					"match": "([a-zA-Z0-9_\\./]+)::([a-zA-Z0-9_]+)",
+					"captures": {
+						"1": {
+							"name": "entity.name.type.script-path.morpheus"
+						},
+						"2": {
+							"name": "entity.name.function.external-label.morpheus"
+						}
+					}
+				}
+			]
+		},
+		"operators": {
+			"name": "keyword.operator.morpheus",
+			"match": "(\\+|\\-|\\*|\\/|\\=|\\!|\\<|\\>|\\&|\\||::|\\[|\\])"
+		}
+	}
+}

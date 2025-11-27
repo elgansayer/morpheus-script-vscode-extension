@@ -1,0 +1,658 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t1l3_tank.scr
+//
+// author: Michael Goodwin
+//
+// setup:
+//
+//   initialize the script (after spawn) with the line:
+//
+//   exec gags/t1l3_tank.scr $tank
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main local.tank:
+
+	level.tank = local.tank
+
+	level.tank waitthread inittank
+
+	level.tankaimnode = spawn info_notnull
+	level.tankaimnode.origin = level.tank.origin + (level.tank.forwardvector * 300.0) + (0.0 0.0 100.0)
+	level.tankaimnode bind level.tank
+
+	level.starttank = 0
+	level.tankreturnready = 0
+	level.captrunning = 0
+	level.captreturnready = 0
+	level.returnpath = 0
+	level.wall1destroyed = 0
+	level.wall2destroyed = 0
+	level.wall3destroyed = 0
+	level.tankdestroyed = 0
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// initialize and configure the tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+inittank:
+
+	self rendereffects "-shadow"
+	self removeondeath 0
+	if ( self.target )
+	{
+		self.collisionent = self.target
+	}
+	self nodamage
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// trigger on path, starts tank rolling
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tank1:
+
+	if ( level.starttank == 1 )
+	{
+		level.captain thread captainchase
+
+		if ( isAlive level.private )
+		{
+			level.private thread privatepanic
+		}
+
+		// start tank on path #1
+		level.tank thread tankpath1
+
+		trigger $bunkergunner
+		trigger $gunner1
+		trigger $gunner2
+
+		level.turret = level.tank queryturretslotentity 0
+		if ( level.turret )
+		{
+			level.turret firedelay 1.0
+			level.turret turnspeed 40
+			level.turret pitchcaps "-30 10 0"
+			level.turret projectile NULL
+
+			if ( level.private && (isAlive level.private) )
+			{
+				level.turret setaimtarget $tanktarget1
+				wait 3.0
+
+				for ( local.i = 1; local.i > 0; local.i-- )
+				{
+					level.turret anim fire
+					if ( local.i > 1 )
+					{
+						wait 3.0
+					}
+					if ( level.private && (isAlive level.private) )
+					{
+						thread shellsplash level.private.origin
+						radiusdamage level.private.origin 1500 200
+					}
+				}
+
+				level.turret clearaimtarget
+				wait 5
+			}
+			level.turret setaimtarget level.tankaimnode
+			wait 5
+			level.turret clearaimtarget
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// captain chases the tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+captainchase:
+
+	self waitthread global/friendly.scr::friendlystop
+
+	wait 4.0
+
+	if ( $FaceDuringFlakSpeech )
+		self turnto $FaceDuringFlakSpeech
+	else
+		self turnto $player
+	self waittill turndone
+
+	if ( isAlive $player )
+	{
+		self anim 13C205_CaptDial06
+		wait 7.0
+	}
+	self turnto NULL
+
+	// send the captain after the tank
+	level.captrunning = 1
+
+	self exec global/disable_ai.scr
+	self threatbias ignoreme
+	self nodamage
+
+	self runto $captain_path1
+	self waittill movedone
+
+	level.captreturnready = 1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// private panics and starts shooting the tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+privatepanic:
+
+	self waitthread global/friendly.scr::friendlystop
+	self exec global/disable_ai.scr
+
+	self turnto level.tank
+	wait 1.0
+	self aimat level.tank
+	wait 0.5
+
+	while ( isAlive self )
+	{
+		self fire
+		wait 0.25
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// trigger the captain and tank to return
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+returntrigger:
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// captain returns with tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+captainreturn:
+
+	self runto $captain_path2
+	self waittill movedone
+
+	if ( level.wall2destroyed == 0 )
+	{
+		while ( level.wall2destroyed == 0 )
+		{
+			waitframe
+		}
+
+		wait 1.5
+	}
+
+	self anim 13C211_diving
+	self waittill animdone
+
+	self exec global/crouch.scr
+
+	level.captain turnto $lookherecap
+
+	while ( level.tankdestroyed == 0 )
+	{
+		waitframe
+	}
+
+	self threatbias 0
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+captainstart:
+
+	self waitthread gags/t1l3_misc.scr::behealthy
+
+	self runto $captaingoto1
+	self waittill movedone
+	
+	self runto $captaingoto2
+	self waittill movedone
+
+	self runto $captaingoto3
+	self waittill movedone
+
+	// following line triggers tank to move
+	while ( vector_length(self.origin - $player.origin) > 700 )
+	{
+		wait 0.1
+	}
+
+	thread tank1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// trigger on path, pushes private to gotopoint #1
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+private1:
+
+	if ( parm.other != level.captain )
+	{
+		end
+	}
+
+	if ( level.starttank == 1 )
+	{
+		self remove
+
+		if ( isAlive level.private )
+		{
+			level.private waitthread global/friendly.scr::friendlystop
+			level.private exec global/disable_ai.scr
+
+//			level.private waitthread gags/t1l3_misc.scr::behealthy
+
+			level.private runto $privategoto1
+			level.private waittill movedone
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// trigger on path, pushes private to gotopoint #2
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+private2:
+
+	if ( parm.other != level.captain )
+	{
+		end
+	}
+
+	if ( level.starttank == 1 )
+	{
+		self remove
+
+		if ( isAlive level.private )
+		{
+			level.private runto $privategoto2
+			level.private waittill movedone
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// trigger on path, pushes private to gotopoint #3
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+private3:
+
+	if ( parm.other != level.captain )
+	{
+		end
+	}
+
+	if ( level.starttank == 1 )
+	{
+		self remove
+
+		if ( isAlive level.private )
+		{
+			level.private runto $privategoto3
+			level.private waittill movedone
+
+//			level.private waitthread gags/t1l3_misc.scr::behealthy
+
+			level.private takedamage
+			level.private.deathanim = 13A302_ParaDeath
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// tank hits this wall trigger, wall explodes
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+walltrigger1:
+
+	self remove
+
+	thread global/exploder.scr::explode 1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// tank hits this wall trigger, fires cannon,
+//   wall explodes
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+walltrigger2:
+
+	if ( level.returnpath == 1 )
+	{
+		self remove
+
+		if ( level.wall2destroyed != 1 )
+		{
+			level.turret anim fire
+			thread global/exploder.scr::explode 2
+			level.wall2destroyed = 1
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// tank hits this wall trigger, fires cannon,
+//   wall explodes
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+walltrigger3:
+
+	if ( level.returnpath == 1 )
+	{
+		self remove
+
+		if ( level.wall1destroyed != 1 )
+		{
+			level.turret anim fire
+			thread global/exploder.scr::explode 4
+			level.wall1destroyed = 1
+		}
+	}
+
+end
+
+
+tank_3rdshot:
+
+	// shot #1 is at $tanktarget3
+	if ( level.returnpath == 1 && isAlive level.tank )
+	{
+		self remove
+		level.turret turnspeed 8
+		level.turret setaimtarget $tanktarget3
+		wait 1.0
+	}
+
+	if ( level.returnpath == 1 && isAlive level.tank )
+	{
+		level.turret anim fire
+		thread shellsplash $tanktarget3.origin
+		wait 2.0
+	}
+
+end
+
+
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// meet the captain after destroying the tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+meetcaptain3:
+
+	if ( level.tankdestroyed == 1 )
+	{
+		self remove
+
+		level.captain turnto $lookherecap
+		level.captain waittill turndone
+		level.captain turnto NULL
+
+		local.blend = level.captain.blendtime
+		level.captain.blendtime = 1.0
+		level.captain anim 13C206_CaptDial07
+		level.captain waittill animdone
+		level.captain.blendtime = local.blend
+
+		wait 1.0
+		level.captain turnto $lookherecap2
+		level.captain waittill turndone
+		level.captain turnto NULL
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// tank path 1 - tank rolls away
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tankpath1:
+
+	self drive $tank1path1 level.enemytankspeed 30 200 level.lookahead
+	self waittill drive
+	if ( self )
+	{
+		self stop
+	}
+
+	wait 1
+	self.origin = $tank1path2.origin
+	self.angles = $tank1path2.angles
+
+	level.tankreturnready = 1
+
+	while ( level.captreturnready == 0 )
+	{
+		waitframe
+	}
+
+	exec global/autosave.scr 2
+	level.returnpath = 1
+	level.captain thread captainreturn
+	self thread tankpath3
+	level.turret setaimtarget $tanktarget2
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// tank path 3 - tank returns, fires until
+//   captain or self is killed
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tankpath3:
+
+	self thread tankdeathcheck
+
+	wait 1.0
+	self takedamage
+
+	self drive $tank1path3 level.enemytankspeed 30 200 level.lookahead
+	self waittill drive
+	if ( self )
+	{
+		self stop
+	}
+
+	// shot #2 is at $tanktarget4 and kills the captain
+	if ( isAlive self )
+	{
+		level.turret setaimtarget $tanktarget4
+		wait 4.0
+	}
+
+	if ( isAlive self )
+	{
+		level.turret anim fire
+		thread shellsplash $tanktarget4.origin
+
+		if ( level.captain )
+		{
+			level.captain takedamage
+			level.captain.deathanim = 13C212_death
+			radiusdamage level.captain.origin 1500 200
+		}
+	}
+
+	if ( level.captain )
+	{
+		level.captain takedamage
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// create a shell splash effect
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+shellsplash local.origin:
+
+	local.ent = spawn "models/emitters/mortar_dirt_NODAMAGE.tik"
+	local.ent.origin = local.origin
+	local.ent anim idle
+	local.ent notsolid
+	wait 4
+	local.ent anim stop
+	local.ent delete
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// wait for the tank to die,
+//   do the vehicle_thinkers death stuff
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tankdeathcheck:
+
+	local.inithealth = self.health
+
+	while ( self.health >= local.inithealth )
+	{
+		waitframe
+	}
+
+	if ( self.smoke == NIL )
+	{
+		self.smoke = spawn "models/emitters/linger_smoke.tik"
+		self.smoke notsolid
+		self.smoke anim start
+		self.smoke.origin = (self.origin + (0 0 80))
+		self.smoke glue self
+	}
+
+	if ( self.health > 0 )
+	{
+		self waittill death
+	}
+
+	level.tankdestroyed = 1
+
+	self playsound explode_tank
+	self stop
+
+	local.model = models/vehicles/tigertank_d.tik
+	local.anims[0] = tank_exit_1
+	local.anims[1] = tank_exit_2
+	local.anims[2] = tank_exit_3
+	local.anims[3] = tank_exit_4
+
+	self thread spawn_fx models/emitters/explosion_tank.tik
+	wait 0.25
+	exec global/earthquake.scr .2 4 0 0
+
+	radiusdamage (self.origin + (0 0 200)) 800 400
+	wait 0.1
+
+	if ( level.turret )
+	{
+		self detachturretslot 0
+		level.turret remove
+		level.turret = NULL
+	}
+
+	local.angles = self.angles
+	local.origin = self.origin
+
+	self remove
+
+	local.collision = spawn script_object model self.collisionent.brushmodel
+	local.collision.origin = local.origin
+	local.collision.angles = local.angles
+
+	local.damaged = spawn script_model model local.model
+	local.damaged.origin = local.origin
+	local.damaged.angles = local.angles
+
+	local.collision disconnect_paths
+
+end
+
+spawn_fx local.fx:
+
+	local.temp = spawn script_model model local.fx
+	local.temp notsolid
+	local.temp.origin = self.origin
+	local.temp anim start
+	local.temp notsolid
+	wait 5
+	local.temp remove
+
+end

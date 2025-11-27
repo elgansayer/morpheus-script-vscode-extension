@@ -1,0 +1,115 @@
+// --------------------------------------------------------------------------------
+// T2L1_Explosion.Scr
+//
+//  1.  Handles the fuel-tank explosion.  Blows up the fuel tank, the nebelwerfer,
+//		and the nebelwerfer soldier.
+//		Add the following as your setthread on the fuel tank damage trigger.
+//
+//	2.	Handles the crashing supply truck.
+//		
+//
+//	note: exec this script after the waittill spawn command...
+//	
+// --------------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------------
+main:
+//
+//
+//		Do initialization here...
+// --------------------------------------------------------------------------------
+
+	$fuel_tank_mask thread fuel_tank_death
+
+	// Tweak these numbers when the truck animation is final...
+	level.nTreeDeathWaitTime = 4
+	level.nCrashTruckSpawnTime = 5
+
+	End
+
+
+
+// --------------------------------------------------------------------------------
+fuel_tank_death:
+//
+// Scripting pertaining to the destroyable fuel tank depot area halfway up the road
+//
+//	fuel_tank_death - waits until health is zero, spawns an explosion,
+// 	swaps models, updates objectives, then starts the Tiger Tank
+// --------------------------------------------------------------------------------
+	self waittill damage
+
+	if ( $fuel_tank_mask.health > 0)
+		goto fuel_tank_death
+
+	self remove
+	
+	exec global/model.scr $fuel_tank_explosion.origin $fuel_tank_explosion.model
+
+	// 1500 pts of damage 25 foot radius... (16*25==400)
+
+	$nebel2.health = 20000
+
+	// jsl-->must wait this fraction of a second to prevent a crash...
+	wait 0.1
+	radiusdamage $fuel_tank_explosion.origin 1500 400
+	exec global/model.scr $fuel_tank_explosion.origin "emitters/mortar_higgins.tik"
+	exec global/earthquake.scr .2 4 0 0
+
+	$fuel_tank remove
+	$fuel_tank_destroyed show
+
+	$nebelwerfer2 TurnOff
+
+	// destroy the nebelwerfer...
+	wait 0.25
+
+	if ( $nebel2_throbbox != NIL )
+		$nebel2_throbbox blowup
+
+		// kill the nebelwerfer operator...
+	if ( isAlive $nebeller2 )
+		$nebeller2 damage $player 15000 $world (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+
+end
+
+
+// --------------------------------------------------------------------------------
+DoCrashingTruck:
+//
+//	Play the crashing truck animation.
+//  Spawn the guys out of the truck....
+// --------------------------------------------------------------------------------
+	//$crashing_truck waitthread CrashTruck
+	thread DestroyTree
+	$crashing_truck notsolid
+	$crashing_truck_mask solid
+	wait level.nCrashTruckSpawnTime
+	// Time to spawn...
+	thread global/ai.scr::spawn 17
+
+	End
+
+// --------------------------------------------------------------------------------
+CrashTruck:
+//
+//	Play the trucks crash animation and wait until it's done...
+// --------------------------------------------------------------------------------
+	thread DestroyTree
+	//self moveanim 21p300_truckcrash
+	//self waittill animdone
+	
+	self stop
+
+	End
+
+// --------------------------------------------------------------------------------
+DestroyTree:
+// --------------------------------------------------------------------------------
+	wait level.nTreeDeathWaitTime
+//	radiusdamage $crashing_truck_tree.origin 200 600
+	$crashing_truck_tree damage $world 15000 $world (0 0 0) (0 0 0) (0 0 0) 0 0 9 0
+	wait 2.0
+	$crashing_truck_tree killed $world 15000 $world (0 0 0) (0 0 0) (0 0 0) 0 0 9 0
+
+	End

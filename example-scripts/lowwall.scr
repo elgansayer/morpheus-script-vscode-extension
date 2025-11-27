@@ -1,0 +1,17 @@
+//-----
+// Low-wall attack behavior
+//-----
+
+waitexec anim/crouch.scr::transition
+
+while (1)
+{
+	if (self cansee self.enemy)
+	{
+		waitexec anim/shoot.scr
+	}
+	else
+	{
+		waitexec anim/aim.scr
+	}
+}

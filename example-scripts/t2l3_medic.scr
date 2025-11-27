@@ -1,0 +1,829 @@
+/////////////////////////////////////////////////
+// t2l3_medic
+/////////////////////////////////////////////////
+
+//
+// script that controls the medic 
+// and controls the german blitzkrieg
+//
+
+// 
+// this is how close the medic will have to be from 
+// the captain for him to no longer follow the player
+// level.medicfindtarget = 512 default
+
+medic_health:
+	while (isalive $medic)
+	{
+//		dprintln ( "medic health : " + $medic.health )
+		wait 1
+	}
+	while (1)
+	{
+		dprintln "medic died"
+		waitframe
+	}
+end
+
+t2l3_medic_init:
+	$stuka hide
+
+	level.releasesarg = 0
+	level.captainisok = 0
+	level.medicfindtarget = 512
+	level.foxhole = 0
+
+	$medic.maxhealth = 65000
+	$medic.health = $medic.maxhealth	
+
+	$medic nodamage
+
+	$medic immune suicide
+	$medic immune crush
+	$medic immune crush_every_frame
+	$medic immune telefrag
+	$medic immune lava
+	$medic immune slime
+	$medic immune falling
+	$medic immune last_self_inflicted
+	$medic immune explosion
+	$medic immune explodewall
+	$medic immune electric
+	$medic immune electricwater
+	$medic immune thrownobject
+	$medic immune grenade
+	$medic immune beam
+	$medic immune rocket
+	$medic immune impact
+	$medic immune bullet
+	$medic immune fast_bullet
+	$medic immune vehicle
+	$medic immune fire
+	$medic immune flashbang
+	$medic immune on_fire
+	$medic immune gib
+	$medic immune impale
+	$medic immune bash
+	$medic immune shotgun
+	$medic immune aagun
+
+thread medic_health
+
+	$woundedgalvan nodamage
+	$woundedgalvan exec global/disable_ai.scr
+	$sarg nodamage
+	$sarg exec global/disable_ai.scr	
+	$privateparts nodamage
+	$privateparts exec global/disable_ai.scr	
+	$woundedcaptain nodamage
+	$woundedcaptain exec global/disable_ai.scr	
+	
+	$webber nodamage
+	$webber immune Explosion
+	$webber dontdropweapons
+	$webber exec global/disable_ai.scr	
+	$webber exec global/crouch.scr
+	$webbers_mp44 hide
+	$webbers_mp44 notsolid
+
+	thread t2l3_private_parts
+	thread t2l3_webber_loop
+
+	thread store_original_fog
+
+	thread webbertreesinit
+
+	$stolentruck nodamage
+	$stolentruck immune Explosion
+
+	$woundedcaptain thread t2l3_woundedguyloop 
+end
+
+//--------------------------------------------------------------
+rollplane local.rollspeed:
+// Make the plane do a cool roll...
+//--------------------------------------------------------------
+ 
+	local.ang = self.angles
+ 
+	while ( self!=NIL && self!=NULL )
+	{
+		local.cang = self.angles
+		local.ang[2] -= local.rollspeed
+		local.cang[2] = local.ang[2]
+		self angles local.cang
+		waitframe
+	}
+ 
+ 	end
+
+stuka_engine:
+	local.thisorigin = $stuka.origin
+	local.tempent = spawn script_origin
+	local.tempent playsound plane
+	local.time = level.time + 10
+	while (local.time > level.time)
+	{
+		if ($stuka)
+			local.tempent.origin = $stuka.origin
+		else
+			local.tempent.origin = local.thisorigin
+		waitframe
+	}
+	local.tempent remove
+end
+
+stuka_run:
+	thread stuka_engine
+	$stuka show
+//	dprintln "stuka is go!!"
+	$stuka thread gags/T1L1_PlaneRide.Scr::Fly $bomberpath 1800 .8
+	$stuka thread rollplane .5
+	$stuka anim fire
+end
+
+webber_hit_stuka local.fx:
+	local.temp = spawn script_model model local.fx
+	local.temp notsolid
+	local.temp.origin = self.origin  
+	local.temp anim start
+	local.temp notsolid
+	wait .2
+	local.temp remove
+end
+
+t2l3_webber_loop:
+	local.count = 0
+	
+	$bombertrigger waittill trigger	
+
+ 	//$bomberpath playsound plane
+	thread stuka_run
+
+	$webber.movedoneradius = 8.0
+	$webber runto $webberwilldiehere
+	$webber waittill movedone
+	
+	level.webberdropgun = 1	
+	while (local.count < 2)
+	{
+		$webber turnto $stuka
+		$webber exec global/aimat.scr $stuka
+		wait 0.2
+		$webber exec global/shoot.scr
+		wait 0.2
+		local.count ++
+
+		if (local.count == 1)
+		{
+			$stuka thread webber_hit_stuka models/fx/fx_tank_explosion.tik
+			$stuka anim smoke
+		}
+	}
+	
+	$webber damage $webber 3000 $webber (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+	
+	while (1)
+	{
+		$webber anim 23A826_DeadPose
+		$webber waittill animdone
+	}
+	
+end
+
+t2l3_sarg_kneeling_loop:
+	$sarg anim 23A820_KneelingCycle
+	$sarg waittill animdone
+end
+
+t2l3_sarg_kneeling_loop_perm:
+	
+	while (level.captainlivetime > 0 && level.releasesarg == 0 )
+	{
+		$sarg anim 23A820_KneelingCycle
+		$sarg waittill animdone
+	}
+	
+end
+
+t2l3_sarg_think:
+		
+
+	$sarg turnto $woundedcaptain
+	$sarg anim 23A821_SoldierDialog
+	$sarg waittill animdone
+	if ( level.objective1set == 0 )
+	{
+		level.objective1set = 1
+		thread maps/t2l3.scr::setobjective 1
+	}
+	thread maps/t2l3.scr::setobjective 2
+	thread t2l3_sarg_kneeling_loop_perm
+
+	thread gags/t2l3_blitzkrieg.scr::DoNewBarrageOn
+end
+
+t2l3_privateparts_loop:
+	while (level.captainisok == 0)
+	{
+		$privateparts anim 23A827_KneelingCycle
+		$privateparts waittill animdone
+	}
+end
+
+t2l3_private_parts_perm:
+	while (level.releasesarg == 0)
+	{
+		$privateparts anim 23A827_KneelingCycle
+		$privateparts waittill animdone
+	}
+end
+
+t2l3_private_parts:
+	$privateparts nodamage
+	if (isalive $privateparts)
+	{
+		$privateparts exec global/disable_ai.scr	
+		$privateparts thread t2l3_privateparts_loop
+	}
+end
+
+t2l3_private_wounded:
+	$woundedgalvan exec global/disable_ai.scr	
+	$woundedgalvan anim "wounded"
+end
+
+private_galvan_visible:
+	$woundedgalvan rendereffects "-dontdraw"
+	wait 10
+	$woundedgalvan rendereffects "+dontdraw"
+end
+
+t2l3_medic_healingdone_loop:
+	while (1)
+	{
+		$medic anim 23A828_HealingCycle
+		$medic waittill animdone
+	}
+end
+
+// 
+// the moment the medic kneels the sarg and private
+// stand up and turn to the wounded captain node
+// 
+medic_kneels_infront_of_captain:
+
+// iprintlnbold "medic kneeling infront of captain"
+	thread playerStartAmbient
+	thread gags/t2l3_blitzkrieg.scr::DoNewBarrageOff
+	level.captainisok = 1
+	$medic.movedoneradius = 64.0
+
+	local.aiment = spawn script_origin
+	local.pos = $woundedcaptain gettagposition "Bip01 Neck"
+	local.aiment.origin = local.pos
+	local.healingAnimCounter = 0
+
+	local.dist = 99999
+	local.stop = 0
+	local.leash = 128
+	while (local.dist > local.leash)
+	{
+		local.dist = vector_length( local.aiment.origin - $medic.origin )
+
+		if (local.dist > local.leash)
+		{
+			$medic turnto local.aiment
+			$medic runto local.aiment
+		}
+
+		waitframe
+	}
+
+	if (isalive $medic)
+	{
+		$medic turnto $woundedcaptain
+		$medic exec global/crouch.scr
+
+		while (local.healingAnimCounter < 3)
+		{
+			local.healingAnimCounter ++
+			$medic anim 23A828_HealingCycle
+			wait 1.5
+		}
+	
+		$medic anim 23A832_MedicDialog
+		$medic waittill animdone
+	
+		$medic exec global/crouch.scr
+	}
+
+	level.releasesarg = 1
+	
+	wait 0.3
+	$sarg exec global/stand.scr	
+
+	wait 0.1
+	$privateparts exec global/stand.scr	
+	
+	thread t2l3_medic_healingdone_loop
+	
+	exec global/autosave.scr 3
+
+	trigger $medicmg42
+	
+	$sarg exec global/crouch.scr		
+	$privateparts exec global/crouch.scr		
+
+	trigger $captainiketrigger
+	thread maps/t2l3.scr::triggercaptainike
+
+	wait 5
+	$sarg exec global/stand.scr		
+	$privateparts exec global/stand.scr		
+
+	thread sarg_go
+	thread privateparts_go
+	
+end
+
+playerStartAmbient:
+	while (level.return == 0)
+		waitframe
+	local.dist = 99999
+	while (local.dist > 768)
+	{
+		local.dist = vector_length ($player.origin - $woundedcaptain.origin)
+		waitframe
+	}
+	level.medicforcebarrageon = 0
+	level.ambientbarrage = 1	
+	thread gags/t2l3_blitzkrieg.scr::DoNewBarrageOff
+end
+
+sarg_go:
+	wait 3
+	$sarg.movedoneradius = 32.0
+	$sarg runto $anchor1
+	$sarg waittill movedone
+	
+	$sarg turnto $s1
+	$sarg exec global/crouch.scr	
+	wait 2
+
+	$sarg resetleash
+	$sarg leash 0
+	$sarg fixedleash 1
+	$sarg exec global/enable_ai.scr
+	$sarg takedamage
+	$sarg thread maps/t2l3.scr::death_check_american
+	
+end
+
+privateparts_go:	
+	wait 3
+	$privateparts.movedoneradius = 64.0
+	$privateparts runto $anchor2
+	$privateparts waittill movedone
+
+	$privateparts turnto $s1
+	$privateparts exec global/crouch.scr	
+	wait 2
+	
+	$privateparts resetleash
+	$privateparts leash 0
+	$privateparts fixedleash 1
+	$privateparts exec global/enable_ai.scr
+	$privateparts takedamage
+	$privateparts thread maps/t2l3.scr::death_check_american
+end
+
+//
+// this is the tread that controls the medic 
+// doing the side mission to heal webber
+//
+medic_kneels_heals_webber:
+
+	$medic turnto $webber
+	$medic exec global/crouch.scr
+	//$medic anim 23A830_Runtocrouch
+	//$medic waittill animdone
+
+	local.count = 3
+	while (local.count)
+	{
+		local.count --
+		$medic anim 23A828_HealingCycle
+		$medic waittill animdone
+	}
+
+	$medic say dfr_T2L3_AM4103
+//	$medic waittill animdone 
+	wait 2
+	level.return = 1
+	level.medicforcebarrageon  = 1
+
+	thread gags/t2l3_blitzkrieg.scr::ModifyReturnBarrage1	
+
+	$player playsound arty_leadin09 
+
+	thread gags/t2l3_blitzkrieg.scr::DoNewBarrageOn
+		
+	thread gettotheplayer $medic 2 $player $woundedcaptain medic_kneels_infront_of_captain	
+
+	level.medicfindtarget = 512
+
+	thread medicincommingdialogue
+
+end
+
+t2l3_medic_kneeling_loop:
+	$medic anim 23A828_HealingCycle
+	$medic waittill animdone
+end
+
+//
+// get the medic going
+//
+medic_start:
+
+
+	$medic exec global/disable_ai.scr	
+
+	level.medicfindtarget = 512
+
+	local.dist = 99999
+
+	while ( local.dist > 256 )
+	{
+		local.dist = vector_length($medic.origin - $player.origin)
+		$medic anim 23A828_HealingCycle
+		$medic waittill animdone
+	}
+	// dprintln "Medic turning off barrage"
+
+	thread removeinitialguys
+	
+	thread gags/t2l3_blitzkrieg.scr::DoNewBarrageOff
+	level.medicforcebarrageon = 0
+	level.foundmedic = 1
+	
+	level.captainlivetime += level.medictimerboost
+		
+	thread maps/t2l3.scr::setobjective 3 // EScort medic to captain
+	
+	// wait 0.3
+	$medic anim 23A829_SoldierDialog
+	$medic waittill animdone
+	
+	wait 1
+	
+	trigger $bombertrigger
+	
+	$stolentruck takedamage		
+
+	while (isalive $stolentruck)
+	{
+		$medic.movedoneradius = 64.0
+		$medic runto $player
+		waitframe
+	}
+		
+	wait 3
+	$medic exec global/stand.scr
+	wait 1
+		
+	$medic say dfr_T2L3_AM4102
+
+	$medic.movedoneradius = 64.0
+
+	local.aiment = spawn script_origin
+	local.pos = $webber gettagposition "Bip01 Neck"
+	local.aiment.origin = local.pos
+
+	$medic runto local.aiment
+
+	$medic waittill movedone
+
+	thread medic_kneels_heals_webber	
+	
+end
+
+t2l3_woundedguyloop:
+		
+	while (level.captainisok == 0)
+	{
+		self anim 23A825_InjuredCycle
+		self waittill animdone
+	}
+	
+	while (1)
+	{
+		self anim 23A826_DeadPose // dead pose
+		self waittill animdone
+	}
+end
+
+t2l3_stiff local.origin:
+	
+	local.ent = spawn models/human/2nd-ranger_captain_snow.tik "$targetname" "friendly" "type_attack" "cover"			
+	local.ent exec global/disable_ai.scr
+	local.ent nodamage
+	local.ent.origin = local.origin
+	
+	local.ent.angles = (0 270 0) 
+
+	while (1)
+	{
+		local.ent anim 23A826_DeadPose
+		local.ent waittill animdone
+	}
+
+end
+
+t2l3_sarg_stand_loop:
+	while (1)
+	{
+		$sarg anim 23A824_StandCycle	
+		$sarg waittill animdone
+	}
+end
+
+t2l3_captain_death_camera:
+	
+	$player physics_off
+
+	local.origin = $woundedcaptain.origin
+
+	$woundedcaptain remove
+
+	thread t2l3_stiff local.origin
+
+	$player nodamage
+
+	$sarg.origin = $sarganchor.origin
+	
+	wait 1
+	
+	$captaindeathcam movetopos $t2l3camera.origin
+
+	// tell the camera to watch the player
+	// the '0' is to fade in no time at all
+	// NOTE the "" are necessary
+	$captaindeathcam watch $woundedcaptainnode 0
+
+	// cut causes the camera to transition to its new state immediately
+	$captaindeathcam cut 
+
+	// cuecamera causes us to switch to a camera
+	cuecamera $captaindeathcam
+	$player hide
+	
+	level.captainisok = 1
+
+	thread t2l3_private_parts_perm
+	$sarg anim 23A823_HailMary
+	$sarg waittill animdone
+
+	thread t2l3_sarg_stand_loop
+	
+	wait 3
+	missionfailed
+	
+	$player physics_on
+end
+
+t2l3_iscaptainalive:
+
+	// $woundedcaptain thread t2l3_woundedguyloop 
+	$woundedgalvan thread t2l3_woundedguyloop 
+
+	while (level.captainlivetime > 0)
+	{
+		// dprintln ("Captain time: " + level.captainlivetime)
+		level.captainlivetime --
+		if (level.captainisok == 1)
+			level.captainlivetime = 0
+		wait 1
+	}
+	if (level.captainisok == 1)
+		end
+	else
+	{
+		// iprintln "captain died"
+		thread t2l3_captain_death_camera
+	}
+end
+
+//////////////////////////////////////
+// find and go to the player
+//////////////////////////////////////
+
+gettotheplayer local.ent local.type local.who local.finaldestination local.threadname:
+
+	$medic nodamage
+	$medic.health = $medic.maxhealth
+		 
+	local.length = vector_length( local.ent.origin - local.who.origin )
+	local.length2 = vector_length ( local.ent.origin - local.finaldestination.origin )
+
+	if (local.length2 > level.medicfindtarget)
+	{
+		wait 0.1
+
+		local.closestdist = 99999
+		local.dist = 0
+		local.dist2 = 0
+		local.closest = NIL
+		
+		local.foxhole = 0
+		
+		for (local.i=1;local.i<$foxhole.size+1;local.i++)
+		{
+			if (local.who istouching $foxhole[local.i])
+			{
+				local.foxhole = $foxhole[local.i]	
+				local.ent notsolid
+				level.foxhole = local.foxhole
+			}
+
+		}
+
+		if ( local.foxhole )
+		{
+			for (local.i=1;local.i<$foxholenode.size+1;local.i++)
+			{
+				//local.dist = vector_length (local.ent.origin - $foxholenode[local.i].origin)
+				local.dist2 = vector_length (local.who.origin - $foxholenode[local.i].origin)
+				
+				if ( (local.dist2 < local.closestdist) /*&& (local.dist2 > 128)*/ )
+				{
+					local.closest	= $foxholenode[local.i]
+					local.closestdist = local.dist2
+				}
+			}
+			local.ent.movedoneradius = 16
+			if (local.closest)
+			{
+				local.ent runto local.closest
+			}
+				
+			if ((local.ent istouching local.foxhole) && (local.who istouching local.foxhole))
+			{
+				local.dist = vector_length (local.ent.origin - local.closest.origin)
+				if (local.dist < 24)
+					local.ent exec global/crouch.scr
+			}	
+		}
+		else if ( (local.length < 150) || (local.type == 1) )
+		{
+			local.ent turnto local.who
+			local.ent notsolid
+		}
+		else
+		{
+			local.ent solid
+			local.ent.movedoneradius = 150.0
+			local.ent exec global/stand.scr
+			local.ent runto local.who
+		}	
+
+		goto gettotheplayer local.ent local.type local.who local.finaldestination local.threadname
+	}
+	else
+	{
+		local.length = vector_length( local.ent.origin - local.who.origin )
+		if (local.length > 150)
+			local.ent solid
+		else
+			local.ent notsolid
+
+		if (local.threadname == "medic_kneels_infront_of_captain")
+		{
+			local.ent thread medic_kneels_infront_of_captain
+		}
+		else if (local.threadname == "medic_kneels_heals_webber")
+		{	
+			local.ent thread medic_kneels_heals_webber
+		}
+		
+	}
+
+end
+
+////////////////////////////////////////////
+// bonus time
+////////////////////////////////////////////
+
+bonus_time_zero:
+	level.captainlivetime = 0
+end
+
+///////////////////////////////////////////
+// fog control
+///////////////////////////////////////////
+
+store_original_fog:
+
+	level.farplane = 2500
+	level.farplane_bias = -1000
+//	level.farplane_color = (0.28 0.33 0.38)
+
+	level.farplanedelta = 1000
+	level.howfast = 10
+
+	level.fogcount = 0
+	level.fogtotalchange = level.farplanedelta 
+
+end
+
+change_fog:
+	local.exit = 0	
+	while ((level.fogcount < level.fogtotalchange) && (local.exit == 0))
+	{
+		level.fogcount += level.howfast
+		$world farplane (level.farplane - level.fogcount)
+		dprintln ( "farplane: " + (level.farplane - level.fogcount) )
+		if ($player istouching $restorefog)
+			local.exit = 1
+		wait 0.1
+	}
+end
+
+restore_fog:
+	local.exit = 0	
+	while ((level.fogcount > 0) && (local.exit == 0))
+	{
+		level.fogcount -= level.howfast
+		$world farplane (level.farplane - level.fogcount)
+		dprintln ( "farplane: " + (level.farplane - level.fogcount) )
+		if ($player istouching $changefog)
+			local.exit = 1
+		wait 0.1
+	}
+end
+///////////////
+// webber trees
+///////////////
+
+webbertreesinit:
+
+	for (local.i=1;local.i<=$webbertrees.size;local.i++)
+	{
+		$webbertrees[local.i] nodamage
+	} 
+
+	while (level.objective1 == 0)
+		wait 1
+
+	for (local.i=1;local.i<=$webbertrees.size;local.i++)
+	{
+		$webbertrees[local.i] takedamage
+	} 
+
+end
+
+/////////////////////////////
+// medic incomming dialogue
+/////////////////////////////
+
+medicincommingdialogue:
+
+	
+	wait 5
+	$player playsound mortar_fire
+//iprintlnbold "mortar_fire"	
+	wait 0.3
+	$medic say dfr_call_AP4320 // Incomming!!
+//iprintlnbold "incomming"	
+	wait 1
+		
+	local.time = level.time + 20
+	
+	while (local.time > level.time)
+	{
+		$player playsound dfr_T2L3_barrage
+//iprintlnbold "random sound"		
+		wait (randomint(10) + 5)
+	}
+
+end
+
+////////////////////////
+// remove initial guys
+////////////////////////
+
+removeinitialguys:
+	
+	$soldier01 remove
+	$soldier02 remove
+
+	$soldier01weapon remove	
+	$soldier02weapon remove
+
+	level.foxguy1 remove
+	level.foxguy2 remove	
+	level.foxguy3 remove
+	
+	$foxholeguymask remove
+end

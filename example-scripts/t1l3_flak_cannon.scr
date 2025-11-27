@@ -1,0 +1,117 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t1l3_flak_cannon.scr
+//
+// author: Michael Goodwin
+//
+// setup:
+//
+//   initialize the script (after spawn) with the line:
+//
+//   exec gags/t1l3_flak_cannon.scr $flakcannon $flakcharge
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main local.flakcannon local.flakcharge:
+
+	level.flakcannon = local.flakcannon
+	level.flakcharge = local.flakcharge
+
+	level.flakcharge explosioneffect "models/fx/demodamage_flak88.tik"
+	level.flakcharge setusethread charge_used
+	level.flakcharge hide
+	level.flakdestroyed = 0
+	level.airdropgag = 0
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+charge_used:
+
+	thread global/democharge.scr::charge_switch 1 0
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+lock_cannon:
+
+	level.flakcannon lock
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+enable_charge:
+
+	level.flakcharge show
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+flak_destroyed:
+
+	level.flakdestroyed = 1
+	if ( level.captain && (isAlive level.captain) )
+	{
+		level.captain waitthread global/friendly.scr::friendlythink
+		level.captain exec global/enable_ai.scr
+
+		local.dist = vector_length(level.captain.origin - $player.origin)
+		while ( (isAlive level.captain) && (local.dist > 160) )
+		{
+			local.dist = vector_length(level.captain.origin - $player.origin)
+			waitframe
+		}
+		thread airdropdialog
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+airdropdialog:
+
+	if ( level.airdropgag == 0 )
+	{
+		level.airdropgag = 1
+
+		thread global/bomber.scr::bomb 15
+		$bomberplane15 playsound cargoplane
+		wait 5
+
+		level.captain thread gags/t1l3_misc.scr::captainsafety
+		wait 2
+
+		thread maps/t1l3.scr::objective4
+		wait 3 
+
+		$objective5ontrig playsound cargo_drop
+	}
+
+end

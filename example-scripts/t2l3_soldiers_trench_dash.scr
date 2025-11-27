@@ -1,0 +1,148 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// soldier running to main trench line.
+//
+// author: Michael Goodwin
+//
+// run the main thread on the level object (after spawn) as follows:
+//
+//   exec gags/t2l3_soldiers_trench_dash.scr
+//
+// description:
+//
+// - when the trench_dash thread is called, the thread iterates all of the "trenchdasher" soldiers.
+//
+// - for each of these soldiers, all of the hint nodes are iterated and the nearest one determined.
+//
+// - the soldier then runs to the path that this hint node points to.
+//
+// setup:
+//
+// - the entire setup consists of 3 component types:
+//   - soldier entities		the soldiers that run to the trench line.
+//   - paths				defined by connecting info_pathnode entities, describes the paths to the destination.
+//   - hint nodes			special info_pathnode entities that guide the soldier's path selection.
+//
+//   - soldiers:
+//     - place the soldier(s) and assign the following keys:
+//       $targetname		- must be "trenchdasher" (without the quotes).
+//
+//   - paths:
+//     - place a series of info_pathnode entities leading from the soldier to the destination.
+//     - even though the soldier references this path, it can by anonymous, as the reference is provided
+//       via a link from the hint node (see below).
+//
+//   - hint nodes:
+//     - place a info_pathnode entity and assign the following keys:
+//       $targetname		- must be "trenchdashpath" (without the quotes).
+//       target				- must be linked (CTRL_K) to an info_pathnode.
+//
+// other notes:
+//
+// - to get the soldiers to run to the trench under script control, use the following line:
+//
+//   thread gags/t2l3_trench_dash.scr::cue_trench_dash
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init:
+	for ( local.i = 1; local.i < $trenchdasher.size + 1; local.i++ )
+	{
+		$trenchdasher[local.i]	thread trench_dasher_cower
+	}
+end
+
+trench_dasher_cower:
+
+	level.cower_time = level.time + 45
+
+	while ( (level.cower_time > level.time) )
+	{
+		self anim 23A912_CowerA
+		self waittill animdone
+	}	
+
+	self thread trench_dasher_crouch
+end
+
+trench_dasher_crouch:
+
+	self turnto $s1
+	self exec global/crouch.scr	
+	
+	self resetleash
+	self leash 0
+	self fixedleash 1
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the level when the trench dash is triggered
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cue_trench_dash:
+
+	if ( $trenchdasher )
+	{
+		for ( local.i = 1; local.i < $trenchdasher.size + 1; local.i++ )
+		{
+			$trenchdasher[local.i] exec global/stand.scr	
+			$trenchdasher[local.i] thread trench_dash
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on each soldier that is supposed
+//   to perform the trench dash
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trench_dash:
+
+	local.bestdist = -1
+	local.bestpath = NIL
+
+	// iterate the "trenchdashpath" info_pathnode entities
+	if ( $trenchdashpath )
+	{
+		for ( local.i = 1; local.i < $trenchdashpath.size + 1; local.i++ )
+		{
+			// get the absolute distance
+			local.thisvect = vector_subtract self.origin $trenchdashpath[local.i].origin
+			local.thisdist = vector_length local.thisvect
+
+			if ( ( local.bestdist == -1 ) || ( local.thisdist < local.bestdist ) )
+			{
+				// this hint node is nearer
+				local.bestpath = $trenchdashpath[local.i]
+				if ( local.bestpath.target )
+				{
+					// the hint node targets the start of the actual path
+					local.bestpath = local.bestpath.target
+				}
+				local.bestdist = local.thisdist
+			}
+		}
+	}
+
+	if ( local.bestpath != NIL )
+	{
+		self.enableEnemy = 0
+		self runto local.bestpath
+		self waittill movedone
+		self type_attack "turret"
+		self.enableEnemy = 1
+		self leash 32
+		self thread trench_dasher_crouch
+	}
+
+end

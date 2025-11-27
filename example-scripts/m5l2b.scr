@@ -1,0 +1,312 @@
+// TANK DRIVE 2 
+// ARCHITECTURE: STEVE/ADAM/NATE
+// SCRIPTING: Z/AC
+
+	level.script = "maps/m5l2b.scr"
+	thread global/exploder.scr::main
+	//thread global/exploder.scr::repeat
+
+	exec global/loadout.scr maps/m5l2b.scr	
+	exec global/ai.scr
+	level.dontdropweapons = 1
+	
+//////////////////////////////////
+	level waittill prespawn
+println "z:        prespawn marker"
+//////////////////////////////////
+
+
+	level.cantgothatway = 0
+	level.bombnum = 0
+	level.tempnum = 0
+	level.sightdistance = 3314
+
+	level.enemytankspeed = 200
+	level.enemytankspeed_reverse = -175
+	level.halftrakspeed = 300
+	level.lookahead = 256
+	level.playertanktarget = 0
+
+	level.fastspeed = 300
+	level.slowspeed = 160
+
+	$playertank waitthread global/vehicles_thinkers.scr::players_tank $playertank_trigger
+	$playertank vehiclespeed level.fastspeed
+	level.currently_fast = 1
+
+	local.flaks[0] = $flak88_1
+	local.flaks[1] = $flak88_2
+	local.flaks[2] = $flak88_3
+	local.flaks[3] = $flak88_4
+	local.flaks[4] = $flak88_5
+
+	exec global/randomorder.scr local.flaks
+
+	local.flaks[0] thread global/vehicles_thinkers.scr::enemy_flak_think
+	local.flaks[1] thread global/vehicles_thinkers.scr::enemy_flak_think
+	local.flaks[2] thread global/vehicles_thinkers.scr::enemy_flak_think
+	local.flaks[3] thread remove_flak
+	local.flaks[4] thread remove_flak
+
+	$s2_tank1	thread global/vehicles_thinkers.scr::enemy_tank_think 0 panzer
+	$s10_tank1	thread global/vehicles_thinkers.scr::enemy_tank_think 0
+	$s10_tank2	thread global/vehicles_thinkers.scr::enemy_tank_think 0
+	$s15_tank1	thread global/vehicles_thinkers.scr::enemy_tank_think 0 panzer
+	$s15_tank2	thread global/vehicles_thinkers.scr::enemy_tank_think 0 panzer
+	$s20_tank1	thread global/vehicles_thinkers.scr::enemy_tank_think 0
+
+	$mg42_1 	thread global/mg42.scr::JEEP_SETUP $mg42_1_trigger1 0 $mg42_1_gunner level.playertanktarget
+	level.mg42_1 = parm.previousthread
+	$mg42_2 	thread global/mg42.scr::JEEP_SETUP $mg42_2_trigger1 0 $mg42_2_gunner level.playertanktarget
+	level.mg42_2 = parm.previousthread
+
+	thread global/barrel.scr::explosive_barrel
+	exec global/ambient.scr m5l2b
+
+
+//////////////////////////////////
+level waitTill spawn
+println "z:        level waittill spawn marker"
+//////////////////////////////////
+
+	//*** telling the AI to not drop health
+	level.nodrophealth = 1
+
+	$player stufftext "tmstartloop sound/music/mus_TigerTank_01a.mp3"
+
+//	waitthread global/objectives.scr::reset_objectives
+//	waitthread global/objectives.scr::blank_objectives
+	waitthread global/objectives.scr::add_objectives 1 2 "Escape with the King Tiger tank." $level_end.origin
+	waitthread global/objectives.scr::current_objectives 1
+end
+
+remove_flak:
+	println "z:         self.basename: " self.basename
+	if ($(self.basename) != NULL)
+		self.basename remove
+	self remove
+end
+
+speedup:
+	if (level.currently_fast == 1)
+		end
+	println  "z:        speeding up"
+	for (local.speed = level.slowspeed; local.speed <= level.fastspeed; local.speed += 1)
+	{
+		$playertank vehiclespeed local.speed
+		waitframe
+	}
+	println  "z:        done speeding up"
+	level.currently_fast = 1
+	end
+
+slowdown:
+	if (level.currently_fast != 1)
+		end
+	println  "z:        slowing down"
+	for (local.speed = level.fastspeed; local.speed >= level.slowspeed; local.speed -= 1)
+	{
+		$playertank vehiclespeed local.speed
+		waitframe
+	}
+	println  "z:        done slowing down"
+	level.currently_fast = 0
+	end
+
+ambush1:
+	local.ambush_spawns = 4
+	for (local.i = 1; local.i <= local.ambush_spawns; local.i++)
+	{
+		if ( (randomint 100) < 60)
+		{
+			thread global/ai.scr::spawn local.i
+			println "z:     ambush 1 spawn: " local.i
+			wait .1
+		}
+	}
+	end
+
+s2:
+	//called by the BSP
+	//enemy tank drives back and forth across the stream
+	while (isAlive $s2_tank1)
+	{
+		$s2_tank1 waitthread drive_path $s2_tank1_forward level.enemytankspeed
+		if !(isAlive $s2_tank1)
+			end
+		$s2_tank1 waitthread drive_path_reverse $s2_tank1_reverse level.enemytankspeed_reverse
+	}
+	end
+
+s9:
+	//called by the BSP
+	//enemy tank by fork in the road
+	if (isAlive $s10_tank2)
+		$s10_tank2 thread drive_path $s10_tank2_path level.enemytankspeed_reverse
+	end
+
+s10:
+	//called by the BSP
+	//enemy tank by guard tower
+	if (isAlive $s10_tank1)
+		$s10_tank1 thread drive_path $s10_tank1_path level.enemytankspeed
+	end
+
+s15:
+	//called by the BSP
+	//two enemy tanks drive from the town
+	if (isAlive $s15_tank1)
+		$s15_tank1 thread drive_path $s15_tank1_path level.enemytankspeed
+	if (isAlive $s15_tank2)
+		$s15_tank2 thread drive_path $s15_tank2_path level.enemytankspeed
+	end
+
+s20:
+	//called by the BSP
+	//one on the road in town
+	wait 3
+	if (isAlive $s20_tank1)
+		$s20_tank1 thread drive_path $s20_tank1_path level.enemytankspeed
+	end
+
+remove_mg1:
+	thread kill_mg_1
+	end
+
+remove_mg2:
+	if ($mg42_2)
+		thread kill_mg $mg42_2_gunner $mg42_2 $mg42_2_bipod
+	if (level.mg42_2)
+		level.mg42_2 delete
+	end
+
+kill_mg_1:
+	//called by BSP
+	if ($mg42_1)
+		thread kill_mg $mg42_1_gunner $mg42_1 $mg42_1_bipod
+	if (level.mg42_1)
+		level.mg42_1 delete
+	end
+
+kill_mg_2:
+	//called by barrel script
+	wait .1
+	exec global/exploder.scr::explode 11
+	if ($mg42_2)
+		thread kill_mg $mg42_2_gunner $mg42_2 $mg42_2_bipod
+	if (level.mg42_2)
+		level.mg42_2 delete
+	if ($tower == NULL)
+		end
+	$tower notsolid
+	$tower time 1
+	$tower rotatex -100
+	$tower waitmove
+	$tower remove
+	end
+
+
+kill_mg local.gunner local.gun local.bipod:
+	local.gun remove
+	local.bipod remove
+	local.gunner exec global/bullethit.scr (0 0 250) 500 0 1
+	local.gunner hide
+	end
+
+level_end:
+	//called by the BSP
+	if (level.missionfailed == 1)
+		end
+	waitthread global/objectives.scr::add_objectives 1 3
+	exec global/missioncomplete.scr m5l3
+	end
+
+/////////////////////////
+drive_path local.path local.speed local.remove:
+// drive Vector position, speed, acceleration, reach_distance, look_ahead
+//println "z:              " local.path
+//println "z:              " local.speed
+self.driving = 1
+self drive local.path local.speed 30 200 level.lookahead
+//self modifydrive level.fastspeed 50 level.lookahead
+self waitTill drive
+if (self)
+{
+	self stop
+	self.driving = 0
+	if (local.remove == "remove")
+		self remove
+}
+end
+	
+drive_path_reverse local.path local.speed:
+	// drive Vector position, speed, acceleration, reach_distance, look_ahead
+	//println "z:              " local.path
+	//println "z:              " local.speed
+	self.driving_reverse = 1
+	self drive local.path local.speed 30 200 level.lookahead
+	//self modifydrive level.fastspeed 50 level.lookahead
+	self waitTill drive
+	self stop
+	self.driving_reverse = 0
+	end
+
+/////////////////////////////
+cant_go_that_way:
+//called by the BSP
+if( level.drive == NIL || level.drive.size == 0)
+{
+	level.drive[0] =  dfr_drive_01h_2
+	level.drive[1] =  dfr_drive_02h_1
+	level.drive[2] =  dfr_drive_04h_1
+	level.drive[3] =  dfr_drive_05h_1
+	level.drive[4] =  dfr_drive_07h_2
+	level.drive[5] =  dfr_drive_08h_1
+	level.drive[6] =  dfr_drive_09h_1
+	level.drive[7] =  dfr_drive_10h_2
+	
+	if (level.prev_drive != NIL)
+	{
+		for (local.i = 0; local.i < level.drive.size; local.i++)
+		{
+			if (level.drive[local.i] == level.prev_drive)
+			{
+			println "before1: " level.drive.size
+				level.drive[local.i] = NIL
+			println "after1: " level.drive.size
+				break
+			}
+		}
+	}
+}
+
+level.prev_drive = thread get_random_entry level.drive
+//level.playertank playsound level.prev_drive
+$player playsound level.prev_drive
+end
+
+get_random_entry local.entries:
+	local.n = randomint (local.entries.size)
+//println "XXX:" local.n
+	local.entry = 0
+get_random_entry_loop:
+	local.result = local.entries[local.entry]
+	if (local.result == NIL)
+	{
+		local.entry++
+		goto get_random_entry_loop
+	}
+	if (local.n)
+	{
+		local.n--
+		local.entry++
+		goto get_random_entry_loop
+	}
+	
+println "result: " local.result
+
+local.entries[local.entry] = NIL
+end local.result
+
+
+

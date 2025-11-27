@@ -1,0 +1,34 @@
+start:
+
+level waittill prespawn
+
+	drawhud 0
+
+level waittill spawn
+
+	freezeplayer
+
+	//*** launch the credits setup thread first
+	waitthread global/credits.scr::credits_setup
+
+	//*** this bsp is for viewing the credits while in the menu, play the berlin music
+	$player playsound credits1 wait
+
+	//*** this script file contains all the data to display on the screen
+	waitthread global/credits_data.scr::credits_start
+
+	$player waittill sounddone
+
+	//*** loop the sound again
+	$player playsound credits1 wait
+	$player waittill sounddone
+
+	//*** loop the sound again
+	$player playsound credits1 wait
+	$player waittill sounddone
+
+	//*** loop the sound again
+	$player playsound credits1 wait
+	$player waittill sounddone
+
+end

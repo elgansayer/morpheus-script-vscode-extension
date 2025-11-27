@@ -1,0 +1,801 @@
+//--------------------------------------------------------------------------------
+// T2L1_Tank.Scr
+// Jeff Leggett
+// 07/08/2002
+//
+//  Handles the custom tanks in T2L1...
+//	
+//--------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------
+main:
+//
+//	Initialization function...
+//--------------------------------------------------------------------------------
+
+	$tigertank1 hide
+	//$tigertank1_stickybomb hide
+	//level.bStickyBombHidden = 1
+	level.bTigerTank1Destroyed = 0
+
+	level.friendly3 thread MedicThink
+
+	End
+
+//--------------------------------------------------------------------------------
+DoTank1:
+//
+// Tigertank1 - starts the TigerTank rolling on its path
+//
+//--------------------------------------------------------------------------------
+
+	dprintln "Starting up tank1!!"
+	
+	$tigertank1 thread Tank1Go
+
+	// set these as 1 until ready... Makes sure these guys are alive for the gag.
+	level.bTreeGuyReady	= 0
+	level.bDialogSpoken = 0
+
+	End
+
+
+//--------------------------------------------------------------------------------
+Tank1Go:
+//--------------------------------------------------------------------------------
+
+	level.enemytankspeed = 200
+	level.playertanktarget = $player
+	level.lookahead = 256
+	level.sightdistance = 16000
+	self setcollisionentity $panzertank_mask
+	//	self.type = NIL
+	self rendereffects "-shadow"
+	self.start_health = 1000
+	self.health = self.start_health
+	self removeondeath 0
+	self immune bullet
+	self immune fast_bullet
+	self immune grenade
+	self immune bash
+
+	self.bAttackPlayer = 1
+
+	thread SetupFriendlies
+	
+	self.gun = self QueryTurretSlotEntity 0
+	
+	thread global/ai.scr::spawn 6	
+	self show
+
+	level.friendly1.health_pickup = FALSE
+	level.friendly2.health_pickup = FALSE
+	level.friendly3.health_pickup = FALSE
+
+	// Run the vehicle_warning script
+	//self thread global/Vehicle_Warning.Scr::WarnFriendlies $friendly 800 0.707
+	//self.previous_thread = parm.previousthread
+
+// MJG: the following construct is undefined and BAD BAD BAD
+//	self waittill (level.bDialogueSpoken == 1)
+	while ( level.bDialogSpoken != 1 ) 
+	{
+		// don't start driving until dialog is spoken?
+		waitframe 
+	}
+
+	self drive $tigertank1_path level.enemytankspeed 30 200 level.lookahead
+//	self.gun setAimTarget $player
+	self waittill drive
+	self stop
+
+	// okay, we're here.  Now aim at the friendlies...
+
+	if ( level.friendly3!=NULL && isAlive level.friendly3 )
+	{
+// MJG: the following construct is undefined and BAD BAD BAD
+//		self waittill (level.bTreeGuyReady	== 1)
+
+		while ( level.bTreeGuyReady != 1 ) 
+		{ 
+			waitframe 
+		}
+
+		// stop attacking player
+		self.bAttackPlayer = 0
+
+		if ( isAlive self )
+			self waitthread target_delay_fire level.friendly3 3
+		
+		wait 0.1
+
+		// jsl--> Make sure he DIES!
+		if ( isAlive self && isAlive level.friendly3 )
+		{
+			level.friendly3 damage self 3000 self (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+		}
+		wait 0.5
+	}
+
+	if ( level.friendly2!=NULL && isAlive level.friendly2 )
+	{
+		self.bAttackPlayer = 0
+
+		self.gun setAimTarget level.friendly2
+
+		// do our miss....
+		wait 3
+		thread DoFriendly2RunAway
+		wait 1
+		if ( isAlive self )
+			self waitthread target_delay_fire NULL 1
+		wait 0.1
+
+		// this time we hit him!
+		if ( isAlive self )
+			self.gun setAimTarget level.friendly2
+	
+		wait 4
+		
+		if ( isAlive self )
+			self waitthread target_waittill_fire level.friendly2
+
+		// jsl--> hack until tank aiming is fixed.
+		if ( isAlive self && isAlive level.friendly2 )
+		{
+			level.friendly2 damage self 3000 self (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+		}
+		wait 0.5
+	}
+
+	if ( level.friendly1!=NULL && isAlive level.friendly1 )
+	{
+		self.bAttackPlayer = 0
+
+		if ( isAlive self )
+			self.gun setAimTarget level.friendly1
+		wait 2
+		thread DoFriendly1RunAway
+		if ( isAlive self )
+			self waitthread target_delay_fire NULL 1
+		wait 0.1
+
+		if ( isAlive self )
+			self.gun setAimTarget level.friendly1
+		wait 6
+
+		if ( isAlive self )
+			self waitthread target_waittill_fire level.friendly1
+
+		// jsl--> hack until tank aiming is fixed.
+		if ( isAlive self && isAlive level.friendly1 )
+		{
+			level.friendly1 damage self 3000 self (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+		}
+		wait 0.5
+	}
+
+	// now just be a normal tank... (ie: go after player...)
+	if ( isAlive self )
+	{
+		self thread maps/t2l1.scr::tank_think 0 //panzer //_winter
+		self thread maps/t2l1.scr::tank_targeting
+	}
+
+	// put the survivors back to their old health value...
+	if ( level.friendly1!=NIL && isAlive level.friendly1 )
+		level.friendly1 thread RestoreHealth
+	if ( level.friendly2!=NIL && isAlive level.friendly2 )
+		level.friendly2 thread RestoreHealth
+	if ( level.friendly3!=NIL && isAlive level.friendly3 )
+		level.friendly3 thread RestoreHealth
+
+	End
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+target_delay_fire local.targ local.delay:
+
+	if ( isAlive self )
+		self.gun setAimTarget local.targ
+	wait local.delay
+	if ( isAlive self )
+		self.gun anim fire
+
+end
+
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
+target_waittill_fire local.targ:
+
+	if ( isAlive self )
+	{
+		self.gun setAimTarget local.targ
+		self.gun waittill ontarget
+	}
+	if ( isAlive self )
+		self.gun anim fire
+
+end
+
+
+//--------------------------------------------------------------------------------
+GoAfterPlayer:
+//
+//	Go after player when the mg42 guy dies.  Stop going after player when
+//  
+//--------------------------------------------------------------------------------
+
+	while ( self.bAttackPlayer==1 )
+	{
+		self.gun setAimTarget $player
+		self.gun waittill ontarget
+
+		if (self == NULL)
+			end
+
+		// should probably be targeting the player or something...
+		if !(vector_within $player.origin self.origin 16000)
+		{		
+			wait 1
+		}
+		else if (!(sighttrace $player.origin (self.gun.origin + (0 0 64)) 1))
+		{
+			wait 1
+		}
+		else
+		{
+			wait 3
+			if ( self.bAttackPlayer==1 )
+			{
+				self.gun setAimTarget $player
+				self.gun waittill ontarget
+
+				if (self == NULL)
+					end
+
+////this causes the bug where the cannon doesnt shoot in the Z direction...				self.gun setAimTarget NULL
+				self.gun anim fire
+				wait 2
+			}
+		}
+
+		if (self == NULL)
+			end
+	}	
+
+
+	End
+
+//--------------------------------------------------------------------------------
+DoFriendly2RunAway:
+//--------------------------------------------------------------------------------
+
+	if ( level.bTigerTank1Destroyed==0 )
+	{
+		level.attackthread2 delete
+		level.friendly2 thread Friendly2RunAway
+		level.attackthread2 = parm.previousthread
+	}
+
+	End
+
+//--------------------------------------------------------------------------------
+DoFriendly1RunAway:
+//
+//
+//	he runs his flee path and will attack from there....
+//--------------------------------------------------------------------------------
+
+	if ( level.bTigerTank1Destroyed==0 )
+	{
+		level.attackthread1 delete
+
+		level.friendly1 thread FriendlyAttackTank $friendly1_fleepath 1
+		level.attackthread1 = parm.previousthread
+	}
+
+	End
+
+//--------------------------------------------------------------------------------
+Friendly2RunAway:
+//
+//	Friendly runs away from tank...
+//--------------------------------------------------------------------------------
+
+	self runto $friendly2_fleepath
+	self waittill movedone
+
+	if ( parm.movedone!=1 )
+		goto Friendly2RunAway
+
+	// do cower here..
+	while ( 1 )
+	{
+		self anim 23A107_TakeCoverP
+		self waittill animdone
+	}
+
+	End
+
+//--------------------------------------------------------------------------------
+BeHealthy:
+//	temporarily crank up our health to do the tank gag...
+//--------------------------------------------------------------------------------
+	if ( self==NIL )
+		end
+
+	if ( isAlive self )
+	{
+		self.save_health = self.health
+		self.health = self.maxhealth * 0.75
+	}
+	end
+
+//--------------------------------------------------------------------------------
+RestoreHealth:
+//
+//  put our health back where it was before the tank gag...
+//--------------------------------------------------------------------------------
+
+	if ( self==NIL )
+		end
+
+	if ( isAlive self )
+	{
+		self.health = self.save_health
+	}
+	end
+
+
+//--------------------------------------------------------------------------------
+SetupFriendlies:
+//	Go to our hiding places and do the player dialog...
+//
+//--------------------------------------------------------------------------------
+
+	wait 2
+
+	if ( level.friendly1!=NIL && isAlive level.friendly1 )
+	{
+		level.friendly1 thread BeHealthy
+//		level.friendly1 thread FriendlyAttackTank $friendly1_rally 1
+//		level.attackthread1 = parm.previousthread
+		level.friendly1 thread DoTank1Dialog
+
+		level.friendly2 thread FriendlyAttackTank $friendly2_rally 1
+		level.attackthread2 = parm.previousthread
+	}
+	else
+	{
+		if ( level.friendly2!=NIL && isAlive level.friendly2 )
+		{
+			level.friendly2 thread DoTank1Dialog
+			level.friendly2 thread BeHealthy
+		}
+	}
+
+	if ( level.friendly3!=NIL && isAlive level.friendly3 )
+	{
+		level.friendly3.abort_cover = 1
+		level.friendly3 thread BeHealthy
+		// make sure he dies the right way...
+		level.friendly3 exec global/setdeathanim.scr "21A201_RagDollDeath"
+		// run to his spot...
+		level.friendly3 thread FriendlyAttackTank $friendly3_rally 0
+		level.attackthread3 = parm.previousthread
+	}
+
+	if (!(isAlive level.friendly1) && !(isAlive level.friendly2))
+	{
+		dprintln "both are dead, start the tank"
+		level.bDialogSpoken = 1
+	}
+End
+
+
+//--------------------------------------------------------------------------------
+Tank1Dead:
+//--------------------------------------------------------------------------------
+
+	level.bTigerTank1Destroyed = 1
+
+	// kill the friendly threads....
+	level.attackthread1 delete
+	level.attackthread2 delete
+	level.attackthread3 delete
+
+	// become friends with player again...
+	if (level.friendly1 && isAlive level.friendly1 )
+	{
+		level.friendly1 thread FriendStart
+		level.friendly1 exec global/enable_ai.scr
+	}
+
+	if (level.friendly2 && isAlive level.friendly2 )
+	{
+		level.friendly2 thread FriendStart
+		level.friendly2 exec global/enable_ai.scr
+	}
+
+	if (level.friendly3 && isAlive level.friendly3 )
+	{
+		level.friendly3 thread FriendStart
+		level.friendly3.abort_cover = 0
+
+		// level.friendly3 exec global/enable_ai.scr
+	}
+
+	End
+
+	
+//--------------------------------------------------------------------------------
+TankDialogDeathCheck:
+//
+//	if the guy dies before saying his dialog, make sure the game can go on...
+//--------------------------------------------------------------------------------
+
+	self waittill death
+
+	level.bDialogSpoken = 1
+
+	//if ( level.bStickyBombHidden==0 )
+	//{
+		//End
+	//}
+
+	//waitthread ShowStickyBomb
+	exec global/obj.scr 3 current "Use Sticky Bomb to Destroy Tank" $tigertank1.origin
+	End
+
+//--------------------------------------------------------------------------------
+ShowStickyBomb:
+//--------------------------------------------------------------------------------
+	if ( level.bStickyBombHidden==1 )
+	{
+		level.bStickyBombHidden = 0
+		exec global/obj.scr 3 current "Use Sticky Bomb to Destroy Tank" $tigertank1.origin
+	}
+
+	End
+
+//--------------------------------------------------------------------------------
+DoTank1Dialog:
+//
+//	say our dialog and run to our spot...
+//--------------------------------------------------------------------------------
+
+	level.bDialogSpoken = 0
+
+	self thread FriendStop
+
+	//self thread TankDialogDeathCheck
+	 
+	self exec global/disable_ai.scr
+	self nodamage
+	self runto $friendly1_speechnode.origin
+	self waittill movedone
+	level.bDialogSpoken = 1
+	wait 3
+	self anim 21A103_Dialogue3 	
+	self waittill animdone
+	self takedamage
+	self exec global/enable_ai.scr
+	
+	exec global/obj.scr 3 current "Use Sticky Bomb to Destroy Tank" $tigertank1.origin
+
+	if ( self==level.friendly1 )
+	{
+		self thread FriendlyAttackTank $friendly1_rally 1
+		level.attackthread1 = parm.previousthread
+	}
+	else if ( self==level.friendly2 )
+	{
+		self thread FriendlyAttackTank $friendly2_rally 1
+		level.attackthread2 = parm.previousthread
+	}
+	End
+
+
+//--------------------------------------------------------------------------------
+FriendlyAttackTank local.dest local.attack:
+//
+//	Sets up this friendly to run to the dest and start attacking the tank...
+//
+//--------------------------------------------------------------------------------
+	self waitthread FriendStop
+
+	self exec global/disable_ai.scr
+
+	local.there = 0
+
+	while ( local.there==0 )
+	{
+		self runto local.dest
+		self waittill movedone
+		if ( parm.movedone==1 )
+			local.there = 1
+	}
+
+	self turnto $tigertank1
+
+	if ( local.attack==1 )
+	{
+		self aimat $tigertank1
+
+		wait 0.2
+
+		self exec global/crouch.scr
+
+		// now start doing cover fire...
+		
+		while ( isAlive self )
+		{
+			// note: this thread gets deleted when the tank dies...
+
+			// if we have a shot at him, do it...
+
+			if (sighttrace (self.origin + (0 0 64)) $tigertank1.origin 1)
+			{
+				for (local.xx = 0; local.xx < 8; local.xx++ )
+				{
+					if ( !(isAlive self) )
+						break
+
+					self fire
+					wait 0.6
+
+					self turnto $tigertank1
+					self aimat $tigertank1
+				}
+			}
+			// ??? self waitthread anim/reload.scr::Reload 1 1 0
+			// reloading...
+			wait 3
+
+			self turnto $tigertank1
+			self aimat $tigertank1
+		}
+	}
+	else if (self==level.friendly3)
+	{
+		// tell tank to come and get me...
+		level.bTreeGuyReady	= 1
+
+		while ( isAlive self )
+		{
+			self anim 23A107_TakeCoverP
+			self waittill animdone
+		}
+	}
+	
+
+	End
+
+//-------------------------------------------------------------------
+FriendStart:
+//
+//	Become a friend...
+//-------------------------------------------------------------------
+
+	self.mins = 0
+	self.maxs = 30
+//	self.destination		= $player
+	self.friendtype			= 1
+
+	// friendly3 is the medic...
+	if ( self==level.friendly3 )
+		self.friendtype = 5
+
+	self thread global/friendly.scr::friendlythink
+	End
+
+
+//--------------------------------------------------------------------------------
+FriendStop:
+//--------------------------------------------------------------------------------
+	self thread global/friendly.scr::friendlystop
+
+	End
+
+//--------------------------------------------------------------------------------
+mg42_guy_death_check:
+//--------------------------------------------------------------------------------
+
+	self waittill death
+
+	// now that the mg42 guy is dead... Have the turret go after the player...
+	$tigertank1 thread GoAfterPlayer
+	
+	end
+
+//--------------------------------------------------------------------------------
+MedicRunForCover:
+//--------------------------------------------------------------------------------
+
+	// find closest cover place and run there...
+	local.total = $medic_hideplace.size
+	local.min_dist = 999999
+	local.min_node = NULL
+
+	for (local.i=1;local.i<=$medic_hideplace.size;local.i++)
+	{
+		local.dist = vector_length ( self.origin - $medic_hideplace[local.i].origin )
+
+		if ( local.dist < local.min_dist )
+		{
+			local.min_dist = local.dist
+			local.min_node = $medic_hideplace[local.i]
+		}
+	}
+
+	if ( local.min_node!=NULL )
+	{
+		// we found one... how far?
+		if ( local.min_dist >= 2304 )
+		{
+			dprintln "Found medic_hideplace node, but it's too far:" local.min_dist
+		}
+		else
+		{
+			dprintln "Found medic_hideplace node, running there now!"
+			local.done = 0
+			self runto local.min_node
+			self waittill movedone
+
+			if ( self.abort_cover==0 )
+				self exec global/crouch.scr
+		}
+	}
+	else
+	{
+		dprintln "No medic_hideplace nodes.  No where to run!"
+	}
+
+
+	end
+
+//--------------------------------------------------------------------------------
+AreFriendliesFighting:
+//--------------------------------------------------------------------------------
+
+	local.bFighting = 0
+
+	if ( isAlive level.friendly1 && level.friendly1.has_enemy==1 )
+		local.bFighting = 1
+
+	if ( isAlive level.friendly2 && level.friendly2.has_enemy==1 )
+		local.bFighting = 1
+
+	end local.bFighting
+
+//--------------------------------------------------------------------------------
+WaitForFightingToStop:
+//
+//	wait for fighting to stop while monitoring everyone's health.  If anyones
+//  health goes too low, turn back into our friendly medic...
+//--------------------------------------------------------------------------------
+
+	local.bFighting = 1
+	local.bTurnedOnMedic = 0
+
+	while ( local.bFighting==1 && self.abort_cover==0 )
+	{
+		wait 0.5
+		local.bFighting = waitthread AreFriendliesFighting
+
+		if ( local.bFighting==1 )
+		{
+			// still fighting, see if anyone needs a medic...
+
+			local.bNeedMedic = 0
+
+			local.health = ($player.health * 100) / $player.maxhealth
+			if (local.health < level.medicmin)
+				local.bNeedMedic = 1
+
+			if ( isAlive level.friendly1 )
+			{
+				local.health = (level.friendly1.health * 100) / level.friendly1.maxhealth
+				if (local.health < level.medicmin)
+					local.bNeedMedic = 1
+			}
+
+			if ( isAlive level.friendly2 )
+			{
+				local.health = (level.friendly2.health * 100) / level.friendly2.maxhealth
+				if (local.health < level.medicmin)
+					local.bNeedMedic = 1
+			}
+
+			if ( local.bTurnedOnMedic==0 )
+			{
+				if ( local.bNeedMedic==1 )
+				{
+					dprintln "someone needs a medic... Going back into medic-mode...."
+					local.bTurnedOnMedic = 1
+					if ( self.abort_cover==0 )
+						self thread global/friendly.scr::friendlythink
+				}
+			}
+			else
+			{
+				// we're still fighting, we've turned on medic mode again, but no one needs us. Run for cover!
+				if ( local.bNeedMedic==0 )
+				{
+					local.bTurnedOnMedic	= 0
+					self waitthread global/friendly.scr::friendlystop
+
+					// no one needs a medic, therefore run to hiding spot again...
+					dprintln "OK, everyone healed.. Medic running for cover again..."
+					self waitthread MedicRunForCover
+					wait 3
+				}
+			}
+		}
+	}
+
+	end
+
+//--------------------------------------------------------------------------------
+MedicThink:
+//
+//	Have medic run for cover whenever his buddies 
+//--------------------------------------------------------------------------------
+
+	self.abort_cover = 0
+
+	// Have our buddies monitor if they're attacking or not...
+	level.friendly1 thread FriendlyEnemyCheck
+	level.friendly2 thread FriendlyEnemyCheck
+
+	while ( isAlive self )
+	{
+		local.bFighting = waitthread AreFriendliesFighting
+
+		if ( local.bFighting==1 && self.abort_cover==0 )
+		{
+			dprintln "FRIENDS ARE FIGHTING! --> Medic running for cover.."
+			// stop being a friend for now... Go run for cover...
+			self waitthread global/friendly.scr::friendlystop
+			self waitthread MedicRunForCover
+
+			// we've run for cover, now see when the fighting is over...
+			self waitthread WaitForFightingToStop
+
+			dprintln "FRIENDS have stopped fighting! Becoming a medic again..."
+
+			// fighting has stopped, therefore turn our friendlyness back on..
+			if( self.abort_cover==0 )
+				self thread global/friendly.scr::friendlythink
+		}
+
+		wait 0.5
+	}
+
+
+	end
+//--------------------------------------------------------------------------------
+FriendlyEnemyCheck:
+//--------------------------------------------------------------------------------
+
+	while ( isAlive self )
+	{
+		self.has_enemy = 0
+		self waittill hasenemy
+		self.has_enemy = 1
+		while ( isAlive self && self.has_enemy==1 )
+		{
+			wait 3
+			if ( self!=NULL && self.thinkstate != "attack" ) 
+			{
+				wait 1
+				if ( self!=NULL && self.thinkstate != "attack" )
+					self.has_enemy = 0
+			}
+		}
+	}
+
+	self.hasenemy = 0
+
+	end

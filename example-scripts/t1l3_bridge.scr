@@ -1,0 +1,908 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t1l3_bridge.scr
+//
+// author: Michael Goodwin
+//
+// setup:
+//
+//   initialize the script (after spawn) with the line:
+//
+//   exec gags/t1l3_bridge.scr $staticbridge $bridge $train
+//
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main local.staticbridge local.bridge local.train:
+
+	level.staticbridge = local.staticbridge
+	level.bridge = local.bridge
+	level.train = local.train
+	level.train hide
+	level.train notsolid
+
+	local.org = level.train.origin
+	local.org[2] = 103.5
+	level.train.origin = local.org
+
+	local.forward = level.staticbridge.forwardvector
+	local.left = level.staticbridge.leftvector
+	local.up = level.staticbridge.upvector
+
+	local.offset = local.forward * 1576.5
+	local.offset = local.offset + (local.left * 18.5)
+	local.offset = local.offset + (local.up * 291.0)
+
+	level.bridge.angles = level.staticbridge.angles
+	level.bridge.origin = level.staticbridge.origin + local.offset
+
+	$traineffect.placedorigin = $traineffect.origin
+
+	level.bridgestate = 0
+	level.bridgestarted = 0
+	level.chargestriggered = 0
+	level.playerwins = 0
+	level.playerloses = 0
+	level.bridgewait1 = 20
+	level.bridgewait2 = 20
+
+	$explosive1 triggered 1
+	$explosive2 triggered 1
+	$explosive3 triggered 1
+	$explosive4 triggered 1
+
+	$explosive1 solid
+	$explosive2 solid
+	$explosive3 solid
+	$explosive4 solid
+
+	thread bridgespawner
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread run on the trigger at the start of the bridge
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_gag_check:
+
+	if ( level.bridgestarted == 0 )
+	{
+		level.bridgestarted = 1
+		thread bridge_gag_start
+	}
+	else if ( level.chargestriggered == 1 )
+	{
+		level.playerwins = 1
+		waitthread global/objectives.scr::add_objectives 6 3
+		self remove
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// start the bridge charge placement gag
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_gag_start:
+
+	$bridgegunner1 waitthread bridgegunnerconfig
+	$bridgegunner2 waitthread bridgegunnerconfig
+
+	trigger $bridgegunner1
+	trigger $bridgegunner2
+
+	level.bridgegunners = 1
+	thread gunnersoff
+
+	local.dist = vector_length($captainbridgenode.origin - level.captain.origin)
+	if ( local.dist > 2900 )
+	{
+		waitthread teleport level.captain $captainbridgeport
+	}
+
+	level.captain exec global/disable_ai.scr
+	level.captain waitthread global/friendly.scr::friendlystop
+
+	level.captain.movedoneradius = 32
+	level.captain runto $captainbridgenode
+	level.captain waittill movedone
+
+	$explosive1 triggered 0
+	$explosive2 triggered 0
+	$explosive3 triggered 0
+	$explosive4 triggered 0
+
+	level.captain waitexec global/crouch.scr
+	level.captain turnto $player
+	level.captain waittill turndone
+	level.captain turnto NULL
+	level.captain anim 13C208_CaptDial09
+	level.captain waittill animdone
+	level.captain turnto $captainbridgetarget
+
+	level.bridgespawnerswitch = 1.0
+
+	thread gags/t1l3_misc.scr::pushfarplane 5000 2500 20.0
+
+	// start the train sound effect
+	level.looptrainsound = 1
+	$traineffect thread trainrampsound 5 0.0 0.2 15 10 0.2 0.75 10
+	// wait rampx rampy ramptime playtime rampx rampy ramptime
+
+	level.captain waitthread bridgewait level.bridgewait1
+	
+	if ( (level.playerwins == 0) && (level.chargestriggered == 0) )
+	{
+		level.captain anim 13C209_CaptDial10
+		level.captain waittill animdone
+	}
+
+	thread earthquake 5 30 0.04 0 1
+	thread earthquake 15 30 0.12 0 1
+//      start delay/duration/intensity/ramp (0 1 = yes 1 1 = no)
+
+	level.captain waitthread bridgewait level.bridgewait2
+
+	if ( (level.playerwins == 0) && (level.playerloses == 0) && (level.chargestriggered == 0) )
+	{
+		level.playerloses = 1
+		thread bridge_intact
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the captain while he waits at the bridge
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridgewait local.waittime:
+
+	local.expire = level.time + local.waittime
+	local.chance = 5
+
+	while ( (level.time < local.expire) && (level.chargestriggered == 0) )
+	{
+		if ( (randomint 100) < local.chance )
+		{
+			local.chance = 5
+
+			local.target = waitthread getbridgespawnertarget
+			if ( local.target != NULL )
+			{
+				self aimat local.target
+				wait 0.2
+				local.shots = 3 + (randomint 3)
+				for ( local.i = 1; local.i <= local.shots; local.i++ )
+				{
+					self fire
+					wait 0.12
+				}
+				self aimat NULL
+
+				if ( (randomint 100) < 50 )
+				{
+					wait 0.75
+					local.target = waitthread getbridgespawnertarget
+					if ( local.target != NULL )
+					{
+						self aimat local.target
+						wait 0.2
+						for ( local.i = 1; local.i <= 3; local.i++ )
+						{
+							self fire
+							wait 0.12
+						}
+						self aimat NULL
+					}
+					else
+					{
+						waitframe
+					}
+				}
+			}
+			else
+			{
+				waitframe
+			}
+		}
+		else
+		{
+			local.chance += 2
+			wait 0.20
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// find a target for the captain to shoot at
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+getbridgespawnertarget:
+
+	local.target = NULL
+
+	if ( $bridgespawnerspawn )
+	{
+		local.mindist = 99999
+
+		for ( local.i = $bridgespawnerspawn.size; local.i > 0; local.i-- )
+		{
+			local.dist = vector_length($bridgespawnerspawn[local.i].origin - self.origin)
+
+			if ( (local.dist < 2500) && (local.dist < local.mindist) )
+			{
+				local.target = $bridgespawnerspawn[local.i]
+				local.mindist = local.dist
+			}
+		}
+	}
+
+end local.target
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// configure a bridge gunner
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridgegunnerconfig:
+
+	self nodamage
+	self.ainoprone = 1
+	self.ainododge = 1
+	self.ainohopforward = 1
+	self.ainohopbackward = 1
+	self.ainointerval = 1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// simple telporter
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+teleport local.source local.destination:
+
+	local.source hide
+	local.source.origin = local.destination.origin
+	local.source.angles = local.destination.angles
+	local.source show
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// start the countdown on the charges
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_gag_timer:
+
+	if ( (level.chargestriggered == 0) && (level.charge1 == 1) && (level.charge2 == 1) && (level.charge3 == 1) && (level.charge4 == 1) )
+	{
+		// flag that the charges have been triggered
+		level.chargestriggered = 1
+
+		level.captain thread bridge_capt_timer
+		
+		// start the stopwatch
+		$player stopwatch level.chargedelay
+		$player loopsound bombtick
+		wait level.chargedelay
+
+		$player stoploopsound
+
+		if ( (level.playerwins == 1) && (level.playerloses == 0) )
+		{
+			thread bridge_collapse
+		}
+		else
+		{
+			thread bridge_kills_player
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// runs on the captain to trigger the anim/audio
+//   at the appropriate time
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_capt_timer:
+
+	wait 3.0
+	self anim 13C210_CaptDial11
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the level when the
+//   bridge collapse sequence runs
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_collapse:
+
+	waitthread precameracut
+
+//	thread bridge_blow_charges 0.5 1.0
+	$explosive1 remove
+	$explosive2 remove
+	$explosive3 remove
+	$explosive4 remove
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// effects threads
+	// set off the demo charges
+ 	thread democharge1_thread
+ 	thread democharge2_thread
+ 	thread democharge3_thread
+ 	thread democharge4_thread
+ 
+ 	// splashes for the train falling into the water
+ 	thread locomotive_splash
+ 	thread locomotive_splash
+ 	thread coalcar1_splash
+ 	thread coalcar2_splash
+ 	thread flatbed06_splash
+ 	thread flatbed04a_splash
+ 	thread flatbed04b_splash
+ 
+ 	// bridge section falling in
+ 	thread platform_a1_thread
+ 	thread platform_a2_thread
+ 	thread platform_a3_thread
+ 
+ 	thread platform_b1_thread
+ 	thread platform_b2_thread
+ 	thread platform_b3_thread
+ 
+ 	thread bridge_dust1_thread
+ 	thread bridge_dust2_thread
+ 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~
+		
+//	thread earthquake 4.5 1.5 0.5 1 0
+	thread camera_collapse
+
+	thread global/spotlight.scr::traincorona level.train "light middle"
+	level.train show
+	level.train anim 13P006_trainfalls
+	thread trainsoundcollapse
+
+	level.bridge anim bridgefall
+	level.bridge waittill animdone
+
+	wait 2.0
+	waitexec global/award_medal.scr 1
+	setcvar "g_mission" "1"
+	missiontransition briefing/briefingt2
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// camera action for the collapse sequence
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+camera_collapse:
+
+	// tracking jib shot
+//	$camera01 showquakes 1
+	$camera01 moveto $camera01_path
+	$camera01 watch $camera01_target 0
+	$camera01 speed 0.6
+	$camera01 follow $camera01_path $camera01_target
+	$camera01 cut
+	cuecamera $camera01 0
+	waitframe
+	$player.origin = (0 0 6000)
+
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the level when the
+//   bridge intact (mission failure) sequence runs
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_intact:
+
+	waitthread precameracut
+
+	thread camera_intact
+
+	thread global/spotlight.scr::traincorona level.train "light middle"
+	level.train show
+	level.train moveanim 13P005_train
+	thread trainsoundintact
+
+	wait 5.0
+	fadeout 2 0 0 0 1
+	wait 2.0
+	missionfailed 1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// camera action for the intact sequence
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+camera_intact:
+
+	// lock-off shot
+	$camera02 showquakes 1
+	$camera02 moveto $camera02_start
+	$camera02 watch $camera02_start.target
+	$camera02 cut
+	cuecamera $camera02 0
+	waitframe
+	$player.origin = (0 0 6000)
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+precameracut:
+
+	drawhud 0
+	freezeplayer
+	$player physics_off
+	$player hide
+
+	waitthread bridgespawneroff
+
+	$bridgegunner1 ai_off
+	$bridgegunner1 hide
+	$bridgegunner2 ai_off
+	$bridgegunner2 hide
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the level when the
+//   charges detonate, but the player hasn't
+//   reached the safe zone
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_kills_player:
+
+	thread bridge_blow_charges 0.5
+	wait 1.0
+	$player damage $world 15000 $world (0 0 0) (0 0 0) (0 0 0) 0 0 9 0
+	if ( isAlive $player )
+	{
+		wait 2.0
+		missionfailed
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridge_blow_charges local.delay1 local.delay2:
+
+	if ( local.delay1 != NIL )
+		wait local.delay1
+
+	$explosive1 explode
+	$democharge1 playsound explode_truck4
+	$explosive2 explode
+	$explosive2 playsound explode_tank
+
+	if ( local.delay2 != NIL )
+		wait local.delay2
+
+	$explosive3 explode
+	$explosive3 playsound explode_tank
+	$explosive4 explode
+	$explosive4 playsound explode_tank
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// activate bridge gunners
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gunnerson:
+
+	if ( level.bridgegunners == 0 )
+	{
+		level.bridgegunners = 1
+
+		$bridgegunner1 ai_on
+		$bridgegunner1 attackplayer
+
+		$bridgegunner2 ai_on
+		$bridgegunner2 attackplayer
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// de-activate bridge gunners
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gunnersoff:
+
+	if ( level.bridgegunners == 1 )
+	{
+		level.bridgegunners = 0
+
+		$bridgegunner1 ai_off
+		$bridgegunner2 ai_off
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// spawn manager for the bridge spawners
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridgespawner:
+
+	if ( $bridgespawner )
+	{
+		level.bridgespawnerswitch = 0.0
+
+		level.bridgespawners = $bridgespawner.size
+		level.bridgespawner = exec global/makearray.scr $bridgespawner
+
+		for ( local.i = 1; local.i <= level.bridgespawners; local.i++ )
+		{
+			level.bridgespawner[local.i] = waitthread global/spawner.scr::spawner_create level.bridgespawner[local.i]
+		}
+
+		level.bridgespawnercount = 0
+
+		while (1)
+		{
+			while ( level.bridgespawnerswitch <= 0.0 )
+			{
+				waitframe
+			}
+
+			if ( level.bridgespawnerswitch == 1.0 )
+			{
+				level.bridgespawnerswitch = 0.5
+
+				for ( local.i = 1; local.i <= level.bridgespawners; local.i++ )
+				{
+					local.ent = waitthread global/spawner.scr::spawner_activate level.bridgespawner[local.i]
+					local.ent forceactivate
+
+					local.ent thread bridgespawnerspawned
+					local.ent thread bridgespawnerdeathcheck
+				}
+			}
+			else
+			{
+				// MJG - ideally, this would spawn the specified % of possible spawners
+				// according to the value in level.bridgespawnerswitch
+				// currently, it merely spawns a single random spawner
+				if ( level.bridgespawnercount < 2 )
+				{
+					local.i = (randomint level.bridgespawners) + 1
+
+					local.ent = waitthread global/spawner.scr::spawner_activate level.bridgespawner[local.i]
+					local.ent forceactivate
+
+					local.ent thread bridgespawnerspawned
+					local.ent thread bridgespawnerdeathcheck
+				}
+			}
+			wait 4.0
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on a soldier when he spawns
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridgespawnerspawned:
+
+	level.bridgespawnercount++
+	self.targetname = "bridgespawnerspawn"
+	self runto $(self.target)
+	self waittill movedone
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on a soldier while he is alive
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridgespawnerdeathcheck:
+
+	self waittill death
+	level.bridgespawnercount--
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// turn off the spawner and remove all spawned soldiers
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bridgespawneroff:
+
+	level.bridgespawnerswitch = 0.0
+	waitframe
+	waitframe
+	for ( local.i = $bridgespawnerspawn.size; local.i > 0; local.i-- )
+	{
+		$bridgespawnerspawn[local.i] remove
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ramp the train sound between the specified values
+// over the specified time
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trainrampsound local.initdelay local.start local.end local.ramp local.holddelay local.start2 local.end2 local.ramp2:
+
+	wait local.initdelay
+
+	local.count = local.ramp * 10
+	local.bump = (local.end - local.start) / local.count
+
+	for ( local.i = 0; local.i < local.count; local.i++ )
+	{
+		if ( level.playerwins == 1 )
+			end
+//		dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~` train volume is " local.start
+		local.dist = 3500 + (3000.0 * local.start)
+		if ( level.looptrainsound == 1 )
+			self loopsound train_run_loop local.start local.dist
+		local.start += local.bump
+		wait 0.10
+	}
+
+	wait local.holddelay
+
+	local.count = local.ramp2 * 10
+	local.bump = (local.end2 - local.start2) / local.count
+
+	for ( local.i = 0; local.i < local.count; local.i++ )
+	{
+		if ( level.playerwins == 1 )
+			end
+//		dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~` train volume is " local.start2
+		local.dist = 3500 + (3000.0 * local.start2)
+		if ( level.looptrainsound == 1 )
+			self loopsound train_run_loop local.start2 local.dist
+		local.start2 += local.bump
+		wait 0.10
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// train sound when bridge is left intact
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trainsoundintact:
+
+	// move the effect
+	$traineffect.origin = $traineffect.placedorigin
+	$traineffect movenorth 10000
+	$traineffect time 12
+	$traineffect move
+
+	wait 2.5
+	$traineffect playsound train_whistle
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// train sound when bridge collapses
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trainsoundcollapse:
+
+	level.looptrainsound = 0
+	$traineffect stoploopsound
+
+	$traincrasheffect bind $camera01
+	$traincrasheffect playsound bridgesequence
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// trigger earthquake, with optional delay
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+earthquake local.delay local.duration local.magnitude local.no_rampup local.no_rampdown:
+
+	if ( local.delay > 0.0 )
+		wait local.delay
+
+	earthquake local.duration local.magnitude local.no_rampup local.no_rampdown
+
+end
+
+
+// Train stuff
+locomotive_splash:
+	wait 4.93333
+	$train_splash_0 anim start
+end
+
+coalcar1_splash:
+	wait 5.333333
+	$train_splash_1 anim start
+end
+
+coalcar2_sparks:
+	wait 5.8
+	$train_sparks anim start
+	wait 0.8
+	$train_sparks anim end
+end
+
+coalcar2_splash:
+	wait 5.8
+	$train_splash_2 anim start
+end
+
+flatbed06_splash:
+	wait 6.2
+	$train_splash_3 anim start
+end
+
+flatbed04a_splash:
+	wait 7.53333
+	$train_splash_4 anim start
+end
+
+flatbed04b_splash:
+	wait 8.56666
+	$train_splash_5 anim start
+end
+
+// Demo Charges
+democharge1_thread:
+	wait 4.35
+	$democharge1 playsound explode_truck4
+	$democharge1 anim start
+end
+
+democharge2_thread:
+	wait 4.32
+	$democharge2 playsound explode_truck4
+	$democharge2 anim start
+end
+
+democharge3_thread:
+	wait 4.28
+	$democharge3 playsound explode_truck4
+	$democharge3 anim start
+end
+
+democharge4_thread:
+	wait 4.25
+	$democharge4 playsound explode_truck4
+	$democharge4 anim start
+end
+
+// Bridge elements
+platform_a1_thread:
+	wait 4.933
+	$platform_a1 anim start
+end
+
+platform_a2_thread:
+	wait 4.933
+	$platform_a2 anim start
+end
+
+platform_a3_thread:
+	wait 4.933
+	$platform_a3 anim start
+end
+
+platform_b1_thread:
+	wait 4.633
+	$platform_b1 anim start
+end
+
+platform_b2_thread:
+	wait 4.633
+	$platform_b2 anim start
+end
+
+platform_b3_thread:
+	wait 4.633
+	$platform_b3 anim start
+end
+
+// Dust FX
+bridge_dust1_thread:
+	wait 11.16667
+	$bridge_dust1 anim start
+end
+
+bridge_dust2_thread:
+	wait 11.16667
+	$bridge_dust2 anim start
+end
+

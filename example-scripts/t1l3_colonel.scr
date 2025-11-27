@@ -1,0 +1,781 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t1l3_colonel.scr
+//
+// author: Michael Goodwin
+//
+// setup:
+//
+//   initialize the script (after spawn) with the line:
+//
+//   exec gags/t1l3_colonel.scr $colonel $bmw $captain $private
+//
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main local.colonel local.bmw local.captain local.private:
+
+	level.colonel = local.colonel
+
+	level.colonel type_attack  "turret"
+	level.colonel.health = 4161993
+	level.colonel nodamage
+	level.colonel threatbias ignoreme
+	level.colonel exec global/disable_ai.scr
+	level.colonel.ainoprone = 1
+	level.colonel.ainocrouch = 1
+	level.colonel.ainododge = 1
+	level.colonel.ainohopforward = 1
+	level.colonel.ainohopbackward = 1
+	level.colonel.ainointerval = 1
+	level.colonel.type_grenade = balcony_grenade
+
+	level.colonelreachedbalcony = 0
+	level.colonelatbalcony = 0
+	level.runtrigger2 = 0
+	level.runtrigger3 = 0
+	level.runtrigger4 = 0
+	level.pretrigger3 = 0
+
+	level.bmw = local.bmw
+
+	level.captain = local.captain
+	level.captain thread captaindeathcheck
+
+	level.private = local.private
+	level.private thread privatedeathcheck
+
+	level.ridingbmw = 0
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+captaindeathcheck:
+
+	self waittill death
+	wait 1.0
+	iprintlnbold "The Captain has been killed in action."
+	iprintlnbold "You failed the mission."
+	wait 3.0
+	missionfailed
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+privatedeathcheck:
+
+	self waittill death
+	wait 1.0
+	iprintlnbold "Private Wilson has been killed in action."
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// fire at player from first house balcony, turn and run,
+//   teleport to outside back door
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger1:
+
+	if (level.colonel)
+	{
+		self remove
+
+		wait 2.5
+		level.colonel aimat $player
+		wait 0.5
+		level.colonel.enableEnemy = 1
+		level.colonel attackplayer
+		wait 5
+		level.colonel.enableEnemy = 0
+		level.colonel runto $officerpath1
+		level.colonel waittill movedone
+		
+		waitthread teleport level.colonel $officerteleport1
+
+		level.colonel tether $officerteleport1
+		level.colonel mindist 10
+		level.colonel leash 10
+
+		level.colonel aimat $player
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// turn and walk, teleport to outside back door if player is quiet in boat ride
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger1alt:
+
+	if (level.colonel)
+	{
+		self remove
+
+		wait 3.5
+		level.colonel.enableEnemy = 0
+		level.colonel walkto $officerpath1
+		level.colonel waittill movedone
+
+		waitthread teleport level.colonel $officerteleport1
+
+		level.colonel tether $officerteleport1
+		level.colonel mindist 10
+		level.colonel leash 10
+
+		level.colonel aimat $player
+		wait 2
+		$balconyguy turnto $player
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// start the colonel attack early
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+colonelattack:
+
+	if (level.colonel)
+	{
+		level.colonel mindist 10
+		level.colonel leash 10
+
+		wait 0.5
+
+		level.colonel.enableEnemy = 1
+		level.colonel attackplayer
+
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// wait outside back door, fire at player, run to barn,
+//   teleport to front of second house,
+//   trigger motorcycle sequence
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger2:
+
+	if (level.colonel)
+	{
+		self remove
+
+		wait 0.5
+		level.colonel aimat $player
+		wait 0.5
+		level.colonel.enableEnemy = 1
+		level.colonel attackplayer
+
+		local.runat = level.time + 5.0
+		while ( (level.time < local.runat) && (level.runtrigger2 == 0) )
+		{
+			waitframe
+		}
+
+		level.colonel.runanimrate = 1.55
+
+		level.colonel.enableEnemy = 0
+		level.colonel runto $officerpath2
+		level.colonel waittill movedone
+
+		waitthread teleport level.colonel $officerteleport2
+
+		level.colonel tether $officerteleport2
+		level.colonel mindist 10
+		level.colonel leash 10
+		level.colonel hide
+		level.colonel aimat $player
+
+		thread trigger2allies
+
+		// set up the motorcycle gag
+		local.rider = spawn "models/human/german_waffenss_officer.tik"
+
+		local.rider physics_off
+		local.rider.angles = (0 0 0)
+		local.rider exec global/disable_ai.scr
+		local.rider attach level.bmw "passenger1" 1
+
+		local.rider holster
+		local.rider unholster 1
+
+		local.vect = (0 0 128)
+		local.vect[0] = -960
+		local.vect[1] = -7100
+
+		local.rider aimat local.vect
+		local.rider thread dobangbang
+		local.rider thread dodialog
+		local.rider anim_noclip 13G101_Colonel
+
+		level.ridingbmw = 1
+		level.bmw thread KillPlayerOnTouch
+
+		level.bmw notsolid
+		level.bmw loopsound bmwbike_snd_run
+		level.bmw moveanim 13P003_motorcycle
+		level.bmw waittill animdone
+		level.ridingbmw = 0
+
+		level.colonel show
+		level.colonel thread pretrigger3
+
+		// when the anim is done, kill the thread...
+		level.bmw.player_kill_thread delete
+		level.bmw remove
+	}
+
+end
+
+dobangbang:
+
+	wait 2.0
+	self thread bangbang 3
+	wait 1.5
+	self thread bangbang 4
+
+end
+
+dodialog:
+
+	self.nextsayattack = level.time + 10.0
+	wait 2.75
+	self playsound den_T1L3_GC5601
+
+end
+
+bangbang local.shots:
+
+	while ( local.shots > 0 )
+	{
+		self fire 1
+		wait 0.20
+		local.shots--
+	}
+
+end
+
+
+//-----------------------------------------------------
+KillPlayerOnTouch:
+//
+//	Simulate player getting run over by the motorcycle..
+//
+//-----------------------------------------------------
+
+	self.player_kill_thread = local
+
+	while ( 1 )
+	{
+		// for some reason, the angle doesn't work because the vehicle is turning without changing it's orientation..
+		// just doing a straight distance check seems to work well enough..
+//		local.bPlayerInTheWay = self waitthread global/vehicle_warning.scr::CanSeeTarget $player 200 0.707 NIL
+		local.bPlayerInTheWay = self waitthread global/vehicle_warning.scr::CanSeeTarget $player 100 NIL NIL
+
+		if ( local.bPlayerInTheWay==1 )
+		{
+			// kill him now!
+			$player damage NULL 3000 NULL (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+		}
+
+		wait 0.1
+	}
+
+	end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs when the cycle gag starts
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger2allies:
+
+	wait 4.0
+	if ( isAlive level.private )
+	{
+		level.private.nextsayattack = level.time + 5.0
+		level.private say 13A201_ParaDialog
+		level.private thread gags/t1l3_misc.scr::behealthy 3
+	}
+
+	wait 2.0
+	if ( isAlive level.captain )
+	{
+		level.captain.nextsayattack = level.time + 5.0
+		level.captain say 13C201_CaptainDialog_03
+		level.captain thread gags/t1l3_misc.scr::behealthy 3
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// wait in front of second house, run inside house,
+//   up to stair landing
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+pretrigger3:
+
+	local.starthealth = self.health
+	self takedamage
+	while ( (self.health == local.starthealth) && (level.pretrigger3 == 0) )
+	{
+		waitframe
+	}
+	self nodamage
+	thread dotrigger3 20.0
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// called from the main script when the player hits
+//   the proximity trigger
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger3:
+
+	if (level.colonel)
+	{
+		self remove
+		thread dotrigger3 5.0
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// does the action for trigger 3
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dotrigger3 local.delay:
+
+	if (level.colonel && (level.pretrigger3 == 0) )
+	{
+		level.pretrigger3 = 1
+
+		wait 0.5
+		level.colonel aimat $player
+		wait 0.5
+		level.colonel.enableEnemy = 1
+		level.colonel attackplayer
+
+		local.runat = level.time + local.delay
+		while ( (level.time < local.runat) && (level.runtrigger3 == 0) )
+		{
+			waitframe
+		}
+
+		level.colonel.enableEnemy = 0
+		level.colonel runto $officerpath3
+		level.colonel waittill movedone
+		level.colonel turnto $officerteleport3
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// wait at stair landing, jump out and attack,
+//   run to balcony
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger4:
+
+	if ( level.colonel )
+	{
+		self remove
+
+		level.colonel runto $officerteleport3
+		level.colonel waittill movedone
+
+		level.colonel tether $officerteleport3
+		level.colonel mindist 10
+		level.colonel leash 10
+
+		level.colonel aimat $player
+		wait 0.5
+		level.colonel.enableEnemy = 1
+		level.colonel attackplayer
+
+		local.runat = level.time + 5.0
+		while ( (level.time < local.runat) && (level.runtrigger4 == 0) )
+		{
+			waitframe
+		}
+
+		level.colonel.enableEnemy = 0
+		level.colonel thread colonelhider
+
+		level.colonel runto $officerpath4
+		level.colonel waittill movedone
+
+		level.colonel tether $officerbalconytether
+		level.colonel mindist 5
+		level.colonel leash 5
+
+		level.colonel aimat $player
+
+		level.colonelreachedbalcony = 1
+		level.colonelatbalcony = 1
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// engage the player in normal combat
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+trigger5:
+
+	if ( level.colonel && (level.colonelatbalcony == 1) )
+	{
+		self remove
+
+		if ( level.captain )
+		{
+			level.captain threatbias ignoreme
+			level.captain thread global/friendly.scr::friendlystop
+		}
+
+		if ( level.private )
+		{
+			level.private threatbias ignoreme
+		}
+
+		level.nodrophealth = 1
+		level.colonel.health = 300
+		level.colonel.deathanim = 13G106_ColonelDeath
+		level.colonel.enableEnemy = 1
+		level.colonel attackplayer
+		level.colonel takedamage
+		level.colonel.aistandpainonly = 1
+
+		while ( isAlive level.colonel )
+		{
+			level.colonel.origin = $officerbalconytether.origin
+			waitframe
+		}
+		level.colonel thread fixrotation
+
+		if ( level.captain )
+		{
+			level.captain threatbias 0
+		}
+
+		if ( level.private )
+		{
+			level.private threatbias 0
+		}
+
+		wait 2.0
+
+		local.ent = spawn script_model
+		local.ent.origin = level.colonel.origin - (0.0 0.0 240.0) - (level.colonel.rightvector * 80.0) - (level.colonel.forwardvector * 200.0)
+		local.ent.targetname = "grace_elizabeth"
+
+		local.ent = spawn script_model
+		local.ent.origin = level.colonel.origin - (0.0 0.0 240.0) + (level.colonel.rightvector * 5.0) - (level.colonel.forwardvector * 160.0)
+		local.ent.targetname = "isabelle_katya"
+
+		// swap the colonel with the stunt double
+		local.model = level.colonel.model
+		level.stuntdouble = spawn local.model
+		level.stuntdouble.origin = level.colonel.origin - (0.0 0.0 240.0) - (level.colonel.rightvector * 12.0) - (level.colonel.forwardvector * 160.0)
+		level.stuntdouble.angles = level.colonel.angles
+//		level.stuntdouble physics_off
+		level.stuntdouble.enableEnemy = 0
+		level.stuntdouble nodamage
+		level.stuntdouble threatbias ignoreme
+		level.stuntdouble thread stuntdoubletakeit
+
+		level.colonel remove
+
+		level.nodrophealth = 0
+		thread captcapcolonel
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// rotate the colonel as he starts his fall
+//   so that he fall over the railing
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fixrotation:
+
+	local.ang = self.angles
+	while ( local.ang[1] != 0 )
+	{
+		if ( local.ang[1] < 180 )
+		{
+			if ( local.ang[1] < 5 )
+				local.ang[1] = 0
+			else
+				local.ang[1] -= 5
+		}
+		else
+		{
+			if ( local.ang[1] > 355 )
+				local.ang[1] = 0
+			else
+				local.ang[1] += 5
+		}
+		self.angles = local.ang
+		waitframe
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// animate the colonel's stunt double
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stuntdoubletakeit:
+
+	self notsolid
+	self.takingit = 0
+	while ( self.takingit >= 0 )
+	{
+		if ( self.takingit == 0 )
+			self anim 13G107_deathidle
+		else
+			self anim 13G108_deathrattle
+		self waittill animdone
+	}
+	self bedead
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// show/hide the colonel, based on player location
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+colonelhider:
+
+	while ( isAlive self )
+	{
+		local.zdiff = self.origin[2] - $player.origin[2]
+
+		if ( (local.zdiff < 75) && (local.zdiff > -75) )
+		{
+			if ( (level.colonelreachedbalcony == 0) && (self isTouching $colonelhidezone) )
+			{
+				level.colonel solid
+				level.colonel show
+			}
+			else if ( level.colonelatbalcony != 1 )
+			{
+				level.colonelatbalcony = 1
+
+				level.colonel pauseanims 0
+				level.colonel exec global/enable_ai.scr
+				level.colonel solid
+				level.colonel show
+			}
+		}
+		else
+		{
+			if ( (level.colonelreachedbalcony == 0) && (self isTouching $colonelhidezone) )
+			{
+				level.colonel notsolid
+				level.colonel hide
+			}
+			else if ( level.colonelatbalcony != 0 )
+			{
+				level.colonelatbalcony = 0
+
+				level.colonel pauseanims 1
+				level.colonel exec global/disable_ai.scr
+				level.colonel notsolid
+				level.colonel hide
+			}
+		}
+		waitframe
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// captain runs to dead colonel and caps him
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+captcapcolonel:
+
+	if ( !(isAlive level.colonel) && (level.captain != NULL) && (isAlive level.captain) )
+	{
+		level.captain thread global/friendly.scr::friendlystop
+		level.captain exec global/disable_ai.scr
+
+		level.captain runto $captainwoohoo
+		level.captain waittill movedone
+
+		if ( level.private )
+		{
+			level.private thread privategoto0
+		}
+
+		// wait to deliver dialog
+		local.diddialog = 0
+		local.expire = level.time + 4.0
+		local.pdist = vector_length($player.origin - $officerbalconytether.origin)
+		local.zdiff = $officerbalconytether.origin[2] - $player.origin[2]
+		while ( (local.pdist > 150) && (local.pdist < 575) && (level.time < local.expire) && (local.zdiff < 50) && (local.zdiff > -50) )
+		{
+			wait 0.2
+			local.pdist = vector_length($player.origin - $officerbalconytether.origin)
+			local.zdiff = $officerbalconytether.origin[2] - $player.origin[2]
+		}
+
+		if ( (local.pdist < 150) && (local.zdiff < 50) && (local.zdiff > -50) )
+		{
+			level.captain turnto $player
+			wait 0.25
+			level.captain anim 13C203_CaptainDialog_04
+			level.captain waittill animdone
+			level.captain turnto NULL
+			wait 0.5
+			local.diddialog = 1
+		}
+
+		level.captain runto $grace_elizabeth
+		level.captain waittill movedone
+
+		// wait to shoot colonel
+		local.expire = level.time + 15.0
+		local.zdiff = level.captain.origin[2] - $player.origin[2]
+		while ( (vector_length(level.captain.origin - $player.origin) > 400) || (local.zdiff > 50) || (local.zdiff < -50) )
+		{
+			wait 0.1
+			local.zdiff = level.captain.origin[2] - $player.origin[2]
+		}
+
+		if ( (level.time < local.expire) && (local.diddialog == 0) )
+		{
+			level.captain aimat $isabelle_katya
+			wait 0.5
+		
+			local.accuracy = level.captain.accuracy
+			level.captain.accuracy = 90
+
+			level.stuntdouble.takingit = 1
+			for ( local.i = 1; local.i <= 5; local.i++ )
+			{
+				level.captain fire
+				wait 0.12
+			}
+			wait 0.3
+			level.captain aimat NULL
+			level.captain.accuracy = local.accuracy
+			level.stuntdouble.takingit = -1
+		}
+
+		wait 0.5
+		level.captain turnto $player
+		wait 0.5
+		level.captain lookat $player
+		level.captain turnto NULL
+		level.captain say dfr_T1L2_BP6967
+		wait 3.0
+		level.captain thread gags/t1l3_tank.scr::captainstart
+		level.starttank = 1
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+privategoto0:
+
+	while ( self && (isAlive self) && (self.thinkstate == "attack") )
+	{
+		wait 0.1
+	}
+
+	if ( self && (isAlive self) )
+	{
+		self waitthread global/friendly.scr::friendlystop
+		self exec global/disable_ai.scr
+
+		self walkto $privategoto0
+		self waittill movedone
+
+		self turnto level.captain
+		self waitthread gags/t1l3_misc.scr::behealthy
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// simple telporter
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+teleport local.source local.destination:
+
+	local.source hide
+	waitframe
+	waitframe
+	local.source.origin = local.destination.origin
+	local.source.angles = local.destination.angles
+	local.source show
+
+end
+

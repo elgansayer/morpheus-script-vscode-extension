@@ -1,0 +1,413 @@
+//-------------------------------------------------------------------
+// T1L1.Scr
+//-------------------------------------------------------------------
+
+level.script = "maps/t1l1.scr"
+level.music = "t1l1"
+
+exec global/auto.scr
+exec gags/box_effects.scr
+
+//-------------------------------------------------------------------
+// Prespawn
+//-------------------------------------------------------------------
+
+level waittill prespawn
+level.aipronechance = 0
+
+//setup farplane t1l1
+$world farplane_color (0.024 0.024 0.036)
+$world farplane 6000
+
+//setup our skybox farplane
+$world skybox_farplane 500
+$world skybox_speed 0.01203
+
+exec gags/T1L1_PlaneRide.Scr
+exec gags/T1L1_End.Scr
+
+//-------------------------------------------------------------------
+// Spawn
+//-------------------------------------------------------------------
+
+level waittill spawn
+
+forcemusic none none
+
+
+//-------------------------------------------------------------------
+// Set appropriate mission failed screen
+//-------------------------------------------------------------------
+setcvar g_mission 1
+
+//-------------------------------------------------------------------
+// MG42 Behavior
+//-------------------------------------------------------------------
+$mg42 maxyawoffset 70.0
+$mg42 pitchcaps "-20 20 0"
+$mg42 AIbulletspread 350 175
+$mg42 convergetime 0.25
+
+// 1 = skip opening, 0... do it
+level.bSkipPlaneRide	= 0
+
+thread gags/t1l1_misc.scr::main
+thread gags/T1L1_PlaneRide.Scr::DoPlaneRide
+
+exec gags/t1l1_barn_crash.scr $barnnazi1 $barnnazi2
+
+level.script="maps/t1l1.scr"
+thread SetupAAGun
+thread DisableGuys
+
+//-------------------------------------------------------------------
+// Initialize Mission Objectives
+//-------------------------------------------------------------------
+
+	waitthread global/objectives.scr::add_objectives 1 1 "Rendezvous With Your Allies" $britishcaptaindestination.origin
+	waitthread global/objectives.scr::add_objectives 2 1 "Destroy Tank With AA Gun" $aagun3.origin
+	waitthread global/objectives.scr::add_objectives 3 1 "Regroup With Your Allies" $britishcaptaindestination.origin
+
+	End
+
+//-------------------------------------------------------------------
+InBarn:
+//
+//	Don't setup the truck (ie: add the ai in the back) until
+//  player is in the barn...
+//-------------------------------------------------------------------
+	thread SetupTruck
+	thread EnableGuys
+	
+	end
+
+//-------------------------------------------------------------------
+DisableGuys:
+//-------------------------------------------------------------------
+
+	// anyone to disable?
+
+	end
+
+//-------------------------------------------------------------------
+EnableGuys:
+//-------------------------------------------------------------------
+
+	// anyone to enable?
+
+	end
+
+//-------------------------------------------------------------------
+SetupAAGun:
+//
+//	AA Gun Properties 
+//
+//-------------------------------------------------------------------
+
+	$aagun1_turret0 maxyawoffset 115.0
+	$aagun1_turret0 turnspeed 25
+	$aagun1_turret0 pitchspeed 25
+	$aagun1_turret0 pitchcaps "-50 10 0"
+	$aagun1_turret0 viewjitter 1
+	$aagun1_turret0 firedelay 0.08
+	$aagun1 immune aagun
+	$aagun1_turret0 setaimtarget $aagun1_aim
+	
+	$aagun2_turret0 maxyawoffset 60.0
+	$aagun2_turret0 turnspeed 25
+	$aagun2_turret0 pitchspeed 25
+	$aagun2_turret0 pitchcaps "-50 10 0"
+	$aagun2_turret0 viewjitter 1
+	$aagun2_turret0 firedelay 0.08
+	$aagun2 immune aagun
+	$aagun2_turret0 setaimtarget $aagun2_aim
+
+	$aagun3_turret0 maxyawoffset 75.0
+	$aagun3_turret0 turnspeed 25
+	$aagun3_turret0 pitchspeed 25
+	$aagun3_turret0 pitchcaps "-50 10 0"
+	$aagun3_turret0 viewjitter 1
+	$aagun3_turret0 firedelay 0.08
+	$aagun3 immune aagun
+	$aagun3_turret0 setaimtarget $aagun3_aim
+
+	wait 5
+	$aagun3_aim delete
+	$aagun1_aim delete
+	$aagun2_aim delete
+
+	end
+
+//-------------------------------------------------------------------
+SetupTruck:
+//
+//	Truck on path
+//-------------------------------------------------------------------
+
+	level.bDoTruck		= 0
+
+	$truck_1 waitthread gags/t3l1_enemyspawn.scr::DoTruck 3600 4 0
+	thread global/spotlight.scr::deadcorona $truck_1 "light left" 
+	thread global/spotlight.scr::deadcorona $truck_1 "light right"
+	// setup truck to wait for a trigger
+	$trigger_truck thread WaitForTruckTrigger
+
+	// setup guys to die when truck blows up.
+	$truck_1 thread KillTruckGuysOnDeath
+
+	$fieldguy1 thread StartTruckOnDeath
+	$fieldguy2 thread StartTruckOnDeath
+
+	while ( level.bDoTruck==0 )
+	{
+		wait 0.25
+	}
+	
+	// make truck go and wait till it's done moving...
+	$truck_1 waitthread gags/t3l1_enemyspawn.scr::TruckDrive $truck_1path 0 400 0 0 0
+
+	// tell the passengers to go get the player...
+	
+	for (local.i=1;local.i<=$truck_1.passenger_count;local.i++)
+	{
+		if ( $truck_1.passenger[local.i]!=NIL )
+			$truck_1.passenger[local.i] thread TruckGuyGetPlayer
+	}
+
+	$truck_1 vehicleanim idlenolights
+
+	// give them guns...
+	$truck_1.passenger[1] gun "mp40"
+	$truck_1.passenger[2] gun "Mauser KAR 98K"
+	$truck_1.passenger[3] gun "Mauser KAR 98K"
+	$truck_1.passenger[4] gun "mp40"
+
+	End
+
+//-------------------------------------------------------------------
+KillTruckGuysOnDeath:
+//-------------------------------------------------------------------
+	level.bTruckGuysOut = 0
+
+	local.origin = self.origin
+
+	self waittill death
+
+	//  if the truck blows up before TruckGuys have gotten out, 
+	//  kill them!
+	if ( level.bTruckGuysOut==1 )
+	{
+		// do extra radius damage... 300hp 500 radius...
+		// kill them if they are close...
+		radiusdamage local.origin 300 500
+		End
+	}
+
+	for (local.i=1;local.i<=$self.passenger_count;local.i++)
+	{
+		self.passenger[local.i] hurt 999 1
+	}
+	
+	end
+
+//-------------------------------------------------------------------
+TruckGuyGetPlayer:
+//-------------------------------------------------------------------
+
+	while ( self.done_unloading!=1 )
+	{
+		waitframe
+	}
+
+	level.bTruckGuysOut = 1
+
+	self exec global/disable_ai.scr
+
+	self solid
+
+	self thread TruckGuyRun
+
+	// run towards player for 2 seconds and turn ai back on..
+	local.random = 0.5 + ( randomfloat 0.5 )
+
+	wait local.random
+
+	// ai should do the rest here...
+	self exec global/enable_ai.scr
+
+	self attackplayer
+
+	End
+
+//-------------------------------------------------------------------
+TruckGuyRun:
+//-------------------------------------------------------------------
+	
+	self runto $player
+
+	self waittill movedone
+	if ( parm.movedone!=1 )
+	{
+		goto TruckGuyRun
+	}
+	
+
+	End
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  Mike Goodwin - Start
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+barn_hole:
+
+	exec gags/t1l1_barn_crash.scr::crashthroughroof
+	$player loopsound t1_barninside
+
+end
+
+cutharness:
+
+	exec gags/t1l1_barn_crash.scr::cutharness
+	exec gags/t1l1_misc.scr::searchlightsoff
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  Mike Goodwin - End
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+doAAguy:
+
+	thread gags/T1L1_Parachute.Scr::DoAAGuy 10
+
+end
+
+//-------------------------------------------------------------------
+endleveltrigger:
+//
+//	this is done by the allies now..
+//-------------------------------------------------------------------
+//	$obj1 Complete
+//	exec global/missioncomplete.scr t1l2 1
+	end
+
+//-------------------------------------------------------------------
+artillery_message:
+//
+//	this is to trigger an onscreen prompt for controlling artillery
+//-------------------------------------------------------------------
+
+	local.usekey = getboundkey1 "+use"
+	local.msg = (loc_convert_string "Approach controls and press ") + local.usekey + (loc_convert_string " to use artillery.")
+	thread gags/t1l1_barn_crash.scr::throbtext local.msg 7
+
+end
+
+//-------------------------------------------------------------------
+doorlocked:
+//  Plays locked door sound
+//-------------------------------------------------------------------
+	self playsound door_wood_locked1
+
+end
+
+//-------------------------------------------------------------------
+barndoorlocked:
+//  Plays locked door sound
+//-------------------------------------------------------------------
+	self playsound barn_door_locked
+
+end
+
+//-------------------------------------------------------------------
+WaitForTruckTrigger:
+//-------------------------------------------------------------------
+	self waittill trigger
+	level.bDoTruck	= 1
+
+	End
+
+//-------------------------------------------------------------------
+StartTruckOnDeath:
+//-------------------------------------------------------------------
+	self waittill death
+	level.bDoTruck	= 1
+
+	End
+
+//-------------------------------------------------------------------
+stuka_start:
+//-------------------------------------------------------------------
+	$water_grenade2 TurnOn
+
+	$stuka_1 thread gags/T1L1_PlaneRide.Scr::Fly $stuka_1_path 2550 0.8
+	$stuka_1 thread rollplane 11
+	$stuka_1 playsound plane
+
+	$stuka_2 thread gags/T1L1_PlaneRide.Scr::Fly $stuka_2_path 2550 0.75
+	$stuka_2 thread rollplane 8
+
+	$stuka_3 thread gags/T1L1_PlaneRide.Scr::Fly $stuka_3_path 2300 0.6
+	$stuka_3 thread rollplane 1
+	wait 0.1
+	$stuka_3 playsound plane
+
+end
+
+//-------------------------------------------------------------------
+stuka_end:
+//-------------------------------------------------------------------
+	$stuka_4 show
+	$stuka_4 thread gags/T1L1_PlaneRide.Scr::Fly $stuka_4_path 2100 0.8
+	$stuka_4 thread rollplane 1
+	wait .5
+	$stuka_4 playsound plane
+
+end
+
+//--------------------------------------------------------------
+rollplane local.rollspeed:
+// Make the plane do a cool roll...
+//--------------------------------------------------------------
+ 
+	local.ang = self.angles
+ 
+	while ( self!=NIL && self!=NULL )
+	{
+		local.cang = self.angles
+		local.ang[2] -= local.rollspeed
+		local.cang[2] = local.ang[2]
+		self angles local.cang
+		waitframe
+	}
+ 
+ 	end
+
+//--------------------------------------------------------------
+TurnOffAAGuns:
+// turn off the guns
+//--------------------------------------------------------------
+
+	exec gags/T1L1_Falling.Scr::TurnOffAAGuns
+	$player stoploopsound
+end
+
+
+//--------------------------------------------------------------
+mayhem:
+// play the chaos sound
+//--------------------------------------------------------------
+
+	wait 1
+	dprintln "playing sound"
+	$mayhem playsound den_T1L1_GermanWalla
+end
+
+//--------------------------------------------------------------
+sound_barn_outside:
+// switch the ambient
+//--------------------------------------------------------------
+
+	$player loopsound t1_barnoutside
+	
+end
+

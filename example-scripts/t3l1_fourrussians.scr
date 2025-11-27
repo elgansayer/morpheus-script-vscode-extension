@@ -1,0 +1,89 @@
+//
+// gags/t3l1_fourrussians.scr
+//
+// Four russian soldiers talking, then fighting.
+//
+
+main:
+end
+
+
+DoRussians:
+
+	level.subtitle_save = getcvar g_subtitle
+
+	setcvar g_subtitle 1
+
+	wait 6
+	$startingsoldier1 thread PlayAnim 31R100_idle01 NIL
+	$startingsoldier2 thread PlayAnim 31R200_idle01	5
+	$startingsoldier3 thread PlayAnim 31R300_idle01	6
+	$startingsoldier4 thread PlayAnim 31R400_idle01	7
+
+	wait 19
+	thread gags/t3l1_enemyspawn.scr::DoSanta
+
+
+	setcvar g_subtitle level.subtitle_save
+	
+	wait 4
+	$player useweaponclass smg
+	$player physics_on
+	drawhud 1
+
+	$startingsoldier1 lookat $player
+	$startingsoldier1 turnto $player
+
+	// initialize the objective list
+	waitthread maps/t3l1.scr::initobjectives
+ 
+	// start the thread that waits for objective 1 completion
+	thread maps/t3l1.scr::objective1
+
+
+//	$player stufftext "tmstop"
+//	$player stufftext "tmstart sound/music/Kleveburg.mp3"
+
+	wait 10
+	$startingsoldier1 lookat NULL
+	$startingsoldier1 turnto NULL
+
+	
+	end
+
+PlayAnim local.anim local.index:
+
+	self nodamage
+	self exec global/disable_ai.scr
+	self.no_idle = 1
+	self anim local.anim
+	self waittill animdone
+	self exec global/enable_ai.scr
+	self takedamage
+
+	if ( local.index==NIL )
+	{
+		if ( $wave1!=NIL && $wave1.size>0 )
+		{
+			local.random = randomint $wave1.size
+			if ( local.random==0 )
+				local.random++
+
+			self setaimtarget $wave1[local.random] 1
+			self runto $wave1[local.random]
+		}
+	}
+	else
+	{
+		if ( $wave3!=NIL && $wave3.size>=local.index )
+		{
+			self setaimtarget $wave3[local.index] 1
+			self runto $wave3[local.index]
+		}
+	}
+
+	wait 1
+	self.no_idle = 0
+	
+	end
+

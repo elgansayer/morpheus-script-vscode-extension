@@ -1,0 +1,449 @@
+//------------------------------------------------------------------
+//	T3L2_KingTiger.scr
+//	Jeff Leggett
+//	07/11/2002
+//
+//
+//	Implementation of the king tiger blowing out of the building.
+//
+//
+//	exec this after your waittill spawn
+//
+//
+//	To execute the gag of pushing tanks into the water:
+//
+//		$targetname your first tank $bridgetank
+//		$targetname the spawn point of the 2nd tank "bridgetank_spawnloc"
+//		$targetname the path to the bridge $bridgetank_path1
+//		setthread the following to start it up:
+//
+//		gags/T3L2_KingTiger.scr::BridgeTankGo
+//
+//		See the thread called "SpawnNext" to modify the behaviour
+//		of the spawned in tanks...
+//
+//	other threads:
+//
+//			gags/T3L2_KingTiger.scr::PushBridgeTank
+//			gags/T3L2_KingTiger.scr::PushBridgeTank2
+//			gags/T3L2_KingTiger.scr::DoBridgeSpawns
+//			
+//
+//------------------------------------------------------------------
+
+
+//------------------------------------------------------------------
+main:
+//	Do initializations here...
+//
+//------------------------------------------------------------------
+	
+	// save some poly's...
+	$kingtiger1 waitthread HideTank
+	$kingtiger1 immune aagun
+	$bridgetank waitthread HideTank
+	$bridgetank2 waitthread HideTank
+
+	level.playertanktarget	= $player
+	level.spawntank			= 0
+
+	//wait 4
+	//thread DoKingTiger1
+
+	End
+
+
+
+//------------------------------------------------------------------
+DoKingTiger1:
+//
+//		setthread command:
+//				gags/T3L2_KingTiger.scr::DoKingTiger1
+//------------------------------------------------------------------
+
+	$kingtiger1 thread KingTigerGo
+
+	End
+
+
+//------------------------------------------------------------------
+KingTiger1_GoPath1:
+//
+//		setthread command:
+//				gags/T3L2_KingTiger.scr::KingTiger1_GoPath1
+//------------------------------------------------------------------
+
+	$kingtiger1.direction = 1
+
+	End
+
+//------------------------------------------------------------------
+KingTiger1_GoPath2:
+//
+//		setthread command:
+//				gags/T3L2_KingTiger.scr::KingTiger1_GoPath2
+//------------------------------------------------------------------
+
+	$kingtiger1.direction = 2
+
+	End
+
+//------------------------------------------------------------------
+BridgeTankGo:
+//
+//
+//------------------------------------------------------------------
+
+	$bridgetank waitthread ShowTank
+	$bridgetank thread GotoBridge $bridgetank_path1 $bridgetank_spawnloc bridge_tiger 1
+////	$bridgetank health 50
+
+	end
+
+//------------------------------------------------------------------
+BridgeTank2Go:
+//
+//
+//------------------------------------------------------------------
+
+	$bridgetank2 waitthread ShowTank
+	$bridgetank2 thread GotoBridge $bridgetank_path2 $bridgetank2_spawnloc bridge_panzer 1
+
+	end
+
+//------------------------------------------------------------------
+PushBridgeTank:
+//------------------------------------------------------------------
+
+	if ( parm.other==$bridgetank_spawn )
+	{
+		self delete
+		thread global/exploder.scr::explode 351	
+		$bridgetank thread PushMe
+		wait 2.5
+		thread global/exploder.scr::explode 3511
+	}
+
+	End
+
+//------------------------------------------------------------------
+PushBridgeTank2:
+//------------------------------------------------------------------
+	if ( parm.other==$bridgetank2_spawn )
+	{
+		self delete
+		thread global/exploder.scr::explode 350		
+		$bridgetank2 thread PushMe
+		wait 2.5
+		thread global/exploder.scr::explode 3501
+	}
+
+	End
+
+
+
+//------------------------------------------------------------------
+KingTigerGo:
+//
+//	Blow up wall.
+//  Play anim to come out of wall...
+//
+//------------------------------------------------------------------
+
+	self waitthread ShowTank
+	self nodamage
+	self thread global/vehicles_thinkers.scr::TankExplodeOnDeath
+
+	self.gun pitchCaps "-160 105 0"
+	self.gun anim fire
+	wait 0.1
+	self waitthread global/exploder.scr::explode 110
+
+	self moveanim 32P001_crashwall
+	self waittill animdone
+
+	self takedamage
+	self thread TurnOnAI
+
+	self thread SetupPath
+
+	End
+
+//------------------------------------------------------------------
+DoBridgeSpawns:
+//	
+//	Spawn in some panzers and send them on their way...
+//
+//------------------------------------------------------------------
+
+	// ken, change these to the correct name!!
+	thread BridgeSpawnLeft $panzer_tank
+	thread BridgeSpawnRight $panzer_tank
+
+	End
+
+//------------------------------------------------------------------
+BridgeSpawnLeft local.collisionent:
+//------------------------------------------------------------------
+
+	local.tank = thread SpawnPanzer bridgetank3_spawn $spawner3 $spawner3_path1 local.collisionent
+
+	
+	
+
+	wait 45
+	thread SpawnPanzer bridgetank4_spawn $spawner3 $spawner3_path2 local.collisionent
+
+	wait 45
+	thread SpawnPanzer bridgetank5_spawn $spawner3 $spawner3_path3 local.collisionent
+
+
+	End
+
+//------------------------------------------------------------------
+BridgeSpawnRight local.collisionent:
+//------------------------------------------------------------------
+	wait 15
+	thread SpawnPanzer bridgetank6_spawn $spawner4 $spawner4_path1 local.collisionent
+
+	wait 45
+	thread SpawnPanzer bridgetank7_spawn $spawner4 $spawner4_path2 local.collisionent
+
+	End
+
+//------------------------------------------------------------------
+HideTank:
+//------------------------------------------------------------------
+	self.gun = self QueryTurretSlotEntity 0
+	self.gun2 = self QueryTurretSlotEntity 1
+	self.gun3 = self QueryTurretSlotEntity 2
+	
+	self hide
+	self notsolid
+
+	self.gun hide
+	self.gun notsolid
+
+	self.gun turnspeed 20
+
+	if ( self.gun2!=NIL && self.gun2!=NULL )
+	{
+		self.gun2 hide
+		self.gun2 notsolid
+	}
+
+	if ( self.gun3!=NIL && self.gun3!=NULL )
+	{
+		self.gun3 hide
+		self.gun3 notsolid
+	}
+
+	if ( self.target!=NIL && self.target!=NULL )
+	{
+		self.collisionent = self.target
+	}
+
+	End
+
+//------------------------------------------------------------------
+ShowTank:
+//------------------------------------------------------------------
+
+	self show
+	self solid
+
+	self.gun show
+	self.gun solid
+
+	if ( self.gun2!=NIL && self.gun2!=NULL )
+	{
+		self.gun2 show
+		self.gun2 solid
+	}
+
+	if ( self.gun3!=NIL && self.gun3!=NULL )
+	{
+		self.gun3 show
+		self.gun3 solid
+	}
+	
+	End
+
+//------------------------------------------------------------------
+DefaultPath:
+//
+//	Choose a default path if the player hasn't moved yet...
+//------------------------------------------------------------------
+
+	wait 3
+
+	if ( self.direction==0 )
+		self.direction = 1
+
+	End
+
+//------------------------------------------------------------------
+TurnOnAI:
+//------------------------------------------------------------------
+	// now just be a normal tank... (ie: go after player...)
+	self thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_tiger
+
+	End
+
+//------------------------------------------------------------------
+SetupPath:
+//
+//
+//------------------------------------------------------------------
+
+	self thread DefaultPath
+
+	self.direction = 0
+
+	while ( self.direction==0 )
+	{
+		wait 0.25
+	}
+
+	if ( self.direction==1 )
+		self drive $kingtiger1_path1 200 30 200 256
+	else
+		self drive $kingtiger1_path2 200 30 200 256
+
+	self waittill drive
+	self stop
+
+	// Done!  Let AI take over from here...
+
+	End
+
+
+
+//------------------------------------------------------------------
+GotoBridge local.path local.spawnloc local.type local.spawnnext:
+//
+//
+//	Drive to bridge.  
+//------------------------------------------------------------------
+
+	self nodamage
+
+	self waitthread global/vehicles_thinkers.scr::enemy_tank_think 0 local.type
+
+
+	self drive local.path 200 30 200 256
+	self waittill drive
+	self stop
+
+	// turn on our battle tank ai when we get to our destination.
+	self thread gags/T3L2_BattleTanks.Scr::BattleTankAI
+
+	self takedamage
+
+	if ( local.spawnnext==1 )
+	{
+		self waittill death
+		thread SpawnNext self.targetname local.path local.spawnloc local.type self.collisionent
+	}
+
+	end
+
+//------------------------------------------------------------------
+GetReadyForPush:
+//
+//	make non solid, etc...
+//------------------------------------------------------------------
+
+	self notsolid
+	self.collisionent	= NULL
+
+
+	End
+
+
+//------------------------------------------------------------------
+PushMe:
+//
+//
+//
+//------------------------------------------------------------------
+
+	// cut off our smoke...
+	self.smoke delete
+
+	// play anim to go into river
+	self moveanim fall01
+	self waittill movedone
+
+	// wait a little while and remove me...
+	wait 4
+	local.gun = self QueryTurretSlotEntity 0
+	local.gun2 = self QueryTurretSlotEntity 1
+
+	local.gun delete
+	local.gun2 delete
+	self delete
+
+	End
+
+
+//------------------------------------------------------------------
+SpawnNext local.targetname local.path local.spawnloc local.type local.collisionent:
+//------------------------------------------------------------------
+
+	switch ( local.type )
+	{
+		case	"bridge_tiger":
+		// how long to wait before spawning next tank here...
+		wait 1
+		thread SpawnTiger bridgetank_spawn local.spawnloc local.path local.collisionent
+
+		local.targetname waitthread GetReadyForPush
+
+		// update this time here with how long it takes for the push to begin...
+		
+//		wait 18
+//		local.targetname thread PushMe
+		// thread PushMe local.targetname
+		break
+
+		case	"bridge_panzer":
+		wait 1
+		thread SpawnPanzer bridgetank2_spawn local.spawnloc local.path local.collisionent
+
+		local.targetname waitthread GetReadyForPush
+		// update this time here with how long it takes for the push to begin...
+//		wait 18
+//		local.targetname thread PushMe
+		//thread PushMe local.targetname
+		break
+	}
+
+	End
+
+//------------------------------------------------------------------
+SpawnTiger local.targetname local.spawnloc local.path local.collisionent:
+//------------------------------------------------------------------
+
+	local.tank = spawn vehicles/tigertank "origin" local.spawnloc.origin "angles" local.spawnloc.angles
+	local.tank.target		= local.collisionent
+	local.tank.collisionent = local.collisionent
+	local.tank.targetname	= local.targetname
+
+	local.tank thread GotoBridge local.path local.spawnloc bridge_tiger 0
+
+	end local.tank
+
+//------------------------------------------------------------------
+SpawnPanzer local.targetname local.spawnloc local.path local.collisionent:
+//------------------------------------------------------------------
+	local.tank = spawn vehicles/panzer_tank "origin" local.spawnloc.origin "angles" local.spawnloc.angles
+	local.tank.target		= local.collisionent
+	local.tank.collisionent = local.collisionent
+	
+	local.tank.targetname	= local.targetname
+
+	local.tank thread GotoBridge local.path local.spawnloc bridge_panzer 0
+
+	end local.tank
+

@@ -1,0 +1,902 @@
+
+	level.script = "maps/t2l2.scr"
+	level.music = "t2l2"
+		
+	
+	exec global/camera.scr 
+	exec global/savenames.scr 
+	exec global/auto.scr
+	exec global/spotlight.scr 
+	
+	  
+	
+	level waittill prespawn
+	fadeout .1 0 0 0 1
+
+	
+
+	level.dontdropweapons = 1
+	level.tempnum = 0
+	level.slowspeed = 500 //was 150 300
+	level.fastspeed = 250 //was 300 700
+	level.lookahead = 256
+	level.acceleration = 100
+	level.reversespeed = -200		
+
+	level.totalbaddies = 0
+	level.halftrack_alive = 1
+	level.flyplane = 1
+	
+	level waittill spawn
+	 	
+	level.truck = $s1_truck1
+	level.playerjeep = $s1_jeep1
+	$s1_jeep1 health 10000
+
+//snow
+	level.rain_speed = "150"
+	level.rain_speed_vary = "1"
+	level.rain_length = "2"
+	level.rain_width = "1"
+	level.rain_density = ".4"
+	level.rain_slant = "10" //was 250
+	level.rain_min_dist = "512"
+	level.rain_numshaders = 12
+	level.rain_shader = "textures/snow"
+
+	//$objective1 turnon
+	//$objective1 complete
+	waitthread global/objectives.scr::add_objectives 1 2 "Escort the Supply Truck to the Allied Line" 
+ 	waitthread global/objectives.scr::current_objectives 1
+	
+
+	$world farplane 2750
+	$world farplane_color (.324 .324 .351)
+	$world farplane_bias -150
+	$player stufftext "tmstartloop sound/music/halftrack.mp3" 	
+	$s1_jeep1 setcollisionentity $halftrack_mask
+	//$s1_truck1 setcollisionentity $opelcollision
+	//$nebel1 setcollisionentity $
+	//$s1_jeep1 notsolid
+	//$s1_jeep1 setcollisionentity $halftrack_mask
+	//$panzer3 setcollisionentity $panzermap
+	$sdkfz setcollisionentity $halftrack_mask
+	$sdkfz2 setcollisionentity $halftrack_mask
+	$s1_truck1 thread truckhealthcheck
+	thread check_truck_death
+	
+	
+	level.enemytankspeed = 100
+	level.playertanktarget = 0
+	level.lookahead = 256
+
+	
+	
+
+	
+
+	
+	$nebel1 immune bullet
+	$nebel1 immune fast_bullet
+	$nebel1 immune bash
+	$nebel1 thread global/stationaryweapons.scr::MountedStationaryWeapon statweapons/nebelwerfer_w_d.tik
+	$nebel1_turret0 thread global/turret.scr::playerturret_proj_think_aim $nebel1 $nebelwerfer1
+	$nebel1_turret0 pitchcaps ( -30 60 0)
+	$nebel1_turret0 maxyawoffset 50
+
+
+
+
+	fadein 5 0 0 0 1
+	drawhud 2
+	$player fullheal
+	$player.health = 1000
+	//$player.maxhealth = 1000
+	//$player.health = $player.maxhealth
+	$s1_jeep1 nodamage
+	setcvar g_mission 2
+	level.playerjeep thread	global/vehicles_thinkers.scr::PLAYER_JEEP_CONTROLLER 
+	level.playerjeep thread PLAYER_JEEP_Drive
+	
+///////////////////CALLING EXPLOSIONS (TRIGGERABLE)//////////////////////////////////////
+	
+	
+	$daveexplode thread triggerexplode
+
+	$daveexplode2 thread triggerexplode
+  	$daveexplode3 thread triggerexplode
+	$daveexplode4 thread triggerexplode
+	$daveexplode5 thread triggerexplode
+	//$daveexplode6 thread triggerexplode
+	$daveexplode7 thread triggerexplode
+	$daveexplode8 thread triggerexplode
+	//$daveexplode9 thread triggerexplode
+	//$daveexplode10 thread triggerexplode
+	//$daveexplode11 thread triggerexplode
+	$daveexplode12 thread triggerexplode
+	$daveexplode15 thread triggerexplode
+	$daveexplode16 thread triggerexplode
+	$daveexplode17 thread triggerexplode
+	$daveexplode18 thread triggerexplode
+	$daveexplode19 thread triggerexplode
+	$daveexplode20 thread triggerexplode
+	$daveexplode50 thread triggerexplode
+	$daveexplode51 thread triggerexplode
+	$daveexplode52 thread triggerexplode
+	$daveexplode53 thread triggerexplode
+	$daveexplode54 thread triggerexplode
+	
+	
+
+	$mogun2 maxyawoffset 120.0
+	$mogun2 pitchcaps "-20 20 0"
+	$mogun2 AIbulletspread 300 150
+
+	$thedukesgun maxyawoffset 120.0
+	$thedukesgun pitchcaps "-20 20 0"
+	$thedukesgun AIbulletspread 450 250
+	
+	$cliffbmwgag hide
+
+	$cameratrigger thread triggercamera
+	$cameratriggerb thread triggercamerab
+
+	thread gags/t2l2_camera.scr::t2l2_initcamera
+	thread global/barrel.scr::explosive_barrel
+
+	thread truck_speed_controls
+	
+	
+	//dprintln "*****Running truck thread"
+	$s1_truck1 thread global/vehicles_thinkers.scr::enemy_truck_think 2000 3 NIL NIL NIL "models/human/2nd-ranger_captain_snow.tik" 
+
+	$s1_truck1 vehicleanim idlenolights
+	$s1_truck1 vehicleanim cargo
+	//$s1_truck1 vehicleanim color_green
+	$s1_truck1 vehicleanim color_snow
+//enemy_truck_think local.hp local.passengers local.path local.trigger local.type local.guy_type local.special:
+	$s1_truck1 thread truckdrive
+
+
+//	mike's truck damage effects
+	exec gags/t2l2_supply_truck_damage.scr $s1_truck1
+
+//*** telling the AI to not drop health
+	level.nodrophealth = 1
+	
+	$player playsound dfr_t2l2_AS3003 
+//"Keep your eyes peeled Barnes!  We're not just gonna waltz out of here with their supplies.  Keep that truck covered!"[ENGLISH]
+	wait 10
+	$s1_truck1 vehicleanim idlelights
+	thread global/spotlight.scr::deadcorona $s1_truck1 "light left"
+	thread global/spotlight.scr::deadcorona $s1_truck1 "light right"
+	$s1_truck1.driver nodamage
+	$player playsound den_call_gs5912
+//"That's our truck, attack!" [GERMAN]
+	wait 8
+	$player playsound den_call_gs5913
+//"they've got our supplies!" [GERMAN]
+	wait 4
+	$player playsound den_call_gs5914
+//"Stop them!" [GERMAN]
+	
+end
+
+/////////////////////////////////////MISC. THREADS////////////////////////////////////
+
+
+
+sirens:
+	//for (local.i = 1; local.i <= 7; local.i++)
+	$edsalarm thread looping_siren
+
+end
+
+
+looping_siren:
+	$edsalarm playsound m6l3c_alarm
+	wait 1.5
+	goto looping_siren
+
+end
+
+
+
+alarm:
+	
+
+	$player playsound alarm_siren
+
+end
+
+panzer1call:
+
+	$player playsound dfr_call_ap4361
+//"Panzer on the left!" [ENGLISH]
+
+end
+
+watchtrucktrigger:
+	wait 6
+	$player playsound dfr_t2l2_ad4402
+//"Cover the supply truck Barnes!" [American]
+
+
+end
+
+wobble1:
+	$player playsound halftrack_bounce03
+end
+
+bmwbehind:
+	$player playsound dfr_call_ap4315
+end
+	
+
+cliffbmw:
+	//exec gags/t2l2_motorcycle.scr::gag2 $cycle $driver "optional modelname"
+	wait 4.5
+	$cliffbmwgag show
+	exec gags/t2l2_motorcycle.scr::gag2 $cliffbmwgag $driver "models/human/german_winter_type2.tik"
+	$cliffbmwgag waittill animdone
+	$cliffbmwgag delete
+end
+
+imstuck:
+
+	$player playsound halftrack_stuck
+end
+
+bikeboom:
+	//dprintln "did i explode?"
+	wait 5.6
+	thread global/exploder.scr::explode 444
+	radiusdamage $damageorigin.origin 1500 400
+
+end
+
+tower1boom:
+	
+	$mogunner delete
+	$mogun2 delete
+
+end
+
+tower2boom:
+	
+	$thedukesgun delete
+	$theduke delete
+
+	
+end
+nebeller1_start:
+	waitthread nebellerSpawner 1
+	//dprintln "did it get this far?"
+	$nebeller1 thread nebellerThink
+end
+
+planesound:
+
+	$player playsound plane
+end
+
+bombdrop:
+
+
+	thread global/exploder.scr::explode 98
+end
+	
+mg42spawn:
+	$mg42 thread global/mg42_active.scr::mg42
+	
+	$mg42 maxyawoffset 120.0
+	$mg42 pitchcaps "-20 20 0"
+	$mg42 AIbulletspread 100 150
+end
+
+
+nebellerSpawner local.nebelIndex:
+
+	local.spawnName = "nebeller" + local.nebelIndex
+	local.nebellerSpawnerName = "nebeller" + local.nebelIndex + "_spawner"
+
+	local.origin = $(local.nebellerSpawnerName).origin
+	spawn models/human/german_winter_Artillery-Crew "targetname" (local.spawnName) "type_attack" "cover"
+
+	// Set the AI properties
+
+	$(local.spawnName).origin = local.origin	//place the guy in the correct spot
+	$(local.spawnName).mindist = 128
+	$(local.spawnName).maxdist = 1200
+	$(local.spawnName).leash = 512
+	$(local.spawnName).fixedleash = 0
+	$(local.spawnName).sight = 3072
+	$(local.spawnName).noticescale = 100
+	$(local.spawnName).hearing = 3072
+	$(local.spawnName).health = 75
+	$(local.spawnName).enemysharerange = 2048
+	$(local.spawnName).interval = 128
+	$(local.spawnName).accuracy = 40
+	$(local.spawnName) gun "MP40"
+	$(local.spawnName) dontdropweapons
+	$(local.spawnName).myNebelwerfer = "nebelwerfer" + local.nebelIndex //NOTE - THIS IS THE NAME OF THE PROJECTILE GENERATOR
+	$(local.spawnName) tether $(local.spawnName).myNebelwerfer 
+	$(local.spawnName).myRallypoint = "nebel" + local.nebelIndex + "_rally" // THIS IS THE NAME OF THE INFO_PATHNODE 
+end
+
+nebellerThink:
+	self holster
+	self.enableEnemy = 1 //0		// turn off AI
+	
+	self runto self.myRallypoint		// go to it's target
+	self waittill movedone			// wait until it's there
+	//dprintln "is he done moving?"
+	//self turnto self.myNebelwerfer
+	self thread nebelwerferFiring		// poll for proximity to player
+	self waittill death			// wait for death
+	self.myNebelwerfer turnoff
+end
+
+
+nebelwerferFiring:
+	//dprintln "nebelwerfer is firing"
+	// Transition animation to mounting the Nebelwerfer.
+
+	//self anim 21G798_Tranrun
+	//self waittill animdone
+	self.myNebelwerfer TurnOn		// start firing the projectile generator
+	
+	while (isAlive self)
+	{
+		// Animate on the Nebelwerfer -- need to keep this animation short.
+		self anim 21G800_idle
+		self waittill animdone
+		//waitframe
+	}
+end
+
+behind_us:
+	wait 2
+	$player playsound dfr_call_ap4317
+//"Behind us!" [American]
+
+
+////////////////////////////////////NPC COUNT MANAGER////////////////////////////////////////
+end
+
+axis1delete:
+	//dprintln "axis1deleted"
+	$axis1 delete
+end
+
+//seeya3:
+//$tank.gun delete	
+//$tank delete
+
+axis2delete:
+	//dprintln "axis2deleted"
+	$axis2 delete
+
+end
+
+axis3delete:
+	//dprintln "axis3deleted"
+	$axis3 delete
+	$panzer1 delete
+	$panzer1.gun delete
+	$panzer2 delete
+	$panzer2.gun delete
+end
+
+axis4delete:
+	//dprintln "axis4deleted"
+	$axis4 delete
+	$panzer3 delete
+	$panzer3.gun delete
+end
+
+
+axis5delete:
+	//dprintln "axis5deleted"
+	$axis5 delete
+	$nebel1 delete
+end
+
+axis6delete:
+	//dprintln "axis6deleted"
+	$axis6 delete
+	$sdkfz hide
+end
+
+panzerwerferdelete:
+	dprintln "pnzrw deleted"
+	$panzerwerfer delete
+end
+
+
+axis7delete:
+	//dprintln "axis7deleted"
+	$axis7 delete
+end
+
+
+
+/////////////////////////////////ENEMY HALFTRACKS//////////////////////////////////////////
+//halftrack_drive local.halftrack local.pathname local.unloadpassengers local.speed local.acc local.nodedist local.lookahead:
+//halftrack_loadpassengers local.halftrack local.numpassengers local.panzerflag local.type1 local.type2:
+
+sdkfz:
+	$player playsound dfr_call_ap4314
+	//"On the right, in the trees!  Take 'em out!" [ENGLISH]
+	thread global/halftrack.scr::halftrackinit $sdkfz 400 models/vehicles/halftrack_winter_d.tik
+	
+	thread global/halftrack.scr::halftrack_loadpassengers $sdkfz 1 0 "human/german_winter_type1" "human/german_winter_type1"
+
+	self thread sdkfzdead
+	self.death_thread = parm.previousthread
+
+	self thread global/halftrack.scr::halftrack_drive $sdkfz $sdkfzpath 1 185 300 40 128
+
+	self waittill drive
+	
+end
+
+sdkfzdead:
+	$sdkfz waittill death
+	waitthread global/halftrack.scr::halftrack_killed $sdkfz
+	radiusdamage ($sdkfz.origin+(0 0 256)) 348 400
+	$(sdkfz.gunner) remove
+end
+
+sdkfz2:
+	
+	 
+	
+	thread global/halftrack.scr::halftrackinit $sdkfz2 400 models/vehicles/halftrack_winter_d.tik
+	thread global/halftrack.scr::halftrack_loadpassengers $sdkfz2 1 0 "human/german_winter_type1" "human/german_winter_type1"
+
+	self thread sdkfzdead2
+	self.death_thread = parm.previousthread
+
+	self thread global/halftrack.scr::halftrack_drive $sdkfz2 $sdkfzpath2 1 100 100 128 256
+
+	self waittill drive
+	
+	$player playsound dfr_call_ap4364
+	//"Half Track on the Left!" [ENGLISH]
+	
+end
+
+sdkfzdead2:
+	$sdkfz2 waittill death
+	waitthread global/halftrack.scr::halftrack_killed $sdkfz2
+	radiusdamage ($sdkfz2.origin+(0 0 256)) 348 400
+	$(sdkfz2.gunner) remove
+
+
+end
+
+
+	
+
+/////////////////////TANKS////////////////////////////////////////////////////////////////
+
+  	//$tank.type = 0
+
+        //$tank rendereffects "-shadow"
+
+        //$tank.start_health = 100
+
+        //$tank.health = $tank.start_health
+
+        //$tank removeondeath 0
+
+        //$tank immune bullet
+
+        //$tank immune fast_bullet
+
+        //$tank immune grenade
+
+        //$tank immune bash
+
+        //$tank.accuracy = 10
+
+
+debughealth:
+	local.hack = 0
+	local.health = self.health
+	//println ( "debughealth: " + local.health)
+	while (isalive self)
+	{
+		if (local.health != self.health)
+		{
+			//dprintlnbold "tank got hit"
+			//println ( "panzer health: " + self.health)
+			local.health = self.health
+			if (local.hack == 0)
+			{
+				local.hack = 1
+				self.health = self.start_health
+			}
+		}
+		waitframe
+	}
+	//dprintlnbold ("panzer1 just died")
+	//println ("get out is: " + $self.get_out )	
+end
+
+//panzer1/////
+
+panzer1:
+	//dprintln "STARTING panzer 1"
+	$panzer1.start_health = 800
+	$panzer1.health = $panzer1.start_health
+	//$panzer1.get_out = 0
+	$panzer1.accuracy = 50
+	$panzer1 thread global/vehicles_thinkers.scr::enemy_tank_think2 0 empty_panzer_winter
+	$panzer1.get_out = 0
+	$panzer1 thread debughealth
+	//println ( "panzer1 health: " + $panzer1.health)
+	level.playertanktarget = $player
+	$panzer1 drive $panzer1path 20 50 256 
+	$panzer1 waittill drive
+	$panzer1 stop
+end
+
+//panzer2/////
+
+panzer2:
+	//dprintln "STARTING panzer TANK 2"
+	$player playsound dfr_call_ap4360
+//"Panzer on the right!"
+	$panzer2.start_health = 400
+	$panzer2.accuracy = 75
+	$panzer2.health = $panzer2.start_health
+	$panzer2 thread global/vehicles_thinkers.scr::enemy_tank_think2 0 empty_panzer_winter
+	$panzer2.get_out = 0
+	level.playertanktarget = $player
+	$panzer2 drive $panzer2path 20 50 256 
+	$panzer2 waittill drive
+	$panzer2 stop
+	 
+end
+
+//panzer3/////
+panzer3:
+	//dprintln "STARTING panzer TANK3"
+	$player playsound dfr_call_ap4316
+//"On your six!"
+	$panzer3.start_health = 500
+	$panzer3 thread global/vehicles_thinkers.scr::enemy_tank_think2 0 empty_panzer_winter
+	level.playertanktarget = $player
+	$panzer3 drive $panzer3path 150 100 256
+	$panzer3 waittill drive
+	$panzer3 stop 
+end
+
+//panzer4/////
+panzer4:
+	//dprintln "STARTING panzer TANK4"
+	$player playsound dfr_call_ap4362
+//"Panzer dead ahead"
+	$panzer4 thread global/vehicles_thinkers.scr::enemy_tank_think2 0 empty_panzer_winter
+	level.playertanktarget = $player
+	$panzer4 drive $panzer4path 150 100 256
+	$panzer4 waittill drive
+	$panzer4 stop 
+end
+
+//panzer5/////
+panzer5:
+	//dprintln "STARTING panzer TANK5"
+	$player playsound dfr_call_ap4362
+//"Panzer dead ahead"
+	wait 3
+	$panzer5 thread global/vehicles_thinkers.scr::enemy_tank_think2 0 empty_panzer_winter
+	level.playertanktarget = $player
+	$panzer5 drive $panzer5path 50 50 256
+	$panzer5 waittill drive
+	$panzer5 stop 
+end
+
+//panzer6 (getting tired yet?)/////
+panzer6:
+	//dprintln "STARTING panzer TANK6"
+	$player playsound dfr_call_ap4304
+//"Enemy Spotted!"
+	$panzer6 thread global/vehicles_thinkers.scr::enemy_tank_think2 0 empty_panzer_winter
+	level.playertanktarget = $player
+	$panzer6 drive $panzer6path 50 50 256
+	$panzer6 waittill drive
+	$panzer6 stop
+end 
+
+panzerwerfer:
+
+	//dprintln "STARTING PANZERWERFER"
+	
+	$panzerwerfer health 600
+	$panzerwerfer thread global/vehicles_thinkers.scr::enemy_tank_think2 0 panzerwerfer
+	//level.playertanktarget = $s1_truck1
+	$panzerwerfer drive $panzerwerferpath 200 50 256
+	$panzerwerfer waittill drive
+	$panzerwerfer stop
+end
+
+panzerwerfercall:
+	$player playsound dfr_call_ap4310
+//"They're on the right!"
+
+end
+
+//panzer7/////
+panzer7:
+	//dprintln "STARTING panzer TANK7"
+	$player playsound dfr_call_ap4309
+//"Enemy Spotted!"
+	$panzer7 thread global/vehicles_thinkers.scr::enemy_tank_think2 0 empty_panzer_winter
+	level.playertanktarget = $player
+	$panzer7 drive $panzer7path 50 50 256
+	$panzer7 waittill drive
+	$panzer7 stop
+end 
+
+
+	
+
+////////////////////////////////CAMERA TRICKERY/////////////////////////////////////////////////
+savethread:
+
+		$s1_jeep1_turret0 psetviewangles (0 270 0)
+
+
+end
+
+
+
+
+triggercamera:
+	self waittill trigger
+	//dprintln "camera trigger"
+	//waitthread s1jeep_yaw
+	$player playsound halftrack_wobble1
+	waitthread gags/t2l2_camera.scr::t2l2_camera
+	$s1_jeep1_turret0 psetviewangles (0 0 0)
+	waitthread s1jeep_yaw
+end
+
+
+triggercamerab:
+	self waittill trigger
+	//dprintln "camera trigger"
+	thread gags/t2l2_camera.scr::t2l2_camerab
+
+end
+
+
+
+earthquake:
+	
+	//dprintln "earthquake trigger"
+	thread global/earthquake.scr::start .7 2 1 1
+	
+
+end
+
+
+//////////////////////////////////TRUCK DRIVING////////////////////////////////////////////
+truckdrive:
+	
+	//dprintln "TRUCK speed 255 100 256"
+	wait 9
+	self drive $truckpath1 
+	self modifydrive 255 100 256
+	self waitTill drive
+	//self stop
+	//dprintln "The truck has stopped**************"
+	//wait 3
+
+
+
+//truck switch to path2
+	
+	//dprintln "Truck path 2"
+	//dprintln "wait 3"
+	//dprintln "TRUCK speed 350 500 256"
+	self drive $truckpath_2 
+	self modifydrive 350 500 256
+	self waittill drive
+	self stop
+	wait 3
+
+
+//truck adjusting to path3
+	//dprintln "Truck Switching to 3rd path*****************"
+	//dprintln "wait 8"
+	wait 8
+	//dprintln "TRUCK speed now 265 300 256"
+	self drive $truckpath_3 
+	self modifydrive 265 300 256
+	self waittill drive
+	self stop
+	
+
+
+//truck adjusting to path4...
+	dprintln "Truck Switching to 4th path*****************"
+	//dprintln "wait 7  //7"
+	wait 5
+	//dprintln "TRUCK speed now 180 250 256"
+	self drive $truckpath4 
+	self modifydrive 180 250 256
+	self waittill drive
+	self stop
+
+//truck adjusting to new path...
+	dprintln "Truck Switching to path 5*****************"
+	dprintln "TRUCK speed now 230 270 256"
+	self drive $truckpath5 
+	self modifydrive 235 350 256
+	self waittill drive
+	self stop
+
+end
+
+//speed control trigger for the truck
+truck_speed_controls:
+	for ( local.i = 1; local.i <= $truckspeed.size; local.i++)
+	{
+		thread truckspeed local.i
+	}
+end
+
+truckspeed local.i:
+	if ($truckspeed[local.i].speed != NIL)
+		local.speed = $truckspeed[local.i].speed
+	else 
+		local.speed = level.fastspeed
+
+	if ($truckspeed[local.i].acceleration != NIL)
+		local.acceleration = $truckspeed[local.i].acceleration
+	else 
+		local.acceleration = level.acceleration
+
+	
+	println "z:      wait for trigger speedup: " local.i  " value " local.speed
+
+truckhealthcheck:
+	//if (!isAlive self)
+	//	end
+	while (self.health >= 500)
+	{
+		//dprintln "waiting for damage"
+		waitframe
+	}
+	$player playsound dfr_T2L2_ad4403
+	//dprintln "SAY MY NAME!!!!"
+
+
+end
+
+triggerloop:
+	$truckspeed[local.i] waittill trigger
+	if (parm.other != $s1_truck1)
+	{
+		goto triggerloop
+	}
+	
+	//dprintln ("***Triggered speed up with speed: " + local.speed + " acceleration: " + local.acceleration)
+	$s1_truck1 modifydrive local.speed local.acceleration level.lookahead
+
+end
+
+
+//--------------------------
+
+//////////////////////////////////PLAYER HALFTRACK/////////////////////////////////////////
+
+PLAYER_JEEP_Drive:
+// drive Vector position, Float speed, Float acceleration, Float reach_distance, Float look_ahead, [ Vector alternate_position ] 
+
+//half track first path then pausing on cliff
+
+	wait 6	
+	self drive $jeepfirstpath 250
+	self modifydrive 250 100 256
+	self waitTill drive
+	self stop
+	
+	//HACk
+	self health 10000
+
+	//dprintln "PAUSING ON CLIFF**************"
+	self moveanim 22P100_Hafltrack_wobble
+	//wait 5
+	self waittill animdone
+	wait 10
+	
+
+
+	
+//we's about to have ourselves an accident... 
+	
+	$player playsound halftrack_bounce03
+	self drive $halfdownhill 
+	self modifydrive 900 700 256
+	self waittill drive
+	self stop
+	wait 2
+
+	
+//reverse drive	
+	//dprintln "go in reverse******************"
+	self drive $halfpath2 level.reversespeed 150 200 256 //-200 -100 256
+	self waittill drive
+	self stop
+	wait 7
+
+//forward again
+	//dprintln "path GOING FORWARD"
+	self drive $halfpath3 250 
+	self modifydrive 255 100 256
+	self waittill drive
+	self stop
+end
+
+//triggered explosions
+
+triggerexplode:
+	self waittill trigger
+	//dprintln "********triggerexplode got triggered"
+	if (parm.other == $player)
+	{
+		if (self.target != NIL)
+		{
+			exec global/model.scr self.target.origin self.target.model
+		}
+	}
+	else
+	{
+		println "**** by non-player"
+	}
+end
+
+/////////////////////////////////The supply truck takin' it////////////////////////////////////////
+
+check_truck_death:
+
+
+        if (isalive $s1_truck1)
+	$s1_truck1 waittill death 
+	//22a222_DeathTruck
+	local.offset = $s1_truck1.origin
+	local.offset[2]+=128
+	radiusdamage local.offset 200 200
+	iprintln "The Supply Truck has been Destroyed - Mission Failed."
+	wait 3
+	missionfailed
+
+end
+
+nolight:
+	wait 1.5
+	$s1_truck1 vehicleanim idlenolights
+	$s1_truck1.corona = 0
+end
+
+endlevel:
+
+	//$objective1 complete
+	waitthread global/objectives.scr::add_objectives 1 3
+	
+	wait 7
+	fadeout 9 0 0 0 1
+
+exec global/missioncomplete.scr t2l3 1
+end
+
+//later...
+
+
+
+

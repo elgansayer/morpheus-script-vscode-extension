@@ -1,0 +1,311 @@
+//-------------------------------------------------------------------
+//	gags/T2L4_End.Scr
+//	Jeff Leggett
+//
+//		Ending sequence for 2-4...
+//
+//-------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------
+main:
+//-------------------------------------------------------------------
+
+end
+
+
+//------------------------------------------------------------------------
+DoEnding:
+//
+//	spawn the last friendlies and get ready for the final gag...
+//------------------------------------------------------------------------
+
+	level.auto_friendly = 0
+	waitthread global/ai.scr::spawnset 700 EndGuys
+
+	level.werfer_ready = 1
+
+//	$start_werfer waittill trigger
+//	thread DoPanzerWerfer
+	
+	end
+
+//------------------------------------------------------------------------
+GuyDiveOutOfTheWay:
+//------------------------------------------------------------------------
+
+	local.rand = randomfloat 2
+
+	local.rand += 2
+
+	wait local.rand
+
+	if ( self.dive_anim!=NIL )
+	{
+		self.blendtime = 0.01
+		self anim self.dive_anim
+		self waittill animdone
+
+		if (self.dive_anim == 24A204_Dive)
+		{
+			local.count = 0
+			while ( local.count < 3 )
+			{
+				local.count ++
+				self anim 24A205_DivePause
+				self waittill animdone
+			}
+		
+			self anim 24A206_GetUp
+			self waittill animdone 
+		}
+
+		self.blendtime = 0.2
+	}
+
+	if ( isAlive self )
+	{
+		wait 0.2
+		self exec global/aimat.scr $stuka
+	}
+
+end
+
+//------------------------------------------------------------------------
+GuysDiveOutOfTheWay:
+//------------------------------------------------------------------------
+
+	for (local.i=1;local.i<=$EndGuys.size;local.i++)
+	{
+		if ( isAlive ( $EndGuys[local.i] ) )
+		{
+			$EndGuys[local.i] thread GuyDiveOutOfTheWay
+		}
+	}
+	end
+
+
+//------------------------------------------------------------------------
+ShootAtPlane local.plane:
+//------------------------------------------------------------------------
+
+	if ( local.plane!=$stuka )
+	{
+		// then it's the crashed version...
+		self exec global/aimat.scr local.plane
+		end
+	}
+
+	if ( isAlive self && self.gun != "panzerschrek" )
+	{
+		self exec global/aimat.scr local.plane
+		local.random = randomfloat 1.5
+		local.random += 2
+		wait local.random
+
+		if ( self==$cappy )
+		{
+//			for ( local.i=1;local.i<=2;local.i++ )
+			{
+				$cappy exec global/aimat.scr $stuka
+				wait 0.2
+				$cappy exec global/shoot.scr
+				wait 0.2
+				$cappy exec global/aimat.scr $stuka
+			}
+		}
+		else
+		{
+			self exec global/shoot.scr
+			wait 0.5
+			self exec global/aimat.scr $stuka
+		}
+	}
+
+	end
+
+//------------------------------------------------------------------------
+GuysShootPlane local.plane:
+//------------------------------------------------------------------------
+	for (local.i=1;local.i<=$EndGuys.size;local.i++)
+	{
+		if ( isAlive $EndGuys[local.i] )
+			$EndGuys[local.i] thread ShootAtPlane local.plane
+	}
+
+	$cappy thread ShootAtPlane local.plane
+
+	end
+
+//------------------------------------------------------------------------
+SetupEndGuys:
+//------------------------------------------------------------------------
+	
+	for (local.i=1;local.i<$EndGuys.size+1;local.i++)
+	{
+		if ( isAlive ( $EndGuys[local.i] ) )
+		{
+			local.dest = $EndGuys[local.i].target
+			if (randomint(100) > 66)
+			{
+				$EndGuys[local.i].dive_anim = 24A201_Dive
+			}
+			else if (randomint(100) > 50)
+			{
+				$EndGuys[local.i].dive_anim = 24A204_Dive
+			}
+			else
+			{
+				$EndGuys[local.i].dive_anim = 24A207_DiveRoll
+			}
+
+			$EndGuys[local.i] exec global/stand.scr
+		}
+	}
+
+	end
+
+//------------------------------------------------------------------------
+DoWerferAttacks:
+//------------------------------------------------------------------------
+	wait 10
+
+	$werfer_target_1 takedamage
+	$werfer_target_1.health = 10
+
+	$werfer_target_2 takedamage
+	$werfer_target_2.health = 10
+
+	$panzerwerfer.gun setaimtarget $werfer_target_1
+	$panzerwerfer.gun waittill ontarget
+
+//	dprintln "werfer firing!"
+	$panzerwerfer.gun anim fire
+
+	wait 1
+	// tell roof guy to fire (and miss)
+	$roof_guy fire
+
+	wait 1
+	$panzerwerfer.gun setaimtarget $werfer_target_2
+	$panzerwerfer.gun waittill ontarget
+
+//	dprintln "werfer firing again"
+	$panzerwerfer.gun anim fire
+
+	end
+
+//------------------------------------------------------------------------
+AttackWerfer:
+//------------------------------------------------------------------------
+
+	self aimat $panzerwerfer
+	wait 2
+	
+	self exec global/prone.scr
+	wait 1
+
+	self aimat $panzerwerfer
+
+	local.rand = randomfloat 2
+	local.rand += 0.25
+
+	wait local.rand
+
+	while ( isAlive self && isAlive $panzerwerfer )
+	{
+		self fire
+		local.rand = randomfloat 2
+		local.rand += 3
+
+		wait local.rand
+	}
+
+	self aimat NULL
+
+	self exec global/stand.scr
+	wait 0.2
+
+
+	end
+
+//------------------------------------------------------------------------
+EndGuysAttackWerfer:
+//------------------------------------------------------------------------
+
+	wait 3
+
+	$EndGuys thread AttackWerfer
+
+	$werfer_target_1 thread AttackWerfer
+	$werfer_target_2 thread AttackWerfer
+
+	$cappy thread gags/t2l4_captain.scr::CappyShootAt $panzerwerfer
+
+
+	end
+
+//------------------------------------------------------------------------
+DoPanzerWerfer:
+//
+//	Send the panzerwerfer on his way....
+//------------------------------------------------------------------------
+
+	if ( level.werfer_ready==0)
+	{
+		end
+	}
+
+	self delete
+	dprintln "werfer on the move!"
+
+	thread EndGuysAttackWerfer
+
+	$roof_guy exec global/disable_ai.scr
+	$roof_guy aimat $panzerwerfer
+
+	$panzerwerfer nodamage
+	$panzerwerfer.angles = "0 -90 0"
+	$panzerwerfer show
+//	$panzerwerfer thread global/vehicles_thinkers.scr::TankExplodeOnDeath panzerwerfer
+
+	thread DoWerferAttacks
+
+	$panzerwerfer waitthread gags/t2l4_start.scr::drive_path $gerry_tank_5_path 75 0
+
+	// set health to 450 so player can't screw this up...
+	$panzerwerfer.health = 450	
+	$panzerwerfer takedamage
+
+	wait 1
+	$panzerwerfer.gun setaimtarget $roof_guy
+	$panzerwerfer.gun waittill ontarget
+	wait 1.25
+
+//	dprintln "werfer firing at roof guy.."
+	$panzerwerfer.gun anim fire
+
+	// tell roof guy to fire now too....
+	$roof_guy fire
+
+	if ( isAlive $werfer_target_1 )
+		$werfer_target_1 targetname EndGuys
+
+	if ( isAlive $werfer_target_2 )
+		$werfer_target_2 targetname EndGuys
+
+	wait 1.25
+
+	// this should happen if player doesn't mess with it...
+	if (isAlive $panzerwerfer)
+	{
+//		dprintln "forcing werfer to die.."
+
+		radiusdamage $panzerwerfer.origin 500 500 1
+	}
+
+	level.werfer_done = 1
+
+
+	end
+

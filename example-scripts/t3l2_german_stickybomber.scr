@@ -1,0 +1,496 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t3l2_german_stickybomber.scr
+//
+// author: Michael Goodwin
+//
+// run the main thread on the level object as follows:
+//
+//   exec gags/t3l2_german_stickybomber.scr
+//
+// everything from that point on is handled in this script
+//
+// description:
+//
+// - when the system is activated, soldiers will spawn from random
+//   locations and run along a path to a "rally" point.
+//   at any given time, there are at most two soldiers in action.
+//   after two soldiers reach the rally point and recuperate,
+//   they will both attempt to run to the next target tank.
+//   if a soldier reaches the tank, he will recuperate, then
+//   "place" a stickybomb on the tank, then run an escape path.
+//   the process repeats until all target tanks are destroyed.
+//
+// setup:
+//
+// - place ai soldiers with targetname of "stickyspawner" in locations
+//   from which you want runners to spawn.  there is no limit to the
+//   number of spawn locations or soldier types.
+// - place two paths from the spawn location(s) to the rally point.
+// - place two info_waypoint objects to designate positions at the rally point.
+// - place two paths from the rally point to each of the target tanks.
+//   the paths should terminate at two different locations.
+// - place an escape path from each of the tanks to the rally point.
+// - edit the main thread in this file to reflect the names of the 
+//   paths and objects referenced in the script.
+// - turn the system on with the following script line:
+//	   exec gags/t3l2_german_stickybomber.scr::sticky_spawner_on
+// - turn the system off with the following script line:
+//	   exec gags/t3l2_german_stickybomber.scr::sticky_spawner_off
+//
+// TODO:
+// - determine what to do with runners once all tanks are destroyed
+// - shut down system when all tanks destroyed?
+// - better synchronization while waiting at tank
+// - "placement" animation at tank?
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:
+
+	// initialize level variables to track progress
+	// the runners
+	level.stickybomber[1] = NULL
+	level.stickybomber[2] = NULL
+
+	// runner states
+	// 0 - none
+	// 1 - running to rally
+	// 2 - arrived at rally
+	// 3 - waiting at rally
+	// 4 - ready at rally
+	// 5 - running to tank
+	// 6 - arrived at tank
+	// 7 - waiting at tank
+	// 8 - running escape
+	level.bomberstate[1] = 0
+	level.bomberstate[2] = 0
+
+	// rally points
+	level.rallypoint[1] = $rallypoint1
+	level.rallypoint[2] = $rallypoint2
+
+	// paths to the rally points, 1 per runner
+	level.rallypath[1] = $rallypath1
+	level.rallypath[2] = $rallypath2
+
+	// target tanks
+	level.stickybombtank[1] = $t34_friendly1
+	level.stickybombtank[2] = $t34_friendly2
+	level.stickybombtank[3] = $t34tank3
+
+	// paths to/from tank #1
+	level.stickybombpath1[1] = $tank1path1
+	level.stickybombpath2[1] = $tank1path2
+	level.stickybombescape[1] = $tank1escape
+
+	// paths to/from tank #2
+	level.stickybombpath1[2] = $tank2path1
+	level.stickybombpath2[2] = $tank2path2
+	level.stickybombescape[2] = $tank2escape
+
+	// paths to/from tank #3
+	level.stickybombpath1[3] = $tank3path1
+	level.stickybombpath2[3] = $tank3path2
+	level.stickybombescape[3] = $tank3escape
+
+	// flags bomb on tank 1=bombed
+	level.stickybombplaced[1] = 0
+	level.stickybombplaced[2] = 0
+	level.stickybombplaced[3] = 1			// tank #3 is not a target
+
+	// control semaphores
+	level.nextrespawn = level.time			// delay timer for respawning
+	level.runspawner = 0					// spawner control 0=off, 1=on
+
+	// <TWEAK> variables that modify control behavior
+	level.respawndelay = 10.0				// delay between spawnings
+	level.waitatrally = 5.0					// recup time to wait at rally point until ready
+	level.waitattank = 5.0					// delay after reaching tank until bomb is placed
+	level.bombfuse = 5.0					// fuse duration on the stickybomb
+
+	// initialize the spawners
+	if ( $stickyspawner == NULL )
+		level.stickyspawners = 0
+	else
+		level.stickyspawners = $stickyspawner.size
+
+	if ( level.stickyspawners > 0 )
+	{
+		level.stickyspot = exec global/makearray.scr $stickyspawner
+
+		for ( local.i = 1; local.i < level.stickyspawners + 1; local.i++ )
+		{
+			level.stickyspot[local.i] = waitthread global/spawner.scr::spawner_create level.stickyspot[local.i]
+		}
+//		println "~~~~~~~~~~~~~~~~~~~~~~~~ " level.stickyspawners " SPAWN POINTS FOUND!!!!!!!!"
+	}
+	else
+	{
+		println "~~~~~~~~~~~~~~~~~~~~~~~~ NO SPAWN POINTS FOUND!!!!!!!!"
+	}
+
+	// run the control thread
+	while (1)
+	{
+		if ( (level.runspawner == 1) && (level.time >= level.nextrespawn) )
+		{
+//			println "~~~~~~~~~~~~~~~~~~~` time to spawn"
+			if ( level.stickybomber[1] == NULL )
+			{
+				waitthread spawn_stickybomber 1
+			}
+			else if ( level.stickybomber[2] == NULL )
+			{
+				waitthread spawn_stickybomber 2
+			}
+		}
+
+		// run checks on the runners
+		for ( local.i = 1; local.i < 3; local.i++ )
+		{
+			if ( level.stickybomber[local.i] != NULL )
+			{
+				if ( level.bomberstate[local.i] == 2 )
+				{
+					level.stickybomber[local.i] thread wait_at_rally local.i
+				}
+			}
+		}
+
+		//check if time to send to tank
+		local.tank = waitthread sticky_tank_target
+		if ( local.tank > 0 )
+		{
+			local.run = waitthread should_run_to_tank 1 2
+			if ( local.run == 1 )
+			{
+				level.stickybomber[1] thread run_to_tank 1 local.tank 1
+			}
+			else
+			{
+				local.run = waitthread should_run_to_tank 2 1
+				if ( local.run == 1 )
+				{
+					level.stickybomber[2] thread run_to_tank 2 local.tank 2
+				}
+			}
+		}
+
+		wait 0.5
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// turn the spawner on
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sticky_spawner_on:
+
+	level.runspawner = 1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// turn the spawner off
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sticky_spawner_off:
+
+	level.runspawner = 0
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the level when a new bomber is to spawn
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+spawn_stickybomber local.index:
+
+	local.rand = randomint( level.stickyspawners )
+//	println "~~~~~~~~~~~~~~~~~~~~~~ spawn_stickybomber, spawning soldier " local.index " from location " (local.rand + 1)
+
+	local.ent = waitthread global/spawner.scr::spawner_activate level.stickyspot[local.rand + 1]
+	local.ent thread run_to_rally local.index level.rallypath[local.index]
+	local.ent thread bomber_deathcheck local.index
+	local.ent exec global/disable_ai.scr
+	local.ent holster
+	local.ent dontdropweapons
+
+	level.stickybomber[local.index] = local.ent
+	level.nextrespawn = level.time + level.respawndelay
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread checks if a soldier should run to a tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+should_run_to_tank local.me local.other:
+
+	if ( (level.stickybomber[local.me] != NULL ) &&
+		 (level.stickybomber[local.other] != NULL) &&
+		 (level.bomberstate[local.me] == 4) &&
+		 (level.bomberstate[local.other] >= 4) )
+	{
+		local.ret = 1
+	}
+	else
+	{
+		local.retn = 0
+	}
+
+end local.ret
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread returns the next valid tank target
+//   or 0, if none
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sticky_tank_target:
+
+	local.ret = 0
+	if ( level.stickybombplaced[1] == 0 )
+	{
+		local.ret = 1
+	}
+	else if ( level.stickybombplaced[2] == 0 )
+	{
+		local.ret = 2
+	}
+	else if ( level.stickybombplaced[3] == 0 )
+	{
+		local.ret = 3
+	}
+	
+end local.ret
+
+
+//**************************************
+//**************************************
+//
+// soldier threads
+//
+//**************************************
+//**************************************
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the soldier while he's alive
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bomber_deathcheck local.index:
+
+	while ( isAlive self )
+	{
+		wait 0.2
+	}
+
+//	println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ bomber " local.index " died"
+	level.stickybomber[local.index] = NULL
+	level.bomberstate[local.index] = 0
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the soldier who is
+//   running from the spawn point to the rally point
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+run_to_rally local.index local.rallyid:
+
+	level.bomberstate[local.index] = 1
+
+	self runto local.rallyid
+	self waittill movedone
+	self runto level.rallypoint[local.index]
+	self waittill movedone
+	self exec global/crouch.scr
+
+	level.bomberstate[local.index] = 2
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the soldier who is
+//   waiting at the rally point
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+wait_at_rally local.index:
+
+	level.bomberstate[local.index] = 3
+
+	wait level.waitatrally
+
+	if ( isAlive self )
+	{
+		level.bomberstate[local.index] = 4
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the soldier who is
+//   running from the rally point to the tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+run_to_tank local.index local.tankid local.pathid:
+
+	// run to the tank
+	level.bomberstate[local.index] = 5
+
+	if ( local.pathid == 1 )
+	{
+		local.tankpath = level.stickybombpath1[local.tankid]
+	}
+	else
+	{
+		local.tankpath = level.stickybombpath2[local.tankid]
+	}
+
+	self runto local.tankpath
+	self waittill movedone
+	self exec global/crouch.scr
+
+	// arrived at tank
+	level.bomberstate[local.index] = 6
+
+	wait level.waitattank
+
+	if ( isAlive self )
+	{
+		if ( level.stickybombplaced[local.tankid] == 0 )
+		{
+//			println "~~~~~~~~~~~~~~~~~~~~~~~~~ run_to_tank: placing stickybomb"
+			level.stickybombplaced[local.tankid] = 1
+			level.stickybombtank[local.tankid] thread t34_sticky_bombed
+		}
+
+		/// run escape
+		level.bomberstate[local.index] = 8
+
+		self runto level.stickybombescape[local.tankid]
+		self waittill movedone
+		self runto level.rallypoint[local.index]
+		self waittill movedone
+		self exec global/crouch.scr
+
+		// returned to rally
+		level.bomberstate[local.index] = 2
+	}
+
+end
+
+
+//**************************************
+//**************************************
+//
+// tank threads
+//
+//**************************************
+//**************************************
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the tank when
+//   a stickybomb has been planted on it
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+t34_sticky_bombed:
+
+	wait level.bombfuse
+
+		// jsl-->Just let the tank die normally... (will use the correct model, etc..)
+//	self thread tank_killed
+
+	local.damage_amt = self.health
+	local.damage_amt = local.damage_amt + 100
+
+//	dprintln "doing radius damage on" self " damage=" local.damage_amt
+	radiusdamage (self.origin + (0 0 150)) local.damage_amt 500 1
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the tank when
+//   the stickybomb explodes
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tank_killed:
+
+	self nodamage
+	self playsound explode_tank
+	self stop
+	self.driving = 0
+
+	if (self.attack_thread)
+		self.attack_thread delete
+	if (self.pain_thread)
+		self.pain_thread delete
+
+	// <TWEAK> this is the destroyed tank model
+	local.model = models/vehicles/tigertank_d.tik
+
+	self thread global/vehicles_thinkers.scr::spawn_fx models/emitters/explosion_tank.tik
+	wait 0.25
+	exec global/earthquake.scr .2 4 0 0
+
+	radiusdamage (self.origin + (0 0 200)) 800 400
+	wait 0.1
+
+	self.gun = self QueryTurretSlotEntity 0
+	self.gun2 = self QueryTurretSlotEntity 1
+	if (self.gun)
+	{
+		self DetachTurretSlot 0
+		self.gun remove
+	}
+	if (self.gun2)
+	{
+		self DetachTurretSlot 1
+		self.gun2 remove
+	}
+
+	local.name = self
+	local.angles = self.angles
+	local.origin = self.origin
+	local.brushmodel = self.collisionent.brushmodel
+	self remove
+
+	local.collision = thread global/vehicles_thinkers.scr::damaged_collision local.angles local.origin local.brushmodel
+	local.damaged = thread global/vehicles_thinkers.scr::spawn_damaged_new local.model local.angles local.origin
+
+	local.collision disconnect_paths
+
+end

@@ -1,0 +1,1291 @@
+// t2l4_captain.scr
+// please add the following line to t2l4.scr
+// thread gags/t2l4_captain.scr::t2l4_main
+
+
+//////////////////////////////////////////
+// triggers 
+////////////////////////////////////////// 
+
+t2l4_main:
+	level.finalgag = 0
+	level.cappyshooting = 0
+	level.cappygrenadetime = 0
+	level.cappytankwarntime = 0
+	level.cappybulletsfired = 0
+	level.cappyclipsize = 20
+	level.captainprone = 0
+	level.captaincrouch = 0
+	level.getone = 0
+	level.werfer_done	= 0
+
+	// make sure our autosaves are named correctly...
+	level.window_guy_count = 0
+
+	level.barrage_on	= 0
+
+
+	$cappy nodamage
+	$cappy.health = 300
+
+	waitthread lockdoors
+
+	thread TurnOffWindowGuys
+
+	// make the final aagun turn a little faster than usual...
+	$aagun1_turret0_turret0 turnspeed 90
+
+	$cappy thread CappyDeathCheck
+
+	// start the flak88 firing...
+	$flak1.gun = $flak1 QueryTurretSlotEntity 0
+	$flak1.gun setaimtarget $flak1_aim
+	$flak1.target = $flak1_aim
+
+	$flak1 thread gags/t1l2_flak88.scr::FireFlak88Loop 3 2
+
+	// save up clone info for the mg42gunnerE
+
+	wait 0.2
+	level.model_gunnerE = $mg42gunnerE.model
+	level.origin_gunnerE = $mg42gunnerE.origin
+	level.angles_gunnerE = $mg42gunnerE.angles
+	level.turret_gunnerE = $mg42gunnerE.turret
+	level.sight_gunnerE  = $mg42gunnerE.sight
+
+	level.model_hotel_mg  = $hotel_mg.model
+	level.origin_hotel_mg = $hotel_mg.origin
+	level.angles_hotel_mg = $hotel_mg.angles
+	level.turret_hotel_mg = $hotel_mg.turret
+	level.sight_hotel_mg  = $hotel_mg.sight
+
+//	thread test
+
+end
+
+
+
+//------------------------------------------------------------------------
+CappyDeathCheck:
+//------------------------------------------------------------------------
+	self waittill death
+
+	iprintlnbold "The Captain has been killed in action."
+	iprintlnbold "You failed the mission."
+	wait 3
+	missionfailed
+
+	end
+
+/////////////////////////////////
+// Captain Destinations
+/////////////////////////////////
+// $captain_dest1
+// $captain_dest2
+// $captain_dest3
+// $captain_dest4
+// $captain_dest5
+
+// you will need to place trigger once with this setthread to have the captain 
+// leave the player and go to the current captain destination
+// use: setthread gags/t2l4_captain.scr::CaptainReachesDestination1
+CaptainReachesDestination1:
+	level.captainfindtarget = 1024
+end
+
+CaptainResetDestination:
+	level.captainfindtarget = 128
+end
+
+//------------------------------------------------------------------------
+CaptainStartFollow:
+// 
+// Charge across the field and wait for the player to finish objective#1
+//------------------------------------------------------------------------
+// dprintln "Captain Start Follow!"
+
+	thread DoPlayerDeath
+
+	forcemusic aux2 aux2
+	self exec global/disable_ai.scr
+	level.captainfindtarget = 128
+	self.movedoneradius = 128
+
+	$cappy nodamage
+
+	// set this to skip stuff...
+	local.skip = 0
+
+	switch ( local.skip )
+	{
+		case	1:	// hotel
+		self origin $captain_dest4.origin
+		self thread DoHotel
+		self exec global/disable_ai.scr
+		level.kill_player = 0
+
+		break
+		case	2:	// ending
+		self thread DoEnding
+		thread gags/t2l4_end.scr::DoEnding
+		level.kill_player = 0
+		break;
+		default:
+		// give the cappy some AI..
+		self thread CappyAI 1000
+		self thread CappyTankCheck
+		self thread DoPreChurch
+		break
+	}
+
+
+end
+
+
+//------------------------------------------------------------------------
+DoPreChurch:
+// Cappy has crossed the field and is waiting by the church for the player
+//------------------------------------------------------------------------
+	self turnto NULL
+	self lookat NULL
+
+	// he will be in the little barn facing the mg42 guy...
+	self waitthread CappyRunTo $cappy_safe_1
+//	dprintln "cappy at safe#1"
+
+	level.barrage_on = 1
+	wait 0.2
+	self exec global/crouch.scr
+	local.break_time = level.time + 6
+	while ( level.barrage_on==1 && level.time < local.break_time )
+	{
+		wait 1
+	}
+	self exec global/stand.scr
+	wait 0.25
+
+	self waitthread CappyRunTo $cappy_safe_2
+//	dprintln "cappy at safe#2"
+
+	level.barrage_on = 1
+	wait 0.2
+	self exec global/crouch.scr
+	local.break_time = level.time + 6
+	while ( level.barrage_on==1 && level.time < local.break_time )
+	{
+		wait 1
+	}
+	self exec global/stand.scr
+	wait 0.25
+
+	self waitthread CappyRunTo $captain_dest1
+
+	// startup objective 2
+	waitthread global/objectives.scr::add_objectives 2 2 "Find the captain" $cappy.origin
+	waitthread global/objectives.scr::current_objectives 2	// set it as the current objective
+
+	self waitthread CappyAI_Off
+
+	self turnto $mg42gunnerC
+	self lookat $mg42gunnerC
+
+	self exec global/prone.scr
+
+	wait 2.5
+
+	self aimat $mg42gunnerC
+
+	wait 0.25
+	self thread CappyShootAt $mg42gunnerC
+
+	while ( isAlive $mg42gunnerC )
+	{
+		wait 0.2
+	}
+
+	// stop shooting...
+	self aimat NULL
+	self.shoot_thread delete
+
+	self turnto NULL
+	self lookat NULL
+
+	wait 0.25
+	self exec global/stand.scr
+
+	wait 1.5
+
+	// wait for player to arrive and yell "come here"...
+	self waitthread CappySayComeHere
+
+	exec global/autosave.scr 1
+
+	wait 0.25
+
+	// player is here, say our shiznit and continue...
+	self lookat $player
+	self turnto $player
+
+	wait 1
+
+	// American Captain “Sergeant, clear this church!  I'll cover the front!”
+	$cappy say dfr_T2L4_AC9082
+	$cappy waittill saydone
+
+	self lookat NULL
+	self turnto NULL
+
+	waitthread unlockchurch
+
+	// replace objective #2 with "clear church"
+	waitthread global/objectives.scr::add_objectives 2 2 "Clear Church." $chooych.origin
+	waitthread global/objectives.scr::current_objectives 2	// set it as the current objective
+	
+	self thread CappyDoChurch
+
+end
+
+//------------------------------------------------------------------------
+CappyDoChurch:
+//------------------------------------------------------------------------
+
+	// turn off threatbias on the sniper1...
+
+	// make it so cappy doesn't get distracted...
+
+	$wander_enemy thread BeNoThreat
+
+	if ( $mg42gunnerC!=NIL && mg42gunnerC!=NULL )
+		$mg42gunnerC thread BeNoThreat
+	if ( $mg42gunnerD!=NIL && mg42gunnerD!=NULL)
+		$mg42gunnerD thread BeNoThreat
+	if ( $mg42gunnerE!=NIL && mg42gunnerE!=NULL )
+		$mg42gunnerE thread BeNoThreat
+
+	if ( $sniper1!=NIL )
+	{
+		$sniper1 thread BeNoThreat
+	}
+
+	// from here on out, the cappy takes damage...
+	self takedamage
+
+	self exec global/enable_ai.scr
+ 	self waitthread CappyRunTo $cap_run1
+
+	// take a breath...
+	wait 1
+	self waitthread CappyRunTo $cap_run2
+
+//	dprintln "running to 3"
+	self waitthread CappyRunTo $cap_run3
+
+	level.cappy_upstairs = 1
+
+	self exec global/enable_ai.scr
+
+
+	//	dprintln "running to 4"
+//	self waitthread CappyRunTo $cap_run4
+//	dprintln "running to 5"
+	self waitthread CappyRunTo $cap_run5
+//	dprintln "running to cover"
+	self waitthread CappyRunTo $cap_cover
+
+	self exec global/disable_ai.scr
+	self aimat $cap_cover_aim
+
+	// now see if all the church guys are dead....
+
+	local.alive_count=99
+	while ( local.alive_count>0 )
+	{
+		local.alive_count = 0
+		
+		for (local.i=1;local.i<=$ChurchGuys.size;local.i++)
+		{
+			if ( isAlive $ChurchGuys[local.i] )
+				local.alive_count++
+		}
+
+//		println "There are " local.alive_count " church guys left alive.."
+		wait 1
+	}
+
+	// enable death trigger....
+	$death_church_to_hotel triggerable
+
+	// disable other death triggers..
+	$death_field_to_church nottriggerable
+	$death_field_to_church_toggle nottriggerable
+
+
+
+	// complete objective #2 (cleared the church..)
+	waitthread global/objectives.scr::add_objectives 2 3	
+
+	level.curr_objective	= 3
+
+	self.health = 200
+	
+	self waitthread CappyRunTo $player
+
+	self thread DoChurchToHotel
+
+	end
+
+
+//------------------------------------------------------------------------
+CappyShootAt local.ent:
+//------------------------------------------------------------------------
+
+	self.shoot_thread = local
+
+	self aimat local.ent
+
+	while ( isAlive self )
+	{
+		for (local.xx = 0; local.xx < 20; local.xx++ )
+		{
+			self fire
+			wait 0.15
+		}
+		wait 2.5
+	}
+
+	end
+
+//------------------------------------------------------------------------
+StopFiringFlak:
+//
+//	stop firing flak, start the panzer moving... spawn the sacrifice guy...
+//------------------------------------------------------------------------
+
+	// delete the flak firing thread....
+	$flak1.loop_thread delete
+
+	$flak1.gun setaimtarget NULL
+
+	thread DoPanzer4
+
+
+	end
+
+//------------------------------------------------------------------------
+KillSacrifice:
+//------------------------------------------------------------------------
+	wait 1
+	self.gun setaimtarget $tank_hit0
+	self.gun waittill ontarget
+	dprintln "shooting the allied guy in two seconds"
+	wait 2
+	self.gun anim fire
+	wait 2
+	thread PanzerShootWall2
+
+	end
+
+//------------------------------------------------------------------------
+//PanzerShootWall:
+//------------------------------------------------------------------------
+//	wait 10
+//	self.gun setaimtarget $tank_hit1
+//	self.gun waittill ontarget
+//	dprintln "shooting the wrecked building in two seconds"
+//	wait 2
+//	self.gun anim fire
+//	thread PanzerShootWall2
+//	end
+//------------------------------------------------------------------------
+PanzerShootWall2:
+//------------------------------------------------------------------------
+	wait 13
+	self.gun setaimtarget $tank_hit2
+	self.gun waittill ontarget
+	dprintln "shooting the wall in two seconds"
+	wait 2
+	self.gun anim fire
+	wait 2
+	self.gun setaimtarget NULL
+	end
+
+//------------------------------------------------------------------------
+DoPanzer4:
+//	get panzer #4 moving...
+//------------------------------------------------------------------------
+	exec global/autosave.scr 2
+//	$panzer4 thread global/vehicles_thinkers.scr::TankExplodeOnDeath empty_panzer_winter
+	$panzer4 takedamage
+	$panzer4.health = 400
+	$panzer4 thread KillSacrifice
+//	$panzer4 thread PanzerShootWall
+//	$panzer4 thread PanzerShootWall2
+
+//	dprintln "panzer4 on the move!"
+	$panzer4 waitthread gags/t2l4_start.scr::drive_path $gerry_tank_4_path 45 0
+
+	// when panzer4 gets to destination, go after cappy!
+
+	wait 0.25
+	
+	if ( isAlive $panzer4 )
+	{
+		$panzer4.gun setaimtarget $cappy
+		$panzer4.gun waittill ontarget
+		wait 0.25
+	}
+
+	while ( isAlive $panzer4 && isAlive $cappy )
+	{
+		$panzer4.gun anim fire
+		wait 3
+	}
+
+	// panzer4 dead, 
+	$death_church_to_hotel_toggle triggerable
+	end
+
+test:
+	end
+	$mg42gunnerE waittill death
+
+	wait 3
+	thread RespawnMG42s
+	end
+
+
+//------------------------------------------------------------------------
+RespawnMG42s:
+//------------------------------------------------------------------------
+
+	if ( $mg42gunnnerE==NIL || ! ( isAlive $mg42gunnerE ) )
+	{
+//		dprintln "SPAWNED IN MG42GUNNER_E CLONE!"
+		// re-spawn a clone of him...
+		local.ent = spawn level.model_gunnerE angles level.angles_gunnerE origin level.origin_gunnerE targetname mg42gunnerE
+
+		local.ent type_idle "machinegunner"
+		local.ent type_attack "machinegunner"
+		local.ent type_disguise "machinegunner"
+		local.ent type_grenade "machinegunner"
+		local.ent gun "MG42"
+		local.ent turret level.turret_gunnerE
+		local.ent sight level.sight_gunnerE 
+		local.ent threatbias 5000
+	}
+
+	end
+
+//------------------------------------------------------------------------
+RespawnHotelMG42:
+//------------------------------------------------------------------------
+	if ( $hotel_mg==NIL || ! ( isAlive $hotel_mg ) )
+	{
+//		dprintln "SPAWNED IN hotel_mg CLONE!"
+		// re-spawn a clone of him...
+		local.ent = spawn level.model_hotel_mg angles level.angles_hotel_mg origin level.origin_hotel_mg targetname hotel_mg
+
+		local.ent type_idle "machinegunner"
+		local.ent type_attack "machinegunner"
+		local.ent type_disguise "machinegunner"
+		local.ent type_grenade "machinegunner"
+		local.ent gun "MG42"
+		local.ent turret level.turret_hotel_mg
+		local.ent sight level.sight_hotel_mg
+		local.ent threatbias 5000
+	}
+
+	end
+
+//------------------------------------------------------------------------
+DoChurchToHotel:
+//------------------------------------------------------------------------
+	// change objective #3 to "clear hotel"
+	waitthread global/objectives.scr::add_objectives 3 2 "Clear Hotel." $hotel.origin
+	waitthread global/objectives.scr::current_objectives 3	// set it as the current objective
+
+	thread RespawnMG42s
+	// tweak the cappy's health:
+	self takedamage
+	self lookat $player
+	self turnto $player
+	self thread cappy_say 7
+	forcemusic aux3 aux3
+	self.movedoneradius = 150.0
+	wait 2.5
+	self lookat NULL
+	self turnto NULL
+	self.health = 100
+
+	// Follow our 1st path...
+//	dprintln "running to 1st hotel path"
+	self waitthread CappyRunTo $churchtohotel_1
+
+	self exec global/disable_ai.scr
+	self exec global/crouch.scr
+
+	wait 1
+
+	self thread CappyShootAt $churchtohotel_1_aim
+
+	// wait here until mg42 gunner is dead....
+	while ( $mg42gunnerE!=NIL && isAlive $mg42gunnerE )
+	{
+		wait 0.2
+	}
+
+	// stop shooting...
+	self.shoot_thread delete
+
+	wait 0.5
+	self exec global/stand.scr
+
+	wait 1
+
+	self exec global/enable_ai.scr
+
+//	dprintln "running to 2nd hotel path"
+	self waitthread CappyRunTo $churchtohotel_2
+
+	self exec global/crouch.scr
+
+	// shoot at set52 for 10 seconds and keep moving..
+	local.disengage_time = level.time + 10	// tweak this...
+
+	local.alive_count = $set52.size
+
+	// wait for 10 secs or until everyone is dead, whichever comes first...
+	while ( level.time < local.disengage_time && local.alive_count>0 )
+	{
+		// see if set #52 is dead or not...
+		local.alive_count	= 0
+
+		for (local.i=1;local.i<=$set52.size;local.i++)
+		{
+			if ( isAlive $set52[local.i] )
+			{
+				local.alive_count++
+			}
+		}
+
+		wait 0.1
+	}
+
+	self exec global/disable_ai.scr
+
+//	dprintln "Running to 3rd hotel path"
+	self waitthread CappyRunTo $churchtohotel_3[2]
+
+	self exec global/crouch.scr
+
+	if ( isAlive $panzer4 )
+	{
+//		dprintln "Shooting at panzer4"
+		self thread CappyShootAt $panzer4
+	}
+
+	// wait until player destroys panzer4...
+	while ( isAlive $panzer4 )
+	{
+		wait 0.2
+	}
+
+	// stop shooting at the dead tank...
+	self.shoot_thread delete
+
+	wait 1
+
+	self exec global/stand.scr
+
+	wait 3
+
+	self exec global/enable_ai.scr
+
+	// okay, now onto the hotel...
+	self thread DoHotel
+
+	end
+
+
+//------------------------------------------------------------------------
+DoHotel:
+//------------------------------------------------------------------------
+
+//	dprintln "Done with panzer4... running to captain_dest4"
+
+	self.health = 80
+	self waitthread CappyRunTo $captain_dest4
+
+////////////////	self origin $captain_dest4.origin
+
+	// wait for player to get to us...
+	self waitthread CappySayComeHere
+
+	self turnto $player
+	self lookat $player
+
+	wait 1
+
+	thread unlockhotel
+
+	// American Captain “Clear out this hotel sergeant, let's go!
+	self say dfr_T2L4_AC9084
+	self waittill saydone
+
+	level.curr_objective	= 4
+
+
+	self lookat NULL
+	self turnto NULL
+
+	while ( level.hotel_spawns < 7 )
+	{
+//		println "Total hotel spawns so far:" level.hotel_spawns
+		wait 1
+	}
+
+	local.alive_count=99
+	while ( local.alive_count>0 )
+	{
+		local.alive_count = 0
+
+		local.alive_count += level.window_guy_count
+	
+		for (local.i=1;local.i<=$HotelGuys.size;local.i++)
+		{
+			if ( isAlive $HotelGuys[local.i] )
+				local.alive_count++
+		}
+
+//		println "There are " local.alive_count " hotel guys left alive.."
+		wait 1
+	}
+
+	// 5 = stuka...
+	level.curr_objective	= 5
+
+	// death trigger stuff.
+	$death_hotel_to_end triggerable
+	$death_church_to_hotel nottriggerable
+	$death_church_to_hotel_toggle nottriggerable
+
+
+	// completed objective 3
+	waitthread global/objectives.scr::add_objectives 3 3
+
+	// autosave after the last guy hits the ground...
+
+	wait 1
+
+	// they've completed the clear hotel objective, cross it out and tell them to find cappy.
+
+	// make sure we're crouched and waiting at correct spot
+	waitthread global/objectives.scr::add_objectives 4 2 "Find the captain" self.origin
+	waitthread global/objectives.scr::current_objectives 4	// set it as the current objective
+
+
+
+end
+
+//------------------------------------------------------------------------
+DoEnding:
+//
+//	wait for player to get here, tell him he's been good, and startup the
+//	stuka...
+//
+//------------------------------------------------------------------------
+
+	// make sure cappy's where he's supposed to be...
+	$cappy origin $captain_dest5.origin
+
+		// make sure origin is setup...
+//	waitthread global/objectives.scr::add_objectives 4 2 "Find the captain" self.origin
+//	waitthread global/objectives.scr::current_objectives 4	// set it as the current objective
+
+
+	forcemusic aux5 aux5
+
+	// don't yell for player until this scene is done...
+	while ( level.werfer_done == 0 )
+	{
+		wait 0.25
+	}
+
+	// stop shooting...
+	self aimat NULL
+	self.shoot_thread delete
+
+	self turnto NULL
+	self lookat NULL
+
+	// wait for player to arrive...
+	self waitthread CappySayComeHere
+
+	waitthread global/objectives.scr::add_objectives 4 3
+
+	forcemusic aux4 aux4
+	
+	self turnto $player
+	self lookat $player
+	wait 0.25
+	self anim 24C103_CaptainDialog3 // Nice job son, we sure gave them one helluva Christmas present!
+	self waittill animdone
+
+	self turnto NULL
+	self lookat NULL
+
+
+	self.movedoneradius = 150.0
+	self waitthread CappyRunTo $captain_dest5
+
+	// startup the stuka!!
+	thread gags/t2l4_newstuka.scr::stuka_start
+
+	trigger $actiontrigger
+ 
+end
+
+
+//------------------------------------------------------------------------
+CappyDoStukaDialog:
+//------------------------------------------------------------------------
+
+	$cappy anim 24C104_CaptainDialog4 // "Barnes, get on that eighty-eight..."
+	$cappy waittill animdone
+
+	// give them new objective...
+	waitthread global/objectives.scr::add_objectives 4 2 "Destroy Stuka With Artillery." $endleveltrigger.origin
+	waitthread global/objectives.scr::current_objectives 4	// set it as the current objective
+
+
+	end
+
+//------------------------------------------------------------------------
+CappyDoFinalDialog:
+//------------------------------------------------------------------------
+
+	for (local.i=1;local.i<$EndGuys.size+1;local.i++)
+	{
+		if ( isAlive ( $EndGuys[local.i] ) )
+		{
+			local.dest = $EndGuys[local.i].target
+			$EndGuys[local.i] exec global/stand.scr
+		}
+	}
+
+
+	waitthread global/objectives.scr::add_objectives 4 3
+
+	$cappy waitthread CappyRunTo $player 350
+	$cappy turnto $player
+	$cappy lookat $player
+	$cappy anim 24C105_CaptainDialog5	// "Nice shot Sergeant.  Now let's pack it up..."
+	$cappy waittill animdone
+
+	waitexec global/award_medal.scr 2
+	setcvar "g_mission" "2"
+	missiontransition briefing/briefingt3
+
+	end
+
+
+//------------------------------------------------------------------------
+CappySayComeHere local.saylinedistance:
+//
+//	wait for the player to get within the line distance and then say "over here!"
+// 
+//------------------------------------------------------------------------
+
+	if ( local.saylinedistance==NIL )
+		local.saylinedistance	= 256
+
+		// don't say line if player within this distance....
+
+	// purposely don't go into this while loop ( and therefore don't say over here if the player is already close by...)
+	local.dist = vector_length ( self.origin - $player.origin )	
+
+	local.next_yell = 0
+
+	while (local.dist > local.saylinedistance)
+	{
+		local.dist = vector_length ( self.origin - $player.origin )	
+
+		if ( local.next_yell < level.time )
+		{
+			self turnto $player
+			self anim 24C102_CaptainDialog2 // Sergeant Barnes, over here!
+			self waittill animdone
+			local.next_yell = level.time + 10
+		}
+		wait 0.1
+	}
+
+	self turnto NULL
+
+	waitframe
+
+end
+
+
+//-------------------------------------------------------------------
+CappyRunTo local.ent local.movedoneradius:
+//
+//	Makes sure we actually get there...
+//-------------------------------------------------------------------
+
+	if ( local.ent==NIL || local.ent==NULL )
+	{
+//		dprintln "CappyRunTo: entity is NULL: " local.ent
+		End
+	}
+
+	if ( self.runto_thread!=NIL && self.runto_thread!=NULL )
+	{
+		self.runto_thread delete
+	}
+
+	self.runto_thread	= local
+
+	if ( local.movedoneradius==NIL )
+	{
+		if ( local.ent==$player )
+			local.movedoneradius	= 250
+		else
+			local.movedoneradius	= 6
+	}
+
+	self.movedoneradius = local.movedoneradius
+
+	self runto local.ent
+	self waittill movedone
+
+	while ( parm.movedone!=1 )
+	{
+		self runto local.ent
+		self waittill movedone
+	}
+	
+	self.runto_thread	= NULL
+
+	self.movedoneradius	= 250
+
+	End
+
+
+//-------------------------------------------------------------------
+FindAlliedTarget local.max_dist:
+//-------------------------------------------------------------------
+
+	if ( local.max_dist==NIL )
+		local.max_dist = 1200
+
+	if ( $mg42gunnerA!=NULL && isAlive $mg42gunnerA )
+	{
+		local.dist = vector_length ($cappy.origin - $mg42gunnerA.origin)
+
+		if (local.dist < local.max_dist)
+		{
+			end $mg42gunnerA
+		}
+	}
+
+	if ( $mg42gunnerB!=NULL && isAlive $mg42gunnerB )
+	{
+		local.dist = vector_length ($cappy.origin - $mg42gunnerB.origin)
+
+		if (local.dist < local.max_dist)
+		{
+			end $mg42gunnerB
+		}
+	}
+
+	// find closest bad guy...
+	local.closest = 99999
+	local.target = NULL
+	for (local.i=1;local.i<=$wander_enemy.size;local.i++)
+	{
+		if (isalive $wander_enemy[local.i])
+		{
+			local.nicetrace = waitthread gags/t2l4_start.scr::nicetrace $cappy $wander_enemy[local.i]
+			if (local.nicetrace == 1)
+			{
+				local.distance = vector_length( self.origin - $wander_enemy[local.i].origin)
+				if ( local.distance < local.max_dist )
+				{
+					if ( local.distance < local.closest )
+					{
+						local.closest = local.distance
+						local.target  = $wander_enemy[local.i]
+					}
+				}
+			}
+		}		
+	}
+
+	if ( local.target==NULL )
+	{
+		if ( $sniper1!=NULL && isAlive $sniper1 )
+		{
+			local.dist = vector_length ($cappy.origin - $sniper1.origin)
+
+			if (local.dist < local.max_dist)
+			{
+				end $sniper1
+			}
+		}
+	}
+
+
+	end local.target
+
+//-------------------------------------------------------------------
+CappyTankCheck:
+//
+//	Make cappy yell at the tank every so often...
+//-------------------------------------------------------------------
+
+	while ( isAlive self )
+	{
+		local.tank = 0
+
+		if ( isAlive $panzer1 )
+		{
+			local.dist = vector_length (self.origin - $panzer1.origin)
+			if ( local.dist < 1200 )
+			{
+//				local.nicetrace = waitthread gags/t2l4_start.scr::nicetrace self $panzer1
+//				if ( local.nicetrace==1 )
+					local.tank = 1
+			}
+		}
+
+		if ( isAlive $panzer2 )
+		{
+			local.dist = vector_length (self.origin - $panzer2.origin)
+			if ( local.dist < 1200 )
+			{
+//				local.nicetrace = waitthread gags/t2l4_start.scr::nicetrace self $panzer2
+//				if ( local.nicetrace==1 )
+					local.tank = 1
+			}
+		}
+
+/*		if ( isAlive $panzer3 )
+		{
+			local.dist = vector_length (self.origin - $panzer3.origin)
+			if ( local.dist < 1200 )
+			{
+//				local.nicetrace = waitthread gags/t2l4_start.scr::nicetrace self $panzer3
+//				if ( local.nicetrace==1 )
+					local.tank = 1
+			}
+		}
+*/
+		if ( local.tank==1 )
+		{
+//			dprintln "Found tank!"
+			self say dfr_call_AP43620
+			wait 15
+		}
+		else
+		{
+			wait 0.5
+		}
+	}
+
+	end
+
+
+//-------------------------------------------------------------------
+ForceCappyNoDamage:
+//
+//	somewhere, somehow, the cappy is being set to take damage.
+//  we don't want that, so we do this during the initial charge...
+//-------------------------------------------------------------------
+
+	while ( self.do_ai==1 )
+	{
+		self nodamage
+		waitframe
+	}
+	end
+
+
+//-------------------------------------------------------------------
+CappyAI local.target_range:
+// 
+//	This is what makes cappy so darn smart...
+//-------------------------------------------------------------------
+	
+	// look for mg42 guys first
+
+	// then sniper...
+
+	self.ai_thread = local
+
+	self.do_ai = 1
+
+	self thread ForceCappyNoDamage
+
+	while ( isAlive self && self.do_ai==1)
+	{
+		local.target = self waitthread FindAlliedTarget local.target_range
+
+		if ( local.target!=NULL )
+		{
+//			dprintln self.targetname " found allied target:" local.target.targetname
+
+			// aim at this target and make sure cappy doesn't change it.
+			self setaimtarget local.target 1
+//			self enemyswitchdisable
+			// let him go at it for a while
+			self exec global/enable_ai.scr
+
+			local.stop = level.time + 12
+			while ( isAlive local.target && level.time < local.stop )
+			{
+				wait 0.2
+			}
+			self exec global/disable_ai.scr
+//			self enemyswitchenable
+
+			// run for another 2.5 secs before attacking anyone...
+			wait 2
+		}
+		else
+		{
+			wait 0.5
+		}
+	}
+	
+	self.ai_thread = NULL
+
+	end
+
+//------------------------------------------------------------------------
+CappyAI_Off:
+//------------------------------------------------------------------------
+
+	self.do_ai = 0
+	self exec global/disable_ai.scr
+
+	end
+
+ 
+
+//------------------------------------------------------------------------
+cappy_say local.num:
+//------------------------------------------------------------------------
+
+	if (local.num == 1)
+		$cappy say dfr_T2L4_AC9080 // American Captain “Keep moving!”
+	else if (local.num == 2)
+		$cappy say dfr_T2L4_AC9081 // American Captain “Go… Go!”
+	else if (local.num == 3)
+		$cappy say dfr_T2L4_AC9082 // American Captain “Sergeant, clear this church!  I'll cover the front!”
+	else if (local.num == 4)
+		$cappy say dfr_T2L4_AC9083 // American Captain “Barnes, check the school for Krauts!”
+	else if (local.num == 5)
+		$cappy say dfr_T2L4_AC9084 // American Captain “Clear out this hotel sergeant, let's go!”
+	else if (local.num == 6)
+		$cappy say dfr_T2L4_AC9085 // American Captain “Medic!  Man down!”
+	else if (local.num == 7)
+		$cappy say dfr_T2L4_AC9086 // American Captain “Don’t fall behind sergeant!”
+	else if (local.num == 8)
+		$cappy say dfr_T2L4_AC9087 // American Captain “Barnes is down!  Medic!”
+	else if (local.num == 9)
+		$cappy say dfr_T2L4_AC9088 // American Captain “Barnes, over here.  Move!”
+	else if (local.num == 10)
+		$cappy say dfr_T2L4_AC9089 // American Captain “Barnes, get over here.”
+	else if (local.num == 11)
+		$cappy say dfr_T2L4_AC9090 // American Captain “Sergeant Barnes, get over here!”
+	else if (local.num == 12)
+		$cappy say dfr_T2L4_AC9091 // American Captain "Clear out the house Sergeant, Move!"
+end
+
+/////////////////
+// doors
+/////////////////
+
+//------------------------------------------------------------------------
+lockdoors:
+//------------------------------------------------------------------------
+	$hoteldoor lock
+	$hoteldoor2 lock
+	$churchdoor lock
+end
+
+//------------------------------------------------------------------------
+unlockchurch:
+//------------------------------------------------------------------------
+
+	$churchdoor unlock
+	$churchdoor spawnflags 0
+end
+
+//------------------------------------------------------------------------
+unlockhotel:
+//------------------------------------------------------------------------
+	$hoteldoor unlock
+	$hoteldoor2 unlock
+	$hoteldoor spawnflags 0
+	$hoteldoor2 spawnflags 0
+
+end
+
+
+
+
+//-------------------------------------------------------------------
+TurnOffWindowGuys:
+//-------------------------------------------------------------------
+
+	$windowguy_1 thread WindowGuyInit
+	$windowguy_2 thread WindowGuyInit
+	$windowguy_3 thread WindowGuyInit
+	$windowguy_4 thread WindowGuyInit
+	$windowguy_5 thread WindowGuyInit
+	$windowguy_9999 thread WindowGuyInit
+
+end
+
+
+
+//-------------------------------------------------------------------
+WindowGuyInit:
+//-------------------------------------------------------------------
+	self ai_off
+	self hide
+	self threatbias ignoreme
+	self nodamage
+end
+
+
+//-------------------------------------------------------------------
+WakeupOnPain:
+//-------------------------------------------------------------------
+
+//	dprintln self.targetname " waiting for pain!"
+
+	
+	self waittill pain
+
+//	dprintln self.targetname " In pain!"
+
+	// yukky goto, but safest thing to do right on 10/02/2002
+	goto BeWindowGuy_End
+
+	end
+
+//-------------------------------------------------------------------
+BeWindowGuy:
+//-------------------------------------------------------------------
+
+	if ( self==$windowguy_5 )
+		thread WakeupOnPain
+
+	self threatbias 5000
+	level.window_guy_count++
+
+	self thread WindowGuyDeathCheck
+
+	self ai_on
+	self show
+	self takedamage
+	self exec global/disable_ai.scr
+
+	self thread WindowGuyShoot
+
+	self waittill trigger
+
+	self aimat NULL
+
+	wait 1
+
+	// when we get triggered, stop shooting and go after player!
+BeWindowGuy_End:
+
+	self.shoot_thread delete
+
+	self exec global/enable_ai.scr
+
+	self attackplayer
+
+
+end
+
+
+//-------------------------------------------------------------------
+WindowGuyDeathCheck:
+//-------------------------------------------------------------------
+
+	self waittill death
+	level.window_guy_count--
+
+
+	end
+
+//-------------------------------------------------------------------
+WindowGuyShoot:
+//-------------------------------------------------------------------
+
+	self.shoot_thread = local
+	
+	if ( self.target!=NIL )
+	{
+		self aimat self.target
+	}
+
+	while ( isAlive self )
+	{
+		self fire
+		wait 3
+	}
+
+	end
+
+//------------------------------------------------------------------------------------------------
+BeNoThreat:
+//------------------------------------------------------------------------------------------------
+
+	self threatbias ignoreme
+
+	end
+
+//------------------------------------------------------------------------------------------------
+BeThreat:
+//------------------------------------------------------------------------------------------------
+
+	self threatbias 2000
+
+
+	end
+
+//------------------------------------------------------------------------------------------------
+DoPlayerDeath:
+//------------------------------------------------------------------------------------------------
+
+
+	while ( isAlive $player )
+	{
+		wait 0.2
+	}
+
+	
+	local.rand = randomint 2
+
+	switch ( local.rand )
+	{
+		case	0:
+		$player playsound dfr_T2L4_AC9085
+		break;
+		case	1:
+		$player playsound dfr_T2L4_AC9087
+		break;
+		default:
+		$player playsound dfr_T2L4_AC9087
+		break;
+
+	}
+	end
+

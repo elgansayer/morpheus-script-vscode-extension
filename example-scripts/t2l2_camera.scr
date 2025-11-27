@@ -1,0 +1,99 @@
+//////////////////////////////////////
+// t2l2_camera.scr
+//////////////////////////////////////
+
+//
+// purpose is to have the pov change to 
+// designated camera position for a arbitrary
+// amount of time 
+//
+// camera should have a targetname "watch_camera
+// 
+// place an info not null with a $targetname "t2l2camera
+// this is where the camera will have its origin
+//
+// you can specify the time the camera is to track the player1
+// just modify level.totalcameratime to your need
+//
+
+///////////////////////////////////////////
+// call durring prespawn
+///////////////////////////////////////////
+t2l2_initcamera:
+	level.totalcameratime = 5
+	level.cameratime = 0
+	level.totaltreetime = 7
+	level.treetime = 0
+end
+
+/////////////////////////////////////////////////////////
+// call with trigger multiple using #setthread camera
+/////////////////////////////////////////////////////////
+t2l2_camera:
+
+	centerprint "switching to camera"
+
+	level.cameratime = level.time + level.totalcameratime
+	level.treetime = level.time + level.totaltreetime
+
+
+		
+	$watch_camera movetopos $t2l2camera.origin
+
+	// tell the camera to watch the player
+	// the '0' is to fade in no time at all
+	// NOTE the "" are necessary
+	$watch_camera watch $lookat 0
+
+	// cut causes the camera to transition to its new state immediately
+	$watch_camera cut 
+
+// cuecamera causes us to switch to a camera
+
+        cuecamera $watch_camera
+	$player hide
+
+
+	while (level.cameratime > level.time)
+		wait 0.1
+
+
+	// cueplayer causes us to switch back to the player
+	$player show
+	cueplayer
+		
+end
+
+t2l2_camerab:
+
+	centerprint "switching to camerab"
+
+	level.cameratime = level.time + 5//level.totalcameratime
+	//level.treetime = level.time + level.totaltreetime
+		
+	$watchcamerab movetopos $t2l2camerab.origin
+
+	// tell the camera to watch the player
+	// the '0' is to fade in no time at all
+	// NOTE the "" are necessary
+	$watchcamerab watch $lookatb 0
+
+	// cut causes the camera to transition to its new state immediately
+	$watchcamerab cut 
+
+// cuecamera causes us to switch to a camera
+
+        cuecamera $watchcamerab
+	$player hide
+
+
+	while (level.cameratime > level.time)
+		wait 0.1
+
+
+	// cueplayer causes us to switch back to the player
+	//$player show
+	//cueplayer
+		
+end
+

@@ -1,0 +1,283 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// soldier running to foxhole, only to be blown up by a mortar explosion.
+//
+// author: Michael Goodwin
+//
+// run the main thread on the level object (after spawn) as follows:
+//
+//   exec gags/t2l3_soldiers_run_and_die.scr
+//
+// description:
+//
+// - when initialized, the system will hide any soldiers configured for this gag.
+//
+// - when the "move" trigger is tripped by the player, the soldier is spawned and sent along a path.
+//
+// - when the soldier hits the "trip" trigger, he will randomly select one of four death
+//     animations.  additionally, a mortar explosion is triggered at the location of
+//     the "trip" trigger.
+//
+// setup:
+//
+// - each setup consists of 4 components:
+//   - a soldier entity		the soldier that runs and dies.
+//   - a path					defined by connecting info_pathnode entities, describes the path to the destination.
+//   - a "move" trigger		the trigger that is tripped to start the soldier running the path.
+//   - a "trip" trigger		the trigger that causes the explosion and death animation.
+//
+//   - soldier:
+//     - place the soldier and assign the following keys:
+//     $targetname		- any unique value.
+//
+//   - path:
+//     - place a series of info_pathnode entities leading from the soldier to the destination.
+//     - even though the soldier will need to reference this path, it can by anonymous, as the reference is provided
+//       via a link from the "move" trigger (see below).
+//
+//   - "move" trigger:
+//     - place a trigger_multiple entity and assign the following keys:
+//       $targetname	- must be "trigger_cue_death_move" (without the quotes).
+//       $trigger		- must be the name of the soldier (his $targetname key).
+//       target			- must be linked (CTRL-K) to the first node of the path.
+//
+//   - "trip" trigger:
+//     - place a trigger_multiple entity and assign the following keys:
+//       $targetname	- must be "trigger_cue_explosion_death" (without the quotes).
+//       NOT_PLAYERS	- check this checkbox.
+//       MONSTERS		- check this checkbox.
+//       #set			- (optional) set to 1,2,3 or 4 to force non-random death animation:
+//						  - 1 = backward, 2 = frontward, 3 = rightward, 4 = leftward
+//
+// other notes:
+//
+// - after a trigger has completed its task, it removes itself from the level.
+//
+// - to get a soldier to run his path under script control (rather than via the trigger mechanism
+//     described herein), use the following line:
+//
+//     $thissoldier thread gags/t2l3_soldiers_run_and_die.scr::death_move $thispath
+//
+// TODO:
+// - add correct death audio.
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+init:
+
+	if ( $trigger_cue_death_move )
+	{
+		for ( local.i = 1; local.i < $trigger_cue_death_move.size + 1; local.i++ )
+		{
+			$trigger_cue_death_move[local.i] thread cue_death_move
+		}
+	}
+
+	if ( $trigger_cue_explosion_death )
+	{
+		for ( local.i = 1; local.i < $trigger_cue_explosion_death.size + 1; local.i++ )
+		{
+			$trigger_cue_explosion_death[local.i] setthread cue_explosion_death
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on a trigger that the player trips
+//   to start the soldier running to the foxhole
+//
+// setup:
+//   the trigger's $trigger key should address the soldier
+//   the trigger's target key should address the first pathnode of the path
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cue_death_move:
+
+	if ( self.special != NIL )
+	{
+		if ( self.special == 1 )
+		{
+			self thread cue_death_move_special_1
+			end
+		}
+	}
+
+	if ( self.trigger )
+	{
+		local.marker = waitthread global/spawner.scr::spawner_create self.trigger
+
+		self waittill trigger
+
+		local.soldier = waitthread global/spawner.scr::spawner_activate local.marker
+
+		if ( self.target )
+		{
+			local.soldier thread death_move self.target
+			self remove
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// special trigger check #1
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cue_death_move_special_1:
+
+	if ( self.trigger )
+	{
+		local.marker = waitthread global/spawner.scr::spawner_create self.trigger
+
+cue_death_move_special_1_wait:
+
+		self waittill trigger
+
+		if ( level.objective1 != 1 )
+		{
+			goto cue_death_move_special_1_wait
+		}
+
+		local.soldier = waitthread global/spawner.scr::spawner_activate local.marker
+
+		if ( self.target )
+		{
+			local.soldier thread death_move self.target
+			self remove
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the soldier who is moving along
+//   a path towards the foxhole
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+death_move local.target:
+
+	if ( local.target )
+	{
+		self.enableEnemy = 0
+		self nodamage
+		self runto local.target
+	}
+	
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on a trigger that the NPC trips
+//   to start the death sequence
+//
+// setup:
+//   place a regular trigger_multiple and check the
+//   "NOT_PLAYER" and "MONSTERS" check boxes.
+//
+//   to force a particular death animation:
+//     the trigger's #set key should be assigned as follows:
+//     1 - force 23A501_BackwardDeath
+//     2 - force 23A502_FrontDeath
+//     3 - force 23A503_RightDeath
+//     4 - force 23A504_LeftDeath
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cue_explosion_death:
+
+	if ( parm.other && (parm.other != $player) )
+	{
+		parm.other thread cue_explosion_death_anim self.set
+		thread cue_explosion_mortar self.origin models/emitters/mortar_snow.tik
+		self remove
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on a trigger that the NPC trips
+//   to start the death sequence
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cue_explosion_mortar local.origin local.model:
+
+	if ( local.model == NIL )
+	{
+		local.model = models/emitters/mortar_snow.tik
+	}
+
+	local.ent = spawn local.model
+	local.ent.origin = local.origin
+//	local.ent anim start <- this animation name must have been switched to idle!!!
+	local.ent anim idle
+
+	local.ent notsolid
+	wait 4
+	local.ent anim stop
+	local.ent delete
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the NPC that tripped the explosion trigger
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cue_explosion_death_anim local.set:
+
+	if ( local.set == NIL )
+	{
+		local.rand = randomint(100)
+	}
+	else
+	{
+		local.rand = 100
+	}
+
+	if ( ( local.rand < 25 ) || ( local.set == 1 ) )
+	{
+		local.anim = 23A501_BackwardDeath
+		local.animloop = 23A505_Deathloop
+	}
+	else if ( ( local.rand < 50 ) || ( local.set == 2 ) )
+	{
+		local.anim = 23A502_FrontDeath
+		local.animloop = 23A506_Deathloop
+	}
+	else if ( ( local.rand < 75 ) || ( local.set == 3 ) )
+	{
+		local.anim = 23A503_RightDeath
+		local.animloop = 23A507_Deathloop
+	}
+	else
+	{
+		local.anim = 23A504_LeftDeath
+		local.animloop = 23A508_Deathloop
+	}
+
+	self rendereffects "-shadow"
+	self playsound snd_dfr_pain_generic
+	self dropitems
+	self anim local.anim
+	self waittill animdone
+	self notsolid
+	self bedead
+
+end

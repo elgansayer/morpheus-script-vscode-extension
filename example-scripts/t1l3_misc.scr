@@ -1,0 +1,488 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t1l3_misc.scr
+//
+// author: Michael Goodwin
+//
+// miscellaneous 1_3 gags
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on any of the shore enemies
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+shoreguy_run local.delay:
+
+	if ( local.delay == NIL )
+	{
+		local.delay = 0.5
+	}
+	wait local.delay
+	self exec global/disable_ai.scr
+	self runto $shoreguyspath
+	self waittill movedone
+	self remove
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the wall charge trigger
+//   when it is activated
+// 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+wallcharge local.charge local.timer local.exploder:
+
+	if ( level.objective4 == 1 )
+	{
+		self remove
+		thread global/democharge.scr::charge_switch 5 4
+		local.charge triggered 0
+		local.charge stopwatchduration local.timer
+		local.charge douse
+
+		wait local.timer
+
+		for ( local.i = $brokencommstuff.size; local.i > 0; local.i-- )
+		{
+			$brokencommstuff[local.i] remove
+		}
+		
+		radiusdamage $exploder77 300 400
+		thread global/exploder.scr::explode local.exploder
+		thread swapcommfloor
+
+		
+
+		if ( level.captain && (isAlive level.captain) )
+			level.captain thread gazebosafety
+	}
+	else
+	{
+		iprintlnbold "You need the explosives from the air drop."
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// captain runs this thread once the comm center
+//   has blown
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gazebosafety:
+
+	wait 2.0
+
+	while (1)
+	{
+		if ( (isAlive self) && (isAlive $gazebogunner) )
+		{
+			local.dist = vector_length(self.origin - $gazebogunner.origin)
+
+			if ( (local.dist < 2200) )
+			{
+				if ( $captainmgsafety2 )
+				{
+					self runto $captainmgsafety2
+					self waittill movedone
+				}
+
+				if ( self && (isAlive self) )
+				{
+					self waitthread global/friendly.scr::friendlystop
+					self exec global/disable_ai.scr
+
+					if ( $captainmgsafety2 )
+					{
+						self runto $captainmgsafety2
+						self waittill movedone
+					}
+					self exec global/crouch.scr
+					self exec global/enable_ai.scr
+
+					while ( isAlive $gazebogunner )
+					{
+						if ( self.thinkstate == "attack" )
+						{
+							wait 3.0
+							break
+						}
+						else
+						{
+							waitframe
+						}
+					}
+
+					if ( !(isAlive $gazebogunner) )
+					{
+						self waitthread global/friendly.scr::friendlythink
+						end
+					}
+				}
+			}
+		}
+		else
+		{
+			end
+		}
+
+		waitframe
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// fix the exploder triggers to be immune to certain damage
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fix_exploders:
+
+	if ( $t1l3explodertrigger )
+	{
+		local.fixes = $t1l3explodertrigger.size
+
+		for ( local.i = 1; local.i <= local.fixes; local.i++ )
+		{
+			$t1l3explodertrigger[local.i] immune "bullet" "shotgun" "bash"
+			$t1l3explodertrigger[local.i] setthread t1l3_exploder
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the exploder trigger
+//   when it is taking (filtered) damage
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+t1l3_exploder:
+
+	if ( (self.set == 4) && (level.wall1destroyed == 0) )
+	{
+		thread global/exploder.scr::explode self.set
+		level.wall1destroyed = 1
+	}
+	else if ( (self.set == 2) && (level.wall2destroyed == 0) )
+	{
+		thread global/exploder.scr::explode self.set
+		level.wall2destroyed = 1
+	}
+	else if ( (self.set == 3) && (level.wall3destroyed == 0) )
+	{
+		thread global/exploder.scr::explode self.set
+		level.wall3destroyed = 1
+	}
+	self remove
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// initialize the floor in the comm. shack
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+initcommfloor:
+
+	local.count = $commfloorafter.size
+	for ( local.i = 1; local.i <= local.count; local.i++ )
+	{
+		$commfloorafter[local.i] hide
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// swap the floor in the comm. shack
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+swapcommfloor:
+
+	local.count = $commfloorafter.size
+	for ( local.i = 1; local.i <= local.count; local.i++ )
+	{
+		$commfloorafter[local.i] show
+	}
+
+	local.count = $commfloorbefore.size
+	for ( local.i = 1; local.i <= local.count; local.i++ )
+	{
+		$commfloorbefore[local.i] hide
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// borrowed from 1_2
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+behealthy local.delay:
+
+	if ( local.delay != NIL )
+	{
+		wait local.delay
+	}
+
+	while ( self.thinkstate == "attack" )
+	{
+		waitframe
+	}
+
+	if ( isAlive self )
+	{
+		if ( self.health < self.maxhealth )
+		{
+//			wait (2.0 * (self.health / self.maxhealth))
+			self exec global/disable_ai.scr
+
+			self holster
+			wait 0.4
+			self lookat NULL
+			self nodamage
+			self upperanim pass_canteen_drink
+			self waittill upperanimdone
+			self takedamage
+			self.health = self.maxhealth
+			self unholster
+
+			self exec global/enable_ai.scr
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kalimbasays:
+
+	if ( (level.kalimbasays == NIL) || (level.kalimbasays == 0) )
+	{
+		level.kalimbasays = 1
+		fadeout 0.25 0 0 0 1
+		drawhud 0
+
+		local.viewangles = $player.viewangles
+		local.origin = $player.origin
+
+		local.strlen = 70
+		local.str = ""
+		if ( self.s0 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s0 local.strlen
+			local.str = local.cstr
+		}
+		if ( self.s1 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s1 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s2 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s2 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s3 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s3 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s4 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s4 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s5 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s5 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s6 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s6 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s7 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s7 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s8 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s8 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+		if ( self.s9 != NIL )
+		{
+			local.cstr = waitthread global/string_format.scr::str_format self.s9 local.strlen
+			local.str = (local.str + "\n" + local.cstr)
+		}
+
+		local.hudelement = 255
+
+		huddraw_virtualsize local.hudelement 1
+		huddraw_string local.hudelement local.str
+		huddraw_align local.hudelement left top
+		huddraw_font local.hudelement handle-22
+		huddraw_color local.hudelement 1 1 1
+		huddraw_rect local.hudelement 20 20 0 0
+
+		for (local.i = 0 ; local.i <= 1 ; local.i += .04)
+		{
+			huddraw_alpha local.hudelement local.i
+			waitframe
+		}
+		huddraw_alpha local.hudelement 1.0
+
+		while ( $player.fireheld == 0 )
+		{
+			$player.viewangles = local.viewangles
+			$player.origin = local.origin
+			waitframe
+		}
+		
+		fadein 1.5 0 0 0 1
+		for (local.i = 1 ; local.i >= 0 ; local.i -= .04)
+		{
+			huddraw_alpha local.hudelement local.i
+			waitframe
+		}
+		drawhud 1
+
+		level.kalimbasays = 0
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+pushfarplane local.min local.max local.time local.wait:
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ setting farplane to " local.min
+	$world farplane local.min
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ waiting to start move for " local.wait " seconds"
+	if ( local.wait != NIL )
+		wait local.wait
+
+	local.delta = (local.max - local.min) / (local.time * 10)
+
+	if ( local.min < local.max )
+	{
+		for ( local.dist = local.min; local.dist < local.max; local.dist += local.delta )
+		{
+//			dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ setting farplane to " local.dist
+			$world farplane local.dist
+			wait 0.1
+		}
+	}
+	else
+	{
+		for ( local.dist = local.min; local.dist > local.max; local.dist += local.delta )
+		{
+//			dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ setting farplane to " local.dist
+			$world farplane local.dist
+			wait 0.1
+		}
+	}
+
+//	dprintln "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ setting farplane to " local.max
+	$world farplane local.max
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// hide an ai until it's triggered
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+aihider:
+
+	local.bias = self.threatbias
+
+	self notsolid
+	self hide
+	self threatbias ignoreme
+	self ai_off
+
+	self waittill trigger
+
+	self solid
+	self show
+	self threatbias local.bias
+	self ai_on
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// the captain runs this from the time the flak88 is destroyed
+//   until the bunker mg42 gunner is killed
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+captainsafety:
+
+	self say 13C207_CaptDial08
+	wait 2.5
+
+	self waitthread global/friendly.scr::friendlystop
+	self exec global/disable_ai.scr
+	self threatbias ignoreme
+
+	if ( $captainmgsafety )
+	{
+		self runto $captainmgsafety
+		self waittill movedone
+	}
+	self exec global/crouch.scr
+
+	// wait while the gunner is alive, unless the player proceeds without me
+	while ( isAlive $bunkergunner && (level.objective4 == 0) )
+	{
+		wait 0.2
+	}
+
+	self waitthread global/friendly.scr::friendlythink
+	self exec global/enable_ai.scr
+	self threatbias 0
+
+end

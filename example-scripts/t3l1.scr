@@ -1,0 +1,1211 @@
+$world farplane 13000
+$world farplane_color (.03 .05 .07)
+$world farplane_bias 500
+
+	level.script = "maps/t3l1.scr"
+	level.music  = "t3l1"
+
+	exec global/auto.scr
+
+level waittill prespawn
+
+	level.rain_width = "0.4"
+	level.rain_min_dist = 512
+	level.rain_density = 5
+	level.startedrainsound2 = 1
+
+	level.enemytruckspeed = 175
+	level.lookahead = 256
+	level.playertanktarget = $player
+	level.aipronechance = 0
+	
+	level.fastspeed = 300
+	level.slowspeed = 160
+
+	level.raindensity = game.raindensity
+	level.rainvolume = game.rainvolume
+	level.thundertime = game.thundertime
+	setcvar "cg_rain_slant" (local.raindensity)
+	setcvar "cg_rain_density" (level.raindensity)
+
+	// lock down player
+	level.playerangles = $player.angles
+	level.playerorigin = $player.origin
+	//*** fade out
+	fadeout .001 0 0 0 1
+
+	// Turn off the hud.
+	drawhud 0
+
+level waittill spawn
+
+
+	$player takeall
+
+	$player item weapons/Nagant_revolver.tik 
+	$player item weapons/Mosin_Nagant_Rifle.tik 
+	$player item weapons/ppsh_smg.tik 
+	$player item weapons/svt_rifle.tik 
+	$player item weapons/Russian_F1_grenade.tik
+	$player item weapons/RDG-1_Smoke_grenade.tik
+
+	$player ammo pistol 28
+	$player ammo smg 225
+	$player ammo rifle 80
+	$player ammo smokegrenade 3
+	$player ammo grenade 3
+
+
+	setcvar g_mission 3
+	$player fullheal
+
+//	exec gags/t3l1_fourrussians.scr
+//	exec global/pocketlight.scr::PocketLightsInit
+
+
+	//////////////////////
+	// Stickybomb setup
+	//////////////////////
+
+//	waitthread global/items.scr::add_item "stickybomb" noprint // Show stickybomb inventory icon
+	level.stickybombs = 2
+	
+//	thread sky_smoke
+	$rubblesmoke anim start
+	$new_fire anim stop
+	$new_fire_1 anim stop
+
+	$s10_truck hide
+	$s10_truck notsolid
+	$s10_truck immune bash
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_move
+	$s10_truck1 hide
+	$s10_truck1 immune bash
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_move2
+	$s10_truck2 hide
+	$s10_truck2 immune bash
+	$s10_truck2.collisionent=$opelcollision_mask
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_move3
+	$s10_truck3 hide
+	$s10_truck3 immune bash
+	$statictruck1	thread gags/t3l1_enemyspawn.scr::DoStaticTruck 400
+	$statictruck1 immune bash
+	thread global/stickybomb.scr::StickyBombInit $stickybomb_static level.script::stickybomb_use
+	$statictruck2	thread gags/t3l1_enemyspawn.scr::DoStaticTruck 400
+	$statictruck2 immune bash
+	thread global/stickybomb.scr::StickyBombInit $stickybomb_static1 level.script::stickybomb_use
+	$statictruck3	thread gags/t3l1_enemyspawn.scr::DoStaticTruck 400
+	$statictruck3 immune bash
+	thread global/stickybomb.scr::StickyBombInit $stickybomb_static2 level.script::stickybomb_use
+	$statictruck1	thread FirstStaticDie
+	$static_tank thread gags/T3L2_KingTiger.scr::HideTank
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankstatic1
+	$statictruck2 hide
+	$statictruck3 hide
+
+	$panzer_tank1	thread gags/T3L2_KingTiger.scr::HideTank
+
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankmove1
+	$panzer_tank2	thread gags/T3L2_KingTiger.scr::HideTank
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankmove2
+	$panzer_tank3	thread gags/T3L2_KingTiger.scr::HideTank
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankmove3
+	$panzer_tank4	thread gags/T3L2_KingTiger.scr::HideTank
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankmove4
+	$panzer_tank5	thread gags/T3L2_KingTiger.scr::HideTank
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankmove5
+	$panzer_tank6	thread gags/T3L2_KingTiger.scr::HideTank
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankmove6
+	$panzer_tank7	thread gags/T3L2_KingTiger.scr::HideTank
+	thread global/stickybomb.scr::StickyBombHide $stickybomb_tankmove7
+	$santatarget .collisionent=$opelcollision_mask
+	$santatarget anim idlelights
+	$t34_tank	thread gags/T3L2_KingTiger.scr::HideTank
+	$player_flak88 hide
+	$player_flak88_turret0 hide
+	$player_flak88 thread global/stationaryweapons.scr::MountedStationaryWeapon statweapons/flak88_d.tik
+        $player_flak88.collisionent = $flak88_collision
+	$player_flak88_turret0.collisionent = $flak88_turret_collision
+	$player_flak88 health 2000
+
+	$player_flak88_1 hide
+	$player_flak88_1_turret0 hide
+	$player_flak88_1 thread global/stationaryweapons.scr::MountedStationaryWeapon statweapons/flak88_d.tik
+        $player_flak88_1.collisionent = $flak88_collision
+	$player_flak88_turret0.collisionent = $flak88_turret_collision
+	$player_flak88_1 health 2000
+	$santa dontdropweapons
+
+	$panzer_tank1 waitthread MakeImmune
+	$panzer_tank2 waitthread MakeImmune
+	$panzer_tank3 waitthread MakeImmune
+	$panzer_tank4 waitthread MakeImmune
+	$panzer_tank5 waitthread MakeImmune
+	$panzer_tank6 waitthread MakeImmune
+	$panzer_tank7 waitthread MakeImmune
+	$static_tank waitthread MakeImmune
+
+	$s10_truck waitthread MakeImmune
+	thread global/spotlight.scr::deadcorona $s10_truck "light left" 
+	thread global/spotlight.scr::deadcorona $s10_truck "light right"
+	$s10_truck1 waitthread MakeImmune
+	thread global/spotlight.scr::deadcorona $s10_truck1 "light left" 
+	thread global/spotlight.scr::deadcorona $s10_truck1 "light right"
+	$s10_truck2 waitthread MakeImmune
+	thread global/spotlight.scr::deadcorona $s10_truck2 "light left" 
+	thread global/spotlight.scr::deadcorona $s10_truck2 "light right"
+	$s10_truck3 waitthread MakeImmune
+	thread global/spotlight.scr::deadcorona $s10_truck3 "light left" 
+	thread global/spotlight.scr::deadcorona $s10_truck3 "light right"
+	$statictruck1 waitthread MakeImmune
+	thread global/spotlight.scr::deadcorona $statictruck1 "light left" 
+	thread global/spotlight.scr::deadcorona $statictruck1 "light right"
+	$statictruck2 waitthread MakeImmune
+	thread global/spotlight.scr::deadcorona $statictruck2 "light left" 
+	thread global/spotlight.scr::deadcorona $statictruck2 "light right"
+	$statictruck3 waitthread MakeImmune
+	thread global/spotlight.scr::deadcorona $statictruck3 "light left" 
+	thread global/spotlight.scr::deadcorona $statictruck3 "light right"
+
+
+//-------------------------------------------------------------------
+//
+//	Flakk Gun Properties 
+//
+//-------------------------------------------------------------------
+
+	$player_flak88_turret0 maxyawoffset 90.0
+	$player_flak88_turret0 turnspeed 15
+	$player_flak88_turret0 pitchspeed 7.5
+	$player_flak88_turret0 pitchcaps "45 10 0"
+	$player_flak88_turret0 viewjitter 7
+	$player_flak88_turret0 firedelay 4
+
+	$player_flak88_1_turret0 maxyawoffset 30.0
+	$player_flak88_1_turret0 turnspeed 15
+	$player_flak88_1_turret0 pitchspeed 7.5
+	$player_flak88_1_turret0 pitchcaps "-50 15 0"
+	$player_flak88_1_turret0 viewjitter 7
+	$player_flak88_1_turret0 firedelay 4
+
+//-------------------------------------------------------------------
+//	 MG42 Behavior
+//-------------------------------------------------------------------
+
+$mg42 maxyawoffset 120.0
+$mg42 pitchcaps "-20 20 0"
+$mg42 AIbulletspread 350 175
+$mg42 convergetime 0.25
+
+//-------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------
+//
+//	Russian Actor Weapons 
+//
+//-------------------------------------------------------------------
+
+	$startingsoldier1 gun "ppsh"
+	$startingsoldier2 gun "nagant rifle"
+	$startingsoldier3 gun "nagant rifle"
+	$startingsoldier4 gun "ppsh"
+	$startingsolidier6 gun "nagant rifle"
+	$startingsolidier7 gun "nagant rifle"
+
+//-------------------------------------------------------------------
+
+/////	self waitthread global/vehicles_thinkers.scr::truck_INIT
+
+	// put the T-34 tank guard soldiers into a level array
+	level.tankguard[1] = waitthread global/spawner.scr::spawner_create $tankguard1[1]
+	level.tankguard[2] = waitthread global/spawner.scr::spawner_create $tankguard2[1]
+	level.tankguard[3] = waitthread global/spawner.scr::spawner_create $tankguard3[1]
+
+	exec gags/t3l1_germantankguys.scr
+
+	// initialize the enemyspawner gag thread
+	exec gags/t3l1_enemyspawn.scr
+
+	exec gags/t3l1_soldiers_balcony.scr
+
+
+
+	// SAFE initialize safe variables
+	level.safe = $safe
+	level.safestate = 0
+	// turn off the trigger outside door in which safe is located
+	$explodertrigger nottriggerable
+	// make the safe solid
+	level.safe solid
+
+	thread intro_fade_in
+
+	// Awkward script to make sure the player's weapon is holstered.
+
+//	$player physics_on
+//	wait 0.75
+//	$player safeholster 1
+
+
+
+end
+
+MakeImmune:
+	self immune bullet
+	self immune fast_bullet
+	self immune grenade
+//	self immune explosion
+//	self immune rocket
+	end
+
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Intro to level
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+intro_fade_in:
+
+	// Start the four russian recon team members talking.
+//	exec gags/t3l1_fourrussians.scr::russian_startdialog
+	thread gags/t3l1_fourrussians.scr::DoRussians
+
+	freezeplayer
+
+ 	wait 0.75
+
+	$player.viewangles = "0 0 0"
+
+
+	$player physics_off
+	$player.angles = level.playerangles
+	$player.origin = level.playerorigin
+
+	showmenu t3l1_1
+	hidemouse
+
+	wait 1.5
+	showmenu t3l1_2
+	hidemouse
+
+	wait 2.25
+	showmenu t3l1_3
+	hidemouse
+
+	wait 3
+
+	fadein 3.5 0 0 0 1
+	$player.viewangles = "0 -90 0"
+
+	wait 2
+	hidemenu t3l1_1
+	hidemenu t3l1_2
+	hidemenu t3l1_3
+	hidemouse
+
+	wait 1
+	releaseplayer
+	$player.viewangles = "0 -90 0"
+
+
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// OBJECTIVES <begin>
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// initialize the objective list
+// - NOTE: there is not a 1-to-1 correlation between objective thread names and objective numbers
+// - Here is the correlation map:
+//
+//   Objective #:	runs thread:
+//		1			objective1
+//		2			objective2
+//		3			objective3
+//		4			objective4
+//		5			objective5
+//		6			objective6
+//		7			objective7
+//
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+initobjectives:
+
+	waitthread global/objectives.scr::add_objectives 1 1 "Cross the Bridge and Enter Berlin" $beacon_bridge.origin
+	waitthread global/objectives.scr::add_objectives 2 1 "Locate Downed Aircraft and Map to Chancellery" $beacon_piperplane.origin
+	waitthread global/objectives.scr::add_objectives 3 1 "Locate the Chancellery Building" $beacon_safe.origin
+	waitthread global/objectives.scr::add_objectives 4 1 "Locate the Safe Containing List of Double-Agents" $beacon_safe.origin
+	waitthread global/objectives.scr::add_objectives 5 1 "Locate the Combination to the Safe" $beacon_combination.origin
+	waitthread global/objectives.scr::add_objectives 6 1 "Use Combination to Open the Safe" $beacon_safe.origin
+	waitthread global/objectives.scr::add_objectives 7 1 "Eliminate Enemies and Commandeer a Tank" $beacon_t34tank.origin
+
+	level.safelocated = 0
+	level.combination = 0
+	level.usetrigger5 = 0
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that waits for objective 1 completion
+// - Cross the bridge and enter the city
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+objective1:
+
+	// enable objective
+	waitthread global/objectives.scr::add_objectives 1 2
+	waitthread global/objectives.scr::current_objectives 1
+
+	// wait for the trigger to be encroached
+	$new_fire anim start
+	$objective1trigger waittill trigger
+
+	// mark objective as complete
+	waitthread global/objectives.scr::add_objectives 1 3
+
+	// start the thread that waits for next objective
+	thread objective2
+
+	// autosave position 1
+	exec global/autosave.scr 1
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that waits for objective 2 completion
+// - Locate your instructions at the downed aircraft
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+objective2:
+
+	// enable objective
+	waitthread global/objectives.scr::add_objectives 2 2
+	waitthread global/objectives.scr::current_objectives 2
+
+	// wait for the trigger to be encroached
+	$objective8trigger waittill trigger
+
+	// mark objective as complete
+	waitthread global/objectives.scr::add_objectives 2 3
+
+	// start the thread that waits for next objective
+	thread objective3
+
+	// autosave position 2
+	exec global/autosave.scr 2
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that waits for objective 3 completion
+// - Locate the Chancellery Building
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+objective3:
+
+	// enable objective
+	waitthread global/objectives.scr::add_objectives 3 2
+	waitthread global/objectives.scr::current_objectives 3
+
+	// wait for the trigger to be encroached
+	$objective2trigger waittill trigger
+
+	// mark objective as complete
+	waitthread global/objectives.scr::add_objectives 3 3
+
+	// start the thread that waits for next objective
+	thread objective4
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that waits for objective 4 completion
+// - Locate the safe
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+objective4:
+
+	// enable objective
+	waitthread global/objectives.scr::add_objectives 4 2
+	waitthread global/objectives.scr::current_objectives 4
+
+	// wait for the trigger to be encroached
+	$objective4trigger waittill trigger
+
+	level.safelocated = 1
+
+	// mark objective as complete
+	waitthread global/objectives.scr::add_objectives 4 3
+
+	// start the thread that waits for next objective
+	thread objective5
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that waits for objective 5 completion
+// - Locate the combination to the safe
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+objective5:
+
+	// enable objective
+	waitthread global/objectives.scr::add_objectives 5 2
+	waitthread global/objectives.scr::current_objectives 5
+
+	// wait for the combination to be picked up
+	while ( level.combination == 0 )
+	{
+		waitframe
+	}
+
+	// mark objective as complete
+	waitthread global/objectives.scr::add_objectives 5 3
+
+	// start the thread that waits for next objective
+	thread objective6
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that runs on the use trigger for the safe
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+usetrigger5:
+
+	if ( level.combination == 1 )
+	{
+		// player has located the combination
+		if ( level.safestate == 0 )
+		{
+			// swap the safe model
+			level.safestate = 1
+
+			local.ent = spawn script_model model models/animate/safe.tik
+			local.ent.origin = level.safe.origin
+			local.ent.angles = level.safe.angles
+			level.safe remove
+			level.safe = local.ent
+
+			// play the opening animation
+			level.safe anim open
+			wait 1.5
+			level.safe anim pickup_portfolio
+
+			// flag that the safe was opened
+			level.usetrigger5 = 1
+		}
+	}
+	else
+	{
+		// player doesn't have the combination
+		level.safe anim locked
+		wait 0.5
+		level.safe anim idle
+	}
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that waits for objective 6 completion
+// - Use the combination to open the safe
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+objective6:
+	
+	// enable objective
+	waitthread global/objectives.scr::add_objectives 6 2
+	waitthread global/objectives.scr::current_objectives 6
+
+	while ( level.usetrigger5 == 0 )
+	{
+		waitframe
+	}
+
+	// mark objective as complete
+	waitthread global/objectives.scr::add_objectives 6 3
+
+	// start the thread that waits for next objective
+	thread objective7
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that runs on the tankguards when they respawn
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+activatetankguard local.ent:
+
+	local.ent forceactivate
+	local.ent thread global/ai.scr::enemyspawned
+	local.ent thread global/ai.scr::deathcheck
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// thread that waits for objective 7 completion
+// - Eliminate Enemies and Commandeer a Tank
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+objective7:
+
+	// enable objective
+	waitthread global/objectives.scr::add_objectives 7 2
+	waitthread global/objectives.scr::current_objectives 7
+
+	wait 1
+
+	$explodertrigger triggerable
+	thread t34_drive
+	// spawn the tank guards
+	level.tankguard[1] = waitthread global/spawner.scr::spawner_activate_targetname level.tankguard[1]
+	level.tankguard[2] = waitthread global/spawner.scr::spawner_activate_targetname level.tankguard[2]
+	level.tankguard[3] = waitthread global/spawner.scr::spawner_activate_targetname level.tankguard[3]
+
+	exec gags/t3l1_germantankguys.scr::three_germans_at_tank_init
+
+	wait 1
+
+	while ( (isAlive $tankguard1) || (isAlive $tankguard2) || (isAlive $tankguard3) )
+	{
+		waitframe
+	}
+	// wait for the trigger to be encroached
+	$objective7trigger waittill trigger
+
+	// mark objective as complete
+	waitthread global/objectives.scr::add_objectives 7 3
+
+	// transition to next level
+	$player takeall
+	wait 0.1
+	exec global/missioncomplete.scr t3l2 1
+
+end
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// OBJECTIVES <end>
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+sky_smoke:
+    	for(local.i = 1;local.i <= $skysmoke.size; local.i ++)
+	{
+        //	$skysmoke[local.i].origin = ($skysmoke[local.i].origin + ( 0 0 -64 ))
+        	$skysmoke[local.i] forceactivate
+        	$skysmoke[local.i] anim start
+        //	$skysmoke[local.i] svflags "+broadcast"		
+        	wait .2
+	}
+end
+
+pole_fall:
+
+	local.ent = self.target
+
+	local.ent playsound lightpole_fall_start
+	local.ent notsolid
+
+	local.angles = (vector_toangles ($player.origin - self.origin))
+	local.ent.angles = (0 (local.angles[1] + 90) 0)
+
+	self remove
+
+	if ( local.ent.fangle == NIL )
+		local.fallangle = 80
+	else
+		local.fallangle = local.ent.fangle
+
+	local.rotate = 25
+	local.current = local.rotate
+	local.time = 0.5
+
+	while (local.current < local.fallangle)
+	{
+		local.ent time local.time
+		local.ent rotatezdown local.rotate
+		local.ent waitmove
+		local.time = local.time * 0.5
+		local.current += local.rotate
+	}
+	local.current -= local.rotate
+
+	local.ent time local.time
+	local.ent rotatezdown (local.fallangle - local.current)
+	local.ent waitmove
+
+	local.ent playsound lightpole_fall_end
+
+end
+
+bench_smash:
+	if(self.smashed != 1)
+	{
+        	self.smashed = 1
+        	local.bench = $(self.target)
+        	local.thing = spawn script_model model "animate/fx_cratedebris_0.tik"
+        	local.thing2 = spawn script_model model "animate/fx_cratedebris_0.tik"
+        	local.org = angles_toforward ((local.bench.angles) + ( 0 90 0 ))
+        	local.org = ((local.org * 35) + ((local.bench.origin)) + ( 0 0 45 ))	
+        	local.thing.origin = local.org
+        	local.thing anim start
+        	local.org = angles_toforward ((local.bench.angles) + ( 0 -90 0 ) )
+        	local.org = ((local.org * 35) + ((local.bench.origin)) + ( 0 0 45 ) )
+        	local.thing2.origin = local.org
+        	local.thing2 anim start
+		local.bench remove
+	}
+end
+
+FirstStaticDie:
+	self waittill death
+	$s10_truck show
+	$s10_truck solid
+	thread global/stickybomb.scr::StickyBombInit $stickybomb_move level.script::stickybomb_use
+	thread global/stickybomb.scr::StickyBombShow $stickybomb_move
+	local.random = randomint ( 10 )
+	local.random += 65
+	$s10_truck thread gags/t3l1_enemyspawn.scr::DoTruck 400 2 1 local.random							// 30deg 45deg
+	$s10_truck thread gags/t3l1_enemyspawn.scr::TruckDrive $s10_truck_path 512 level.enemytruckspeed 0 0.866 0.707
+	end
+
+
+s10_1:
+	//called by the BSP
+	thread global/ai.scr::spawnset 1002 set1002
+	if (isAlive $s10_truck1)	
+	$s10_truck1 show
+	thread global/stickybomb.scr::StickyBombInit $stickybomb_move2 level.script::stickybomb_use
+	thread global/stickybomb.scr::StickyBombShow $stickybomb_move2
+	local.random = randomint ( 10 )
+	local.random += 65
+	$s10_truck1 thread gags/t3l1_enemyspawn.scr::DoTruck 180 2 1 local.random						// 30deg 45deg
+	$s10_truck1 thread gags/t3l1_enemyspawn.scr::TruckDrive $s10_truck1_path 512 level.enemytruckspeed 0 0.866 0.707
+	end
+
+s10_2:
+	//called by the BSP	
+	if (isAlive $s10_truck2)
+	$s10_truck2 show
+	thread global/stickybomb.scr::StickyBombInit $stickybomb_move3 level.script::stickybomb_use
+	thread global/stickybomb.scr::StickyBombShow $stickybomb_move3
+	local.random = randomint ( 10 )
+	local.random += 65
+	$s10_truck2 thread gags/t3l1_enemyspawn.scr::DoTruck 400 2	1 local.random
+	$s10_truck2 thread gags/t3l1_enemyspawn.scr::TruckDrive $s10_truck2_path 512 level.enemytruckspeed 0 0.866 0.707
+	thread static_tank_new
+	end
+
+s10_3:
+	//called by the BSP
+	$s10_truck3 show
+	local.random = randomint ( 10 )
+	local.random += 65
+	$s10_truck3 thread gags/t3l1_enemyspawn.scr::DoTruck 400 3	1 local.random
+	$s10_truck3 thread gags/t3l1_enemyspawn.scr::TruckDrive $s10_truck3_path 512 220 1 0.866 0.707
+	thread global/ai.scr::spawnset 1000 set1000
+	$player stufftext "tmstop; tmstart sound/music/Kleveburg.mp3"
+	end
+
+s10_3remove:
+	//called by the BSP
+	$s10_truck3 hide
+	end
+
+panzer1:
+	$statictruck2 show
+	$statictruck3 show
+	thread gags/T3L1_enemyspawn.scr::DeleteGermanWaves
+
+	$startingsoldier1 thread DeleteYourself
+	$startingsoldier2 thread DeleteYourself
+	$startingsoldier3 thread DeleteYourself
+	$startingsoldier4 thread DeleteYourself
+
+	if (isAlive $panzer_tank1)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankmove1 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankmove1
+		$panzer_tank1 thread gags/T3L2_KingTiger.scr::ShowTank
+		$panzer_tank1 waitthread gags/T3L1_enemyspawn.scr::SetupTankPass 2
+		$panzer_tank1 waitthread tank_drive_path $panzer_tank1_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $panzer_tank1 )
+		{
+			$panzer_tank1 thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+
+	end
+
+panzer2:
+	if (isAlive $panzer_tank2)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankmove2 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankmove2
+		$panzer_tank2 thread gags/T3L2_KingTiger.scr::ShowTank
+		$panzer_tank2 waitthread gags/T3L1_enemyspawn.scr::SetupTankPass 1
+		$panzer_tank2 waitthread tank_drive_path $panzer_tank2_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $panzer_tank2 )
+		{
+			$panzer_tank2 thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+	end
+
+panzer3:
+	thread weatherchange
+	thread global/ai.scr::spawn 1004
+	if (isAlive $panzer_tank3)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankmove3 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankmove3
+		$panzer_tank3 thread gags/T3L2_KingTiger.scr::ShowTank
+		$panzer_tank3 waitthread tank_drive_path $panzer_tank3_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $panzer_tank3 )
+		{
+			$panzer_tank3 thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+	thread weatherchange
+	end
+
+panzer4:
+	$player playsound plane1
+	thread global/ai.scr::spawn 1007
+	if (isAlive $panzer_tank4)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankmove4 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankmove4
+		$panzer_tank4 thread gags/T3L2_KingTiger.scr::ShowTank
+		$panzer_tank4 waitthread gags/T3L1_enemyspawn.scr::SetupTankPass 2
+		wait 10
+		$panzer_tank4 thread tank_drive_path $panzer_tank4_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $panzer_tank4 )
+		{
+			$panzer_tank4 thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+	end
+
+panzer5:
+	if (isAlive $panzer_tank5)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankmove5 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankmove5
+		$panzer_tank5 thread gags/T3L2_KingTiger.scr::ShowTank
+		$panzer_tank5 thread tank_drive_path $panzer_tank5_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $panzer_tank5 )
+		{
+			$panzer_tank5 thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+	end
+
+panzer6:
+	if (isAlive $panzer_tank6)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankmove6 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankmove6
+		$panzer_tank6 thread gags/T3L2_KingTiger.scr::ShowTank
+		$panzer_tank6 thread tank_drive_path $panzer_tank6_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $panzer_tank6 )
+		{
+			$panzer_tank6 thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+	end
+
+panzer7:
+	if (isAlive $panzer_tank7)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankmove7 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankmove7
+		$panzer_tank7 thread gags/T3L2_KingTiger.scr::ShowTank
+		$panzer_tank7 waitthread gags/T3L1_enemyspawn.scr::SetupTankPass 2
+
+		$panzer_tank7 thread tank_drive_path $panzer_tank7_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $panzer_tank7 )
+		{
+			$panzer_tank7 thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+	end
+
+static_tank_new:
+	if (isAlive $static_tank)
+	{
+		thread global/stickybomb.scr::StickyBombInit $stickybomb_tankstatic1 level.script::stickybomb_use
+		thread global/stickybomb.scr::StickyBombShow $stickybomb_tankstatic1
+		$static_tank thread gags/T3L2_KingTiger.scr::ShowTank
+		$static_tank waitthread gags/T3L1_enemyspawn.scr::SetupTankPass 1
+		$musictrigger waittill trigger	
+		$static_tank thread tank_drive_path $static_tank_path level.enemytruckspeed
+		// don't turn on thinking until we've found the player
+		if ( isAlive $static_tank )
+		{
+			$static_tank thread global/vehicles_thinkers.scr::enemy_tank_think 0 empty_panzer_desert
+		}
+	}
+	end
+
+panzer_parade:
+	thread panzer5
+	thread panzer6
+	thread panzer7
+	end
+
+t34_drive:
+		$t34_tank thread gags/T3L2_KingTiger.scr::ShowTank
+		$t34_tank thread tank_drive_path $t34_path level.enemytruckspeed
+	end
+
+document1:
+	$player playsound pickup_papers
+	$document1 remove
+//	dprintln "Instructions Located."
+end
+
+document2:
+
+	if ( level.safelocated == 1 )
+	{
+		level.combination = 1
+		$player playsound pickup_papers
+		$document2 remove
+		//dprintln "Located Safe Combination."
+	}
+
+end
+
+musicchange:
+	$player_flak88 show
+	$player_flak88_turret0 show
+	$player stufftext "tmstop"
+	$player stufftext "tmstartloop sound/music/mus_11a_surprise.mp3"
+// autosave position 3
+exec global/autosave.scr 3
+	end
+
+weatherchange:
+	println "weather change"
+	level.rain_width = ".6"
+	level.rain_min_dist = 512
+	level.rain_density = 10
+end
+
+pilarexplode:
+thread global/exploder.scr::explode 28
+end
+
+spawnenemies_outsidesaferoom:
+println "hit enemy spawn trigger"
+thread global/ai.scr::spawn 81
+println "activating grenade launcher"
+$Grenadeshot turnon
+end
+
+spawnenemies_building:
+println "hit enemy spawn trigger"
+thread global/ai.scr::spawn 82
+end
+
+spawnenemies_building_2:
+thread global/ai.scr::spawn 83
+end
+
+spawnenemies_building_3:
+thread global/ai.scr::spawn 84
+end
+
+spawnenemies_building_4:
+thread global/ai.scr::spawn 85
+end
+
+spawnenemies_building_5:
+thread global/ai.scr::spawn 88
+end
+
+spawnenemies_building_frontdoor:
+thread global/ai.scr::spawn 86
+end
+
+spawnenemies_building_frontdoor2:
+thread global/ai.scr::spawn 87
+end
+
+ai_spawn_1002:
+thread global/ai.scr::spawnset 1001 set1001
+$player playsound plane1
+$player_flak88_1 show
+$player_flak88_1_turret0 show
+end
+
+ai_spawn_1003:
+thread global/ai.scr::spawn 1003 set1003
+end
+
+ai_spawn_1005:
+thread global/ai.scr::spawn 1005
+end
+
+ai_spawn_1006:
+thread global/ai.scr::spawn 1006
+end
+
+ai_spawn_1010:
+thread global/ai.scr::spawn 1010
+end
+
+ai_spawn_1011:
+thread global/ai.scr::spawn 1011
+end
+
+dostuff:
+$player playsound plane1
+thread global/ai.scr::spawnset 80 set80
+end
+
+//-------------------------------------------------------
+TurnOffAi local.name:
+//-------------------------------------------------------
+
+for (local.i=1;local.i<=local.name.size;local.i++)
+{
+	local.name[local.i] ai_off
+	local.name[local.i] rendereffects "+dontdraw"
+}
+
+end
+
+//-------------------------------------------------------
+TurnOnAi local.name:
+//-------------------------------------------------------
+
+for (local.i=1;local.i<=local.name.size;local.i++)
+{
+	local.name[local.i] ai_on
+	local.name[local.i] rendereffects "-dontdraw"
+}
+
+end
+
+//-------------------------------------------------------
+TankTurnOff:
+//-------------------------------------------------------
+	self.paused = 1
+	self waitthread gags/T3L2_KingTiger.scr::HideTank
+
+end
+
+//-------------------------------------------------------
+TankTurnOn:
+//-------------------------------------------------------
+	self.paused = 0
+	self waitthread gags/T3L2_KingTiger.scr::ShowTank
+
+end
+
+//-------------------------------------------------------
+fire_on:
+//-------------------------------------------------------
+	$new_fire anim start
+	$new_fire_1 anim stop
+
+end
+
+//-------------------------------------------------------
+fire_off:
+//-------------------------------------------------------
+	$new_fire anim stop
+	$new_fire_1 anim start
+end
+
+stopgermans:
+	$new_fire_1 anim stop
+	thread TurnOffAi $set80
+	thread TurnOffAi $set1000
+	thread TurnOffAi $set1001
+	thread TurnOffAi $set1002
+	thread TurnOffAi $set1003
+	// pause our tank ai...
+	if ( $panzer_tank1!=NIL )
+		$panzer_tank1 thread TankTurnOff
+
+	if ( $panzer_tank2!=NIL )
+		$panzer_tank2 thread TankTurnOff
+end
+
+restartgermans:
+	$new_fire_1 anim start
+	thread TurnOnAi $set80
+	thread TurnOnAi $set1000
+	thread TurnOnAi $set1001
+	thread TurnOnAi $set1002
+	thread TurnOnAi $set1003
+	// resume our tank ai...
+	if ( $panzer_tank1!=NIL )
+		$panzer_tank1 thread TankTurnOn
+	
+	if ( $panzer_tank2!=NIL )
+		$panzer_tank2 thread TankTurnOn
+end
+
+/////////////////////////
+tank_drive_path local.path local.speed local.remove:
+// drive Vector position, speed, acceleration, reach_distance, look_ahead
+
+self thread global/vehicles_thinkers.scr::TankExplodeOnDeath
+
+self.driving = 1
+
+if ( self.passenger_count!=NIL && self.passenger_count>0 )
+	self thread gags/t3l1_enemyspawn.scr::TankLookForPlayer 512 NIL 0 // nil means 360deg view...
+else
+	self thread gags/t3l1_enemyspawn.scr::TankLookForPlayer 512 0.866	0 // 0.866=30deg view for tanks?
+
+self drive local.path local.speed 30 200 level.lookahead
+self waitTill drive
+
+// jsl--> Now that we've stopped, disconnect the ai-paths around this tank...
+if ( self.collisionent!=NIL && self.collisionent!=NULL)
+	self.collisionent disconnect_paths
+
+
+
+// unload the passengers...
+
+wait 1.5	// give tank enuf time to come to full stop...
+self waitthread global/guys_on_tank.scr::UnloadPassengers
+
+
+if (self)
+{
+	self stop
+	self.driving = 0
+	if (local.remove == "remove")
+		self remove
+}
+end
+
+doorlocked:
+	self playsound door_wood_locked1
+end
+
+//////////////////////
+// Stickybomb use code
+//////////////////////
+
+stickybomb_use:
+
+	if ( (level.stickybombs > 0) && (level.stickybombs < 10) )
+	{
+		local.next = level.stickybombs - 1
+		waitthread global/democharge.scr::sticky_switch level.stickybombs local.next
+		level.stickybombs = local.next
+
+		if (level.stickybombs == 0)
+			waitthread sticky_disableall
+	}
+
+end
+
+sticky_pickup:
+// #set 1 = sticky_reload_1
+// #set 2 = sticky_reload_2
+// #set 3 = sticky_reload_3
+
+	if ( self.set == 1 )
+	{
+		$sticky_reload_1 remove
+		$player playsound stickybomb_pickup
+	}
+	else if ( self.set == 2 )
+	{
+		$sticky_reload_2 remove
+		$player playsound stickybomb_pickup
+	}
+	else if ( self.set == 3 )
+	{
+		$sticky_reload_3 remove
+		$player playsound stickybomb_pickup
+	}
+
+	local.next = level.stickybombs + 4
+	if ( local.next > 9 )
+	{
+		local.next = 9
+	}
+	waitthread global/democharge.scr::sticky_switch level.stickybombs local.next
+	if (level.stickybombs == 0)
+		waitthread sticky_enableall
+
+	level.stickybombs = local.next
+
+end
+
+// enable all stickybombs
+sticky_enableall:
+
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_static
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_static1
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_static2
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_move
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_move2
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_move3
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankmove1
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankmove2
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankmove3
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankmove4
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankmove5
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankmove6
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankmove7
+	thread global/stickybomb.scr::StickyBombEnable $stickybomb_tankstatic1
+
+end
+
+// disable all stickybombs
+sticky_disableall:
+
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_static
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_static1
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_static2
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_move
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_move2
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_move3
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankmove1
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankmove2
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankmove3
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankmove4
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankmove5
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankmove6
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankmove7
+	thread global/stickybomb.scr::StickyBombDisable $stickybomb_tankstatic1
+
+end
+
+DeleteYourself:
+
+	if ( self==NULL || self==NIL )
+		end
+
+	self delete
+
+	end

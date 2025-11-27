@@ -1,0 +1,2126 @@
+level.script = "maps/t2l1.scr"
+level.music = "t2l1"
+ 
+exec global/auto.scr
+
+level waittill prespawn
+
+// Fade-in stuff.
+
+	$player physics_off
+	//freezeplayer
+	fadeout .001 0 0 0 1
+	drawhud 0
+
+level waittill spawn
+
+// Set mission variable number
+
+	setcvar "g_mission" "2"
+
+// Initialize difficulty setting variable
+	level.skill = getcvar (skill)
+
+// Animated fog setup
+
+	$world animated_farplane 3500 5000 1650 1888
+	$world animated_farplane_color (0.6 0.6 0.64) (0.5 0.5 0.54) 1200 1888 // 2nd RGB triple used to be (0.5 0.5 0.5)
+	$world animated_farplane_bias -1500 0 1650 1888
+
+// Set up Music
+
+	$player stufftext "tmstart sound/music/mus_SniperTown_01g.mp3"
+
+// Initialize Snow Parameters
+
+	level.rain_speed = "40"
+	level.rain_speed_vary = "4"
+	level.rain_length = "2"
+	level.rain_width = "1"
+	level.rain_density = ".4"
+	level.rain_slant = "1"
+	level.rain_min_dist = "512"
+	level.rain_numshaders = 12
+	level.rain_shader = "textures/snow"
+
+// init gags...
+	exec gags/T2L1_Explosion.Scr
+	exec gags/T2L1_Tank.Scr
+
+// Initialize Mission Objectives
+	exec global/obj.scr 1 hidden "Destroy the Nebelwerfers [4 remaining]" $nebel1_rally.origin
+	exec global/obj.scr 2 hidden "Use Nebelwerfer to Destroy the Halftrack" $halftrack1.origin
+	exec global/obj.scr 3 hidden "Use Sticky Bomb to Destroy Tank" $tigertank1.origin
+	exec global/obj.scr 4 hidden "Use Sticky Bomb to Destroy Second Tank" $tigertank2.origin
+	exec global/obj.scr 5 hidden "Acquire a Supply Truck" $supply_truck.origin
+
+	level.script = "maps/t2l1.scr"
+	level.usedrange = 1
+
+// Initialize Objective Variables
+
+	level.nebelsbombed = 0
+	level.nebel1_bombed = 0
+	level.nebel2_bombed = 0
+	level.nebel3_bombed = 0
+	level.nebel4_bombed = 0
+	level.obj1Complete = 0
+	level.obj2Complete = 0
+	level.obj3Complete = 0
+	level.obj4Complete = 0
+
+	level.tank2destroyed = 0
+	level.halftrack_triggered = 0
+	level.stickybombs = 0	
+	level.parade_death_counter = 0
+	level.toiletcounter = 0
+	level.parader_index = 0
+	level.parade_trigger_on = 0
+	level.squadhalt = 0
+
+// Run the thread that will end the mission if all your squadmates die
+
+	thread check_squad_death
+
+// Initialize Nebelwerfers (tweak their pitch arc length)
+
+	$nebel1 thread nebelwerferDeath
+	$nebel1 immune bullet
+	$nebel1 immune fast_bullet
+	$nebel1 immune bash
+	$nebel1.collisionent = $nebelwerfer_collision
+	$nebel1_turret0.collisionent = $nebelwerfer_turret_collision
+	$nebel1_turret0 immune bullet
+	$nebel1_turret0 immune fast_bullet
+	$nebel1_turret0 immune bash
+	$nebel1_turret0 thread global/turret.scr::playerturret_proj_think_aim $nebel1 $nebelwerfer1
+
+	$nebel2 thread nebelwerferDeath
+	$nebel2 immune bullet
+	$nebel2 immune fast_bullet
+	$nebel2 immune bash
+	$nebel2.collisionent = $nebelwerfer_collision
+	$nebel2_turret0.collisionent = $nebelwerfer_turret_collision
+	$nebel2_turret0 immune bullet
+	$nebel2_turret0 immune fast_bullet
+	$nebel2_turret0 immune bash
+	$nebel2_turret0 thread global/turret.scr::playerturret_proj_think_aim $nebel2 $nebelwerfer2
+
+	$nebel3 thread nebelwerferDeath
+	$nebel3 immune bullet
+	$nebel3 immune fast_bullet
+	$nebel3 immune bash
+	$nebel3.collisionent = $nebelwerfer_collision
+	$nebel3_turret0.collisionent = $nebelwerfer_turret_collision
+	$nebel3_turret0 immune bullet
+	$nebel3_turret0 immune fast_bullet
+	$nebel3_turret0 immune bash
+	$nebel3_turret0 thread global/turret.scr::playerturret_proj_think_aim $nebel3 $nebelwerfer3
+
+	$nebel4 thread nebelwerferDeath
+	$nebel4 immune bullet
+	$nebel4 immune fast_bullet
+	$nebel4 immune bash
+	$nebel4.collisionent = $nebelwerfer_collision
+	$nebel4_turret0.collisionent = $nebelwerfer_turret_collision
+	$nebel4_turret0 immune bullet
+	$nebel4_turret0 immune fast_bullet
+	$nebel4_turret0 immune bash
+	$nebel4_turret0 thread global/turret.scr::playerturret_proj_think_aim $nebel4 $nebelwerfer4
+
+	$nebel1_turret0 pitchcaps ( -30 60 0)
+	$nebel1_turret0 maxyawoffset "50"
+	$nebel2_turret0 pitchcaps ( -30 60 0)
+	$nebel2_turret0 maxyawoffset "50"
+	$nebel3_turret0 pitchcaps ( -30 60 0)
+	$nebel3_turret0 maxyawoffset "50"
+	$nebel4_turret0 pitchcaps ( -30 60 0)
+	$nebel4_turret0 maxyawoffset "50"
+
+//-------------------------------------------------------------------
+// MG42 Behavior
+//-------------------------------------------------------------------
+$mg42 maxyawoffset 95.0
+$mg42 pitchcaps ( -20 40 0)
+$mg42 AIbulletspread 350 175
+$mg42 convergetime 0.25
+
+
+// Initialize Vehicles
+
+// HalfTrack1
+	$halftrack1_gunner exec global/disable_ai.scr
+
+// Tiger Tank 1
+	level.enemytankspeed = 200
+	level.playertanktarget = $player
+	level.lookahead = 256
+	//$tigertank1.collisionentity = $panzertank_mask
+
+
+	$panzertank1_stickybomb_a waitthread stickysetup $tigertank1
+	$panzertank1_stickybomb_b waitthread stickysetup $tigertank1
+	$panzertank1_stickybomb_c waitthread stickysetup $tigertank1
+	$panzertank1_stickybomb_d waitthread stickysetup $tigertank1
+
+// Tiger Tank 2
+	//$tigertank2 hide
+	$panzertank2_stickybomb_a waitthread stickysetup $tigertank2
+	$panzertank2_stickybomb_b waitthread stickysetup $tigertank2
+	$panzertank2_stickybomb_c waitthread stickysetup $tigertank2
+	$panzertank2_stickybomb_d waitthread stickysetup $tigertank2
+
+// Tiger Tank 3
+	//$tigertank3_stickybomb bind $tigertank3
+	$panzertank3_stickybomb_a waitthread stickysetup $tigertank3
+	$panzertank3_stickybomb_b waitthread stickysetup $tigertank3
+	$panzertank3_stickybomb_c waitthread stickysetup $tigertank3
+	$panzertank3_stickybomb_d waitthread stickysetup $tigertank3
+
+// Supply Truck
+	//$supply_truck setcollisionentity $supplytruck_mask
+
+// Parked Halftrack
+	$parked_halftrack immune rocket
+	$parked_halftrack immune bullet
+	$parked_halftrack immune fast_bullet
+	$parked_halftrack immune grenade
+	$parked_halftrack immune bash
+	$parked_halftrack setcollisionentity $halftrack_mask	
+
+// MISC Not Solids, not triggerables, and Hides
+
+	$nebel1_throbbox hide
+	$nebel1_throbbox triggered 1
+	$nebel2_throbbox hide
+	$nebel2_throbbox triggered 1
+	$nebel3_throbbox hide
+	$nebel3_throbbox triggered 1
+	$nebel4_throbbox hide
+	$nebel4_throbbox triggered 1
+
+	$panzertank1_stickybomb_a triggered 1
+	$panzertank1_stickybomb_b triggered 1
+	$panzertank1_stickybomb_c triggered 1
+	$panzertank1_stickybomb_d triggered 1
+
+	$panzertank2_stickybomb_a triggered 1
+	$panzertank2_stickybomb_b triggered 1
+	$panzertank2_stickybomb_c triggered 1
+	$panzertank2_stickybomb_d triggered 1
+
+	$panzertank3_stickybomb_a triggered 1
+	$panzertank3_stickybomb_b triggered 1
+	$panzertank3_stickybomb_c triggered 1
+	$panzertank3_stickybomb_d triggered 1
+
+	$stuka hide
+	$fuel_tank_destroyed hide
+	$sniper_rifle_trigger nottriggerable
+	$sniper_rifle hide
+	$crashing_truck_mask notsolid	
+	$tent1 notsolid
+	$tent2 notsolid
+	$tent3 notsolid
+
+// Tell the AI to not drop health
+	level.nodrophealth = 1
+
+// Set their maxhealth
+	level.friendly1.maxhealth = level.friendly1.health
+	level.friendly2.maxhealth = level.friendly2.health
+	level.friendly3.maxhealth = level.friendly3.health
+
+// Heal the player and set up inventory
+
+	$player fullheal
+	$player takeall
+	$player item weapons/colt45.tik
+	$player item weapons/m1_garand.tik
+	$player item weapons/thompsonsmg.tik
+	$player item weapons/M2Frag_Grenade_sp.tik  
+ 	$player item weapons/M18_smoke_grenade.tik  
+	waitthread global/items.scr::add_item "binoculars" noprint	// Show binoculars inventory icon
+	waitthread global/items.scr::blank_items
+ 
+ 	$player ammo pistol 32
+ 	$player ammo smg 128
+ 	$player ammo rifle 50
+ 	$player ammo smokegrenade 2
+ 	$player ammo agrenade 2
+
+// Initialize Friendly Medic
+	level.friendly3 thread fstart 1
+
+	thread level_fadein
+
+// Begin Dialog
+
+	$player modheight "duck" // try crouch too
+	//level.friendly1 lookat $player
+	level.friendly1 turnto $player
+	//level.friendly1 exec global/crouch.scr
+	
+	level.friendly2 turnto level.friendly1
+	level.friendly2 lookat level.friendly1
+	level.friendly2 holster
+	level.friendly2 exec global/crouch.scr
+	
+	level.friendly3 turnto level.friendly1
+	level.friendly2 lookat level.friendly1
+	level.friendly3 exec global/crouch.scr
+	//level.friendly1 waittill turndone
+
+	level.friendly1 targetname Friendly1
+	level.friendly2 targetname Friendly2
+	level.friendly3 targetname Friendly3
+
+	level.friendly3 exec global/disable_ai.scr
+
+	wait 5
+
+	level.friendly1.health_pickup = FALSE
+	level.friendly2.health_pickup = FALSE
+	level.friendly3.health_pickup = FALSE
+
+end
+
+//--------------------------------------
+stickysetup local.bind_to:
+//--------------------------------------
+	self bind local.bind_to
+	self setdamage 2000
+	self hide
+
+end
+
+level_fadein:
+
+//--------------------------------------
+// Fade-in
+//--------------------------------------
+
+	freezeplayer
+	$player.viewangles = "0 155 0"
+	//dprintln "camera should be frozen"
+	
+	wait 1.5
+
+	//*** Dec 24, 1944
+	showmenu t2l1_1
+	hidemouse
+
+	wait 1.5
+	//*** ardennes....
+	showmenu t2l1_2
+	hidemouse
+
+	wait 2.25
+	//*** ardennes....
+	showmenu t2l1_3
+	hidemouse
+
+	wait 3
+	fadein 3.5 0 0 0 1
+
+	wait 2
+	hidemenu t2l1_1
+	hidemenu t2l1_2
+	hidemenu t2l1_3
+	hidemouse
+
+	//dprintln "camera unlocked"
+	//$player physics_on
+	releaseplayer
+	drawhud 1
+	$player.viewangles = "0 155 0"
+	waitthread global/items.scr::reload_items
+	$player use "Thompson"
+
+//--------------------------------------
+// End of Fade-in
+//--------------------------------------
+
+	// Start the first gag
+
+	level.friendly1 nodamage
+	level.friendly2 nodamage
+	level.friendly3 nodamage
+
+	// "Listen guys, we're way past our line now The German supply depot is a half-mile up the road."
+	level.friendly1 exec global/disable_ai.scr
+	level.friendly1 anim 21A101_Dialogue1
+	level.friendly1 waittill animdone
+	level.friendly1 exec global/enable_ai.scr
+
+	$player physics_on
+	//releaseplayer
+
+	level.friendly1 takedamage
+	level.friendly2 takedamage
+	level.friendly3 takedamage
+
+	// Stop looking at each other!!
+	level.friendly1 turnto NULL
+	level.friendly1 lookat NULL
+
+	level.friendly2 turnto NULL
+	level.friendly2 lookat NULL
+
+	level.friendly3 turnto NULL
+	level.friendly3 lookat NULL
+
+	// show the first objective
+	exec global/obj.scr 5 current "Acquire a Supply Truck" $supply_truck.origin
+
+	// Initialize Friendly Soldiers
+	level.friendly1 thread fstart
+	level.friendly2 thread fstart
+	level.friendly2 unholster
+
+	level.friendly1 thread friendlydeath
+	level.friendly2 thread friendlydeath
+	level.friendly3 thread friendlydeath
+end
+
+
+
+// FRIENDLY THREADS
+// --------------------------------------------------------------
+// Contains threads to setup or affect the friendly AI's behavior
+//
+
+//
+// fstart - initializes friendly AI's
+//
+
+fstart local.medicflag:
+
+	if (local.medicflag == 1)
+	{
+		self.friendtype = 5
+		
+		if (level.skill == "0")
+			self health 900			
+		else if (level.skill == "1")
+			self health 750					
+		else if (level.skill == "2")
+			self health 550
+	}
+	else
+	{
+		self.friendtype = 1
+		self health 550
+		self.enableEnemy = 1
+	}
+	self thread global/friendly.scr::friendlythink
+	self tether $player
+	self.interval = 192
+	self.mins = 0
+	self.maxs = 30
+end
+
+//
+// friendlydeath - waits until the friendly has died and prints a message
+//
+
+friendlydeath:
+	self waittill death
+	iprintlnbold "One of your squadmates has been killed in action."
+end
+
+// SCENE-SPECIFIC THREADS
+// --------------------------------------------------------------------------------
+// This section contains threads that govern specifically scripted combat sequences
+
+// this is used to prevent panzerschrek AI's from dropping their weapons for the player to use
+
+panzerschrek_drop:
+	if ( parm.other.gun == panzerschrek )
+     	{
+            parm.other dontdropweapons
+      }
+end
+
+// Scene 1 Patrol
+//	Three little nazis taking a cute little stroll through the forest...awww
+
+scene1_patrol:
+	waitthread global/ai.scr::spawn 1
+	$patroller1.enableEnemy = 0
+	$patroller2.enableEnemy = 0
+	$patroller3.enableEnemy = 0
+	$patroller1 walkto patrolpath_1
+	$patroller2 walkto patrolpath_2
+	$patroller3 walkto patrolpath_3
+	$patroller1.enableEnemy = 1
+	$patroller2.enableEnemy = 1
+	$patroller3.enableEnemy = 1
+	
+end
+
+// Scene 3 Hillfight - triggered when you approach the 2nd trench on the hill after the half-track and 1st nebelwerfer
+
+scene3_hillfight:
+	dprintln "hillfight is on"
+	thread global/ai.scr::spawn 3
+	$trench2a_grenade TurnOn
+	wait .5
+	$trench2b_grenade TurnOn
+	wait .75
+	$trench2c_grenade TurnOn
+
+end
+
+// scene 9 grenades - this causes grenades to rain down after you defeat the 2nd panzer tank
+
+scene9_grenades:
+	$hilla_grenade TurnOn
+	wait .5
+	$hillb_grenade TurnOn
+	wait .75
+	$hillc_grenade TurnOn
+end
+
+// mg42_parade - Optional fight when you equip the MG42 turret outside the compound
+
+mg42_parade:
+	if (level.skill == "0")
+		local.accuracy = 35			
+	else if (level.skill == "1")
+		local.accuracy = 45					
+	else if (level.skill == "2")
+		local.accuracy = 55
+	thread mg42_friendlies_go_chill
+	waitthread mg42_parade_wave 5 local.accuracy
+	while (level.parade_death_counter < 5)
+	{
+		waitframe
+	}
+	local.accuracy += 2
+	thread mg42_parade_wave 5 local.accuracy
+	while (level.parade_death_counter < 10)
+	{
+		waitframe
+	}
+	local.accuracy += 3
+	thread mg42_parade_wave 5 local.accuracy
+	while (level.parade_death_counter < 15)
+	{	
+		waitframe
+	}
+	if ((isAlive level.friendly1) && (level.squadhalt == 0))
+	{
+		level.friendly1 thread fstart
+	}
+	if ((isAlive level.friendly2) && (level.squadhalt == 0))
+	{
+		level.friendly2 thread fstart
+	}
+	if ((isAlive level.friendly3) && (level.squadhalt == 0))
+	{
+		level.friendly3 thread fstart 1 
+	}
+end
+
+mg42_parade_wave local.wavecount local.accuracy:
+	
+	local.modulus = 2
+	for (local.i = 1; local.i <= local.wavecount; local.i ++)
+	{
+		if (level.parade_trigger_on == 0)
+		{
+			end
+		}
+		level.parader_index ++
+		local.random = randomint 100
+		//local.interval = randomint 3
+		if (level.parade_death_counter > 5)
+		{
+			local.modulus = 3		
+			dprintln local.modulus
+		}
+
+		local.spawnerIndex = (local.random % local.modulus) + 1
+					
+		local.spawner_name = "parade_spawner_" + local.spawnerIndex
+		dprintln "Spawner name is " local.spawner_name
+		local.spawner_rallypoint_name = $(local.spawner_name).target
+
+		//assign a name and origin to the spawned enemy
+
+		local.parader_name[local.i] = "parade_soldier" + level.parader_index
+		//dprintln "Parader name is " local.parader_name[local.i]
+
+		local.org[local.i] = $(local.spawner_name).origin
+
+		// Spawn enemy soldiers
+
+		spawn models/human/german_winter_type1 "targetname" (local.parader_name[local.i]) "type_attack" "alarm"
+		$(local.parader_name[local.i]) thread mg42_parader_death
+		$(local.parader_name[local.i]) thread spawned_enemy_start local.spawner_rallypoint_name
+		
+		$(local.parader_name[local.i]).origin = local.org[local.i]				//place the guy in the correct spot
+		$(local.parader_name[local.i]).mindist = 128
+		$(local.parader_name[local.i]).maxdist = 512
+		$(local.parader_name[local.i]).leash = 4096
+		$(local.parader_name[local.i]).fixedleash = 0
+		$(local.parader_name[local.i]).sight = 2048
+		$(local.parader_name[local.i]).noticescale = 25
+		$(local.parader_name[local.i]).hearing = 2048
+		$(local.parader_name[local.i]).enemysharerange = 2048
+		$(local.parader_name[local.i]).sound_awareness = 100
+		$(local.parader_name[local.i]).interval = 256
+
+		$(local.parader_name[local.i]).accuracy = local.accuracy
+			
+		// randomly generate machine gunners
+		if (local.random <= 35)
+		{
+			$(local.parader_name[local.i]) gun "MP40"
+		}
+		// randomly give them grenades
+		if (local.random <= 75)
+		{
+			$(local.parader_name[local.i]).ammo_grenade = 2
+		}
+	
+		//parm.previousthread delete		
+		//wait local.interval	
+	}
+end
+
+//
+// mg42_parader_death - increments the global mg42_parader counter so that the waves don't spawn all at once
+//
+
+mg42_parader_death:
+	self waittill death
+	level.parade_death_counter ++
+	//dprintln "Parade Death Counter is " level.parade_death_counter
+end
+
+parade_trigger_think: //local.activator:
+	if (level.parade_trigger_on == 0)
+	{	
+		level.parade_trigger_on = 1
+		thread mg42_parade
+		while ($player istouching $parade_trigger)  
+		{
+			//dprintln "Parade trigger is set to " level.parade_trigger_on
+			waitframe
+		}
+		$parade_trigger remove
+		dprintln "Parade_trigger off!"
+		level.parade_trigger_on = 0
+		if ((isAlive level.friendly1) && (level.squadhalt == 0))
+		{
+			level.friendly1 thread fstart
+		}
+		if ((isAlive level.friendly2) && (level.squadhalt == 0))
+		{
+			level.friendly2 thread fstart
+		}
+		if ((isAlive level.friendly3) && (level.squadhalt == 0))
+		{
+			level.friendly3 thread fstart 1 
+		}
+	}
+end
+
+mg42_friendlies_go_chill:
+	if (level.squadhalt == 1)	// if they've already said they'll stay outside, don't execute this thread
+		end
+	if (isAlive level.friendly1)
+	{
+		level.friendly1.enableEnemy = 0
+		level.friendly1 runto $friendly1_chill
+ 		level.friendly1 waittill movedone
+		level.friendly1 waitthread global/friendly.scr::friendlystop
+		//self.enableEnemy = 1
+	}
+	if (isAlive level.friendly2)
+	{
+		level.friendly2.enableEnemy = 0
+		level.friendly2 runto $friendly2_chill
+ 		level.friendly2 waittill movedone
+		level.friendly2 waitthread global/friendly.scr::friendlystop
+		//self.enableEnemy = 1
+	}
+	if (isAlive level.friendly3)
+	{
+		level.friendly3.enableEnemy = 0
+		level.friendly3 runto $friendly2_chill
+ 		level.friendly3 waittill movedone
+		level.friendly3 waitthread global/friendly.scr::friendlystop
+		//self.enableEnemy = 1
+	}
+end
+
+// squadhalt - when you reach the compound, this thread coordinates your squadmates to stop and plays dialogue
+
+squadhalt:
+	level.squadhalt = 1
+	if (self == $squadhalt_trigger_1)
+	{
+		$squadhalt_trigger_2 nottriggerable
+		level.friendly1 thread squadhalt_rally 1
+		level.friendly2 thread squadhalt_rally 1
+		level.friendly3 thread squadhalt_rally 1
+	}
+	else
+	{
+		$squadhalt_trigger_1 nottriggerable
+		level.friendly1 thread squadhalt_rally 2
+		level.friendly2 thread squadhalt_rally 2
+		level.friendly3 thread squadhalt_rally 2
+	}
+	if (isAlive level.friendly1)
+	{
+		level.friendly1 say dfr_T2L1_AP4370
+		wait 5
+	}
+	else if (isAlive level.friendly2)
+	{
+		level.friendly2 say dfr_T2L1_AP4370
+		wait 5
+	}
+end	
+
+// squadhalt_rally - this actually tells which friendly to go where depending on which trigger was set, plus the binds them to a spot outside the 
+// the compound so they won't follow you
+
+squadhalt_rally local.rallyIndex:
+	if (isAlive self)
+	{
+		
+		//self.friendtype = -1
+		wait 1
+		if (self == level.friendly1)
+			local.rally_subset = "a"
+		else if (self == level.friendly2)
+			local.rally_subset = "b"
+		else 
+			local.rally_subset = "c"
+		local.rally_name = "squadhalt_" + local.rallyIndex + local.rally_subset
+		dprintln local.rally_name
+		self.enableEnemy = 0
+		self waitthread global/friendly.scr::friendlystop
+		self runto local.rally_name
+		self waittill movedone
+		self tether local.rally_name
+		self.leash = 512
+		self.fixedleash = 1
+		if ( self != level.friendly3 )
+			self.enableEnemy = 1 //exec global/enable_ai.scr
+	}	
+end
+
+// Kitchen Fight
+//	This thread occurs when you pickup the health kit in the corner of the kitchen
+//	in the house.
+
+kitchen_fight:
+	thread global/ai.scr::spawn 16
+end
+
+// Office Fight
+//	This thread occurs when you open the door to the office in the compound on 
+//	the hard difficulty setting
+
+office_fight:
+	self remove
+	thread global/ai.scr::spawn 25
+end
+
+sirens:
+	for (local.i = 1; local.i <= 7; local.i++)
+		$loudspeaker[local.i] thread looping_siren
+end
+
+looping_siren:
+	self playsound m6l3c_alarm
+	wait 1.5
+	goto looping_siren
+end
+
+
+// Scene 12 - Yard Fight
+//	This area can be approached 3 ways - from the west side door of the house,
+//	from inside the house near the kitchen (south side of house), or from behind the barns.
+//	The three triggers that activate this scene are mutually exclusive - meaning
+//	that one and only one can be activated (the untriggered ones get shut down)
+//	There are 4 spawn points located in areas that are not visible from any of the approaches.
+// 	Depending on the skill level, the spawn points will be visited between 6 - 10 times, and
+// 	there is a 75% chance that a spawn will occur at each visit.  There is also a 35% chance
+//	that an AI will spawn with an MP40 Machine Gun.  There will also be a Panzerschrek
+//	spawned from the outhouse.
+
+scene12_trigger1_thread:
+	$scene12_trigger2 nottriggerable
+	$scene12_trigger3 nottriggerable
+	thread scene12_yardfight
+end
+
+scene12_trigger2_thread:
+	$scene12_trigger1 nottriggerable
+	$scene12_trigger3 nottriggerable
+	thread scene12_yardfight
+end
+
+scene12_trigger3_thread:
+	$scene12_trigger1 nottriggerable
+	$scene12_trigger2 nottriggerable
+	thread scene12_yardfight
+end
+
+scene12_yardfight:
+	// YARD FIGHT!!!
+	
+	local.spawnerIndex = 0
+	local.random = 0
+	local.spawnerLimit = 0
+	local.accuracy = 0
+
+	if (level.skill == "0")
+	{
+		local.spawnerLimit = 5
+		local.accuracy = 25
+		local.gren_awareness = 50
+	}
+	else if (level.skill == "1")
+	{
+		local.spawnerLimit = 7
+		local.accuracy = 45
+		local.gren_awareness = 60
+	}
+	else if (level.skill == "2")
+	{
+		local.spawnerLimit = 8
+		local.accuracy = 55
+		local.gren_awareness = 70
+		$smokey_generator2 TurnOn
+	}
+	dprintln local.spawnerLimit
+
+	for (local.i = 1; local.i <= local.spawnerLimit; local.i ++)
+	{
+		local.spawnerIndex = (randomint 3) + 1
+		local.random = randomint 100
+		if (local.random <= 75)
+		{
+			local.spawner_origin_name = "scene12_spawner" + local.spawnerIndex
+			local.spawner_rallypoint_name = $(local.spawner_origin_name).target
+
+		//assign a name and origin to the spawned enemy
+
+			local.scene12_spawnname[local.i] = "scene12_soldier" + local.i
+			local.org[local.i] = $(local.spawner_origin_name).origin
+
+			//iprintln local.scene12_spawnname[local.i] " will spawn at " local.spawner_origin_name
+			//iprintln "     and will run to " local.spawner_rallypoint_name
+
+			// Spawn enemy soldiers
+
+			spawn models/human/german_winter_type1 "targetname" (local.scene12_spawnname[local.i]) "type_attack" "alarm"
+			$(local.scene12_spawnname[local.i]) thread spawned_enemy_start local.spawner_rallypoint_name
+
+			$(local.scene12_spawnname[local.i]).origin = local.org[local.i]				//place the guy in the correct spot
+			$(local.scene12_spawnname[local.i]).mindist = 128
+			$(local.scene12_spawnname[local.i]).maxdist = 1200
+			$(local.scene12_spawnname[local.i]).leash = 100000
+			$(local.scene12_spawnname[local.i]).fixedleash = 1
+			$(local.scene12_spawnname[local.i]).sight = 3000
+			$(local.scene12_spawnname[local.i]).noticescale = 100
+			$(local.scene12_spawnname[local.i]).enemysharerange = 2048
+			$(local.scene12_spawnname[local.i]).hearing = 4000
+			$(local.scene12_spawnname[local.i]).interval = 256
+			$(local.scene12_spawnname[local.i]).accuracy = local.accuracy
+			$(local.scene12_spawnname[local.i]).gren_awareness = local.accuracy					
+			
+		// randomly generate machine gunners
+
+			if (local.random <= 35)
+				$(local.scene12_spawnname[local.i]) gun "MP40"
+
+		// randomly give them grenades
+			if (local.random <= 50)
+				$(local.scene12_spawnname[local.i]).ammo_grenade = 2
+		}
+	}
+	// Now, spawn the OUTHOUSE DUDE!
+
+	spawn models/human/german_winter_Artillery-Crew "targetname" ("outhouse_dude") "type_attack" "cover"
+	$outhouse_dude thread spawned_enemy_start $outhouse_spawner.target
+
+	// Set the AI properties
+
+	$outhouse_dude.origin = $outhouse_spawner.origin	//place the guy in the correct spot
+	$outhouse_dude.mindist = 128
+     	$outhouse_dude.maxdist = 512
+     	$outhouse_dude.leash = 4096
+     	$outhouse_dude.fixedleash = 1
+     	$outhouse_dude.sight = 3000
+	$outhouse_dude.health = 75
+	$outhouse_dude.noticescale = 100
+	$outhouse_dude.enemysharerange = 2048
+   	$outhouse_dude.hearing = 4000
+     	$outhouse_dude.interval = 128
+     	$outhouse_dude.accuracy = 40
+     	$outhouse_dude gun "Panzerschrek"
+	$outhouse_dude dontdropweapons
+end
+
+//
+// spawned_enemy_start - Disables AI long enough for it to go to the spawner's rallypoint, then enables AI
+//
+
+spawned_enemy_start local.rallypoint:
+	if ((local.rallypoint == NIL) || (local.rallypoint == NULL))
+	{
+		dprintln "no rally point - quitting thread"
+		self.enableEnemy = 1
+		end
+	}
+	dprintln local.rallypoint
+	self forceactivate
+	self.enableEnemy = 0
+	self runto local.rallypoint
+	self waittill movedone
+	self.enableEnemy = 1
+end
+
+// this is used to play a locked sound at the gate near the supply depot house
+
+locked_picket_fence:
+	self waittill trigger
+	self playsound picket_fence_locked
+	wait 0.25
+	goto locked_picket_fence
+end
+
+// this is used to play a toilet flush in the outhouse and spawn an easter egg
+
+toilet_flush:
+	$toilet_trigger nottriggerable
+	self playsound toilet_flush
+	//dprintln level.toiletcounter
+	
+	wait 6
+	if (level.toiletcounter >= 6)
+	{
+		thread toilet_easteregg
+		end
+	}
+	$toilet_trigger triggerable
+	self waittill trigger
+	level.toiletcounter += 1
+	goto toilet_flush
+end
+
+toilet_easteregg:
+	//dprintln "FLUSH!"
+	local.ent = spawn EffectEntity "model" $easteregg.spawnmodel
+	local.ent.origin = $easteregg.origin
+	local.ent notsolid
+	local.ent anim start
+	level.toiletcounter = 0
+	$toilet_trigger remove
+	wait 25
+	local.ent delete
+	
+end
+
+// Scene 13 - Barn Fight 1
+//	This is a short little fight.  There's a tiger tank in this first barn, and if you open
+// 	the doors 2 AI's will spawn in the loft above and rain fire down on you.  Not good if
+//	you're under fire from the Yard Fight (the doors stay open).  
+//  	The soliders can be dispatched by shooting them or by planting a charge on
+//	the back of the tank.  Doing this will cause the catwalk to collapse.
+
+scene13_spawner:
+	
+	$scene13_trigger playsound barn_door_open_move
+	dprintln "Scene 13 door running"
+	$scene13_doorL time 1.5	
+	$scene13_doorR time 1.5
+	$scene13_doorL openportal		
+	$scene13_doorL thread rotateup 50
+	$scene13_doorR thread rotatedown 50
+	$tigertank3 thread tank_think 1
+	thread global/ai.scr::spawn 13
+	wait 1.5
+	$scene13_doorL playsound barn_door_open_stop
+end
+
+scene13_collapsing_catwalk:
+	$ladder_mask remove
+	dprintln "Tank Bomb 3 Executed!"
+	$tigertank3.type = empty_panzer_winter
+	$tigertank3 thread tank_killed
+	thread global/exploder.scr::explode 1
+
+	// kill the soldiers...
+
+	$catwalk_dude1 damage $player 15000 $world (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+	$catwalk_dude2 damage $player 15000 $world (0 0 0) (0 0 0) (0 0 0) 0 9 0 0
+end
+
+// Scene 14 - Barn Fight 2
+//	The last one.  You will fight 6 AI's in a very tight space to get to the supply truck
+//	inside.  2 AI's will be upstairs in the loft firing down on you, while the other 4
+//	will hide behind various crates and cargo below.  You can climb the ladder, dispatch
+//	the 2 AI's upstairs, and get the drop on the enemies below.  The End level trigger is
+//	located at the driver's side door, but it will only be active if you've finished
+//	all the previous mission objectives.
+
+scene14_spawner:
+	$scene14_trigger playsound barn_door_open_move
+	$scene14_doorL time 1.5	
+	$scene14_doorR time 1.5
+	$scene14_doorL openportal
+	$scene14_doorL thread rotateup 50
+	$scene14_doorR thread rotatedown 50
+	dprintln "Scene 14 door running"
+	thread scene14_spawntruck
+	thread global/ai.scr::spawn 14
+	wait 1.5
+	$scene14_doorL playsound barn_door_open_stop
+	
+end
+
+scene14_spawntruck:
+	$supply_truck.collisionent = $supply_truck.target
+	$supply_truck anim idlenolights
+	$supply_truck anim color_green
+	$supply_truck anim cargo
+	$supply_truck nodamage
+end
+
+// rotation threads for barndoors (scene 13 & 14)
+
+rotatedown local.amount:
+	self rotateydown local.amount
+	self waitmove
+end
+
+rotateup local.amount:
+	self rotateyup local.amount
+	self waitmove
+end
+
+// Window ambushes for Supply Depot
+
+window_ambush_1:
+	thread global/ai.scr::spawn 18
+end
+
+window_ambush_2:
+	thread global/ai.scr::spawn 19
+end
+
+// NEBELWERFER THREADS
+// -------------------
+// These threads govern the behavior of the projectile generator that operates when an AI is
+// near
+
+nebellerSpawner local.nebelIndex:
+
+	local.spawnName = "nebeller" + local.nebelIndex
+	//local.myNebelwerferName = "nebelwerfer" + local.nebelIndex
+	//local.myRallypointName = "nebel" + local.nebelIndex + "_rally"
+	// local.myBoundingBoxName = "nebel" + local.nebelIndex + "_trigger"
+	local.nebellerSpawnerName = "nebeller" + local.nebelIndex + "_spawner"
+
+	dprintln local.spawnName
+	dprintln local.myNebelwerferName
+	dprintln local.myRallypointName
+	dprintln local.nebellerSpawnerName
+
+	local.origin = $(local.nebellerSpawnerName).origin
+	spawn models/human/german_winter_Artillery-Crew "targetname" (local.spawnName) "type_attack" "cover"
+	// $(local.spawnName) thread spawned_enemy_start $(local.myRallypointName)
+
+	// Set the AI properties
+
+	$(local.spawnName).origin = local.origin	//place the guy in the correct spot
+	$(local.spawnName).mindist = 128
+	$(local.spawnName).maxdist = 1200
+	$(local.spawnName).leash = 512
+	$(local.spawnName).fixedleash = 0
+	$(local.spawnName).sight = 3072
+	$(local.spawnName).noticescale = 100
+	$(local.spawnName).hearing = 3072
+	$(local.spawnName).health = 75
+	$(local.spawnName).enemysharerange = 2048
+	$(local.spawnName).interval = 128
+	$(local.spawnName).accuracy = 40
+	$(local.spawnName) gun "MP40"
+	$(local.spawnName) dontdropweapons
+	$(local.spawnName).myNebelwerfer = "nebelwerfer" + local.nebelIndex
+	$(local.spawnName) tether $(local.spawnName).myNebelwerfer 
+	$(local.spawnName).myRallypoint = "nebel" + local.nebelIndex + "_rally"
+	$(local.spawnName).target = "nebel" + local.nebelIndex + "_trigger"
+
+end
+
+nebeller1_start:
+	waitthread nebellerSpawner 1
+	$nebeller1 thread nebellerThink
+	//wait 5
+	if (isAlive level.friendly1)
+	{
+		level.friendly1 exec global/disable_ai.scr
+		level.friendly1 say dfr_T2L1_AP4203 
+		wait 2.4
+		level.friendly1 exec global/enable_ai.scr
+
+	}
+	else if (isAlive level.friendly2)
+	{
+		level.friendly2 exec global/disable_ai.scr
+		level.friendly2 say dfr_T2L1_AP4203
+		wait 2.4
+		level.friendly2 exec global/enable_ai.scr
+	}
+	$nebeller1 waittill death
+	if (level.halftrack_triggered == 0)
+	{
+		thread halftrack1_ambush
+		$halftrack_trigger nottriggerable
+	}
+end
+
+nebeller2_start:
+	waitthread nebellerSpawner 2
+	$nebeller2 thread nebellerThink
+	thread sniper_spawner
+end
+
+nebeller3_start:
+	waitthread nebellerSpawner 3
+	if (isAlive level.friendly1)
+	{
+		level.friendly1 exec global/disable_ai.scr
+		level.friendly1 say dfr_T2L1_AP4203 
+		wait 2.4
+		level.friendly1 exec global/enable_ai.scr
+
+	}
+	else if (isAlive level.friendly2)
+	{
+		level.friendly2 exec global/disable_ai.scr
+		level.friendly2 say dfr_T2L1_AP4203
+		wait 2.4
+		level.friendly2 exec global/enable_ai.scr
+	}
+	$nebeller3 thread nebellerThink
+end
+
+nebeller4_start:
+	waitthread nebellerSpawner 4
+	$nebeller4 thread nebellerThink
+end
+
+nebellerThink:
+	self holster
+	//dprintln "Nebeller... IT'S THINKING"
+	self.enableEnemy = 0			// turn off AI
+	self runto self.myRallypoint		// go to it's target
+	//dprintln "it's running"
+	self waittill movedone			// wait until it's there
+	//dprintln "it's done running"
+	self turnto self.myNebelwerfer
+	//dprintln "it's turned to the turret"
+	self thread nebelwerferFiring		// poll for proximity to player
+	self waittill death			// wait for death
+	//dprintln "Nebeller dead"
+	self.target remove
+	self.myNebelwerfer turnoff
+end
+
+//
+// 21G798_Tranrun		21G798_Tranrun.skc
+// 21G799_transrun		21G799_transrun.skc
+// 21G800_idle			21G800_idle.skc
+//
+
+nebelwerferFiring:
+
+	// Transition animation to mounting the Nebelwerfer.
+	//self exec global/disable_ai.scr
+	self anim 21G798_Tranrun
+	wait .367
+	//self exec global/enable_ai.scr
+
+	//iprintln "Nebelwerfer firing"
+	self.myNebelwerfer TurnOn		// start firing
+
+	while !($player istouching self.target)
+	{
+		self.enableEnemy = 0	
+		if !(isAlive self)
+		{
+			//iprintln "Nebel OFF!"			// the player has gotten too close,
+			self.myNebelwerfer turnoff	// turn off the nebelwerfer
+			end
+		}
+
+		// Animate on the Nebelwerfer -- need to keep this animation short.
+		self anim 21G800_idle
+		wait .267
+		//waitframe
+	}
+	self.myNebelwerfer turnoff	// turn off the nebelwerfer
+	self thread nebellerDisengaged
+	self.enableEnemy = 1			// and enable AI
+	self unholster
+end
+
+nebellerDisengaged:
+	//iprintln "Nebeller disengaging"
+	while ($player istouching self.target)
+	{
+		if !(isAlive self)
+			end
+		waitframe
+	}
+	dprintln "Nebel Back ON!"
+	self holster
+	self.enableEnemy = 0
+	self runto self.myRallypoint
+	self waittill movedone
+	self turnto self.myNebelwerfer
+	self thread nebelwerferFiring
+end
+
+nebel1_parade:
+	thread global/ai.scr::spawn 21	
+end
+
+nebel2_parade:
+	thread global/ai.scr::spawn 22
+end
+
+nebel3_parade:
+	thread global/ai.scr::spawn 23
+end
+
+nebel4_parade:
+	thread global/ai.scr::spawn 24
+	if (level.skill == "1")
+		$smokey_generator1 TurnOn
+	if (level.skill == "2")
+		$smokey_generator3 TurnOn
+end
+
+//
+// sniper_rifle_pickup - Gives the player the sniper rifle in the guard tower
+//
+
+sniper_spawner:
+	// spawn the sniper
+
+	if (level.skill == "0")
+		local.accuracy = 30			
+	else if (level.skill == "1")
+		local.accuracy = 35					
+	else if (level.skill == "2")
+		local.accuracy = 40
+
+	spawn models/human/german_winter_type1 "targetname" ("sniper_dude") "type_attack" "cover" 
+	// Set the AI properties
+
+	$sniper_dude.origin = $sniper_spawner.origin	//place the guy in the correct spot
+	$sniper_dude.mindist = 128
+     	$sniper_dude.maxdist = 2048
+     	$sniper_dude.leash = 128
+     	$sniper_dude.fixedleash = 0
+     	$sniper_dude.sight = 4096
+     	$sniper_dude.noticescale = 100
+	$sniper_dude.health = 75
+   	$sniper_dude.hearing = 2048
+	$sniper_dude.enemysharerange = 4096
+     	$sniper_dude.interval = 128
+     	$sniper_dude.accuracy = local.accuracy
+     	$sniper_dude gun "g43"
+	$sniper_dude dontdropweapons
+
+	$sniper_dude tether $sniper_rifle
+	$sniper_dude waittill death
+
+	$sniper_rifle show
+	$sniper_rifle_trigger triggerable
+end
+
+sniper_rifle_pickup:
+	$player item models/weapons/g43.tik
+	iprintln "You picked up a sniper rifle"
+	$sniper_rifle playsound gewehr43_snd_pickup
+	$sniper_rifle remove
+	$player use "G 43"
+end
+
+// STICKYBOMB THREADS
+// ------------------
+
+DoGiveStickybombDialogue:
+	
+	self.runanimrate = 1.50
+	local.dist = 99999
+	
+	//local.tempent = spawn script_origin
+	//local.tempent.origin = $player.origin
+	while (local.dist > 160)
+	{
+		self.enableEnemy = 0
+		self nodamage
+		local.dist = vector_length($player.origin - self.origin)
+		self runto $player.origin
+		//local.tempent.origin = $player.origin
+		waitframe
+	}		
+	self anim 21A106_Dialogue6
+	wait 1.5
+	thread stickybomb_add 7
+	thread enable_stickybombs
+	wait 4.5
+	self takedamage
+	self.runanimrate = 1.0
+	self.enableEnemy = 1
+	//local.tempent remove
+	
+	exec global/obj.scr 1 current "Destroy the Nebelwerfers [4 remaining]" $nebel1_rally.origin
+	thread nextobjective
+end
+
+// enable_stickybombs - this will reveal all of the throbbox and stickybombs in the level (called after you destroy the halftrack - this prevents the 
+//		player from trying to plant charges before they receive them)
+
+enable_stickybombs:
+	$nebel1_throbbox show
+	$nebel1_throbbox triggered 0
+	$nebel2_throbbox show
+	$nebel2_throbbox triggered 0
+	$nebel3_throbbox show
+	$nebel3_throbbox triggered 0
+	$nebel4_throbbox show
+	$nebel4_throbbox triggered 0
+
+	$panzertank1_stickybomb_a show
+	$panzertank1_stickybomb_a triggered 0
+	$panzertank1_stickybomb_b show
+	$panzertank1_stickybomb_b triggered 0
+	$panzertank1_stickybomb_c show
+	$panzertank1_stickybomb_c triggered 0
+	$panzertank1_stickybomb_d show
+	$panzertank1_stickybomb_d triggered 0
+
+	$panzertank2_stickybomb_a show
+	$panzertank2_stickybomb_a triggered 0
+	$panzertank2_stickybomb_b show
+	$panzertank2_stickybomb_b triggered 0
+	$panzertank2_stickybomb_c show
+	$panzertank2_stickybomb_c triggered 0
+	$panzertank2_stickybomb_d show
+	$panzertank2_stickybomb_d triggered 0
+
+	$panzertank3_stickybomb_a show
+	$panzertank3_stickybomb_a triggered 0
+	$panzertank3_stickybomb_b show
+	$panzertank3_stickybomb_b triggered 0
+	$panzertank3_stickybomb_c show
+	$panzertank3_stickybomb_c triggered 0
+	$panzertank3_stickybomb_d show
+	$panzertank3_stickybomb_d triggered 0
+end
+
+// This decrements the counter and calls the fleeing thread 
+
+nebel1_stickybomb_flee:
+	thread stickybomb_use
+	level.friendly1 thread flee_from_nebel1 
+	level.friendly2 thread flee_from_nebel1 
+//	level.friendly3 thread flee_from_nebel1 
+end
+
+// This is the actual thread that makes friendlies flee from the first nebelwerfer to the closest specially named fleepoint
+
+flee_from_nebel1:
+	if (isAlive self)
+	{
+		local.distance = vector_length(self.origin - $nebel1_throbbox.origin)
+		dprintln "Distance to throbbox: "	
+		if (local.distance < 384)
+		{
+			self.enableEnemy = 0
+			local.distance = 9999
+			local.closestIndex = -1
+			for (local.i = 1; local.i < $nebel1_fleepoint.size+1; local.i++)
+			{
+				local.tempdistance = vector_length(self.origin - ($nebel1_fleepoint[local.i]).origin)
+				if (local.tempdistance < local.distance)
+				{
+					local.distance = local.tempdistance	
+					local.closestIndex = local.i
+					dprintln "New best distance is " local.distance " at nebel1_fleepoint_" local.closestIndex
+				}
+			}
+			dprintln self " is fleeing to nebel1_fleepoint_" local.closestIndex
+			self notsolid
+			self waitthread global/friendly.scr::friendlystop
+			self runto $nebel1_fleepoint[local.closestIndex]
+ 			self waittill movedone
+			self waitthread global/friendly.scr::friendlystop
+			self.enableEnemy = 1
+			self solid
+		}
+	}
+end
+
+plant_nebel_stickybomb:
+	thread stickybomb_use
+end
+
+nebel1_bomb:
+	$nebel1 thread global/stationaryweapons.scr::SpawnCollision $nebelwerfer_destroyed_collision
+
+	dprintln "Nebelwerfer 1 is dead!!!"
+	if ($nebel1_parade_trigger != NULL)
+		$nebel1_parade_trigger remove
+	if (isAlive level.friendly1)
+		level.friendly1 thread fstart
+	if (isAlive level.friendly2)
+		level.friendly2 thread fstart
+//	if (isAlive level.friendly3)
+//		level.friendly3 thread fstart 1 
+	level.nebel1_bombed = 1
+	dprintln level.stickybombs " Sticky bombs left..."
+	thread nextobjective
+end
+
+nebel2_bomb:
+	$nebel2 thread global/stationaryweapons.scr::SpawnCollision $nebelwerfer_destroyed_collision
+	dprintln "Nebelwerfer 2 is dead!!!"
+	if ($nebel2_parade_trigger != NULL)
+		$nebel2_parade_trigger remove
+	level.nebel2_bombed = 1
+	dprintln level.stickybombs " Sticky bombs left..."
+	thread nextobjective
+end
+
+nebel3_bomb:
+	$nebel3 thread global/stationaryweapons.scr::SpawnCollision $nebelwerfer_destroyed_collision
+	dprintln "Nebelwerfer 3 is dead!!!"
+	if ($nebel3_parade_trigger != NULL)
+		$nebel3_parade_trigger remove
+	level.nebel3_bombed = 1
+	dprintln level.stickybombs " Sticky bombs left..."
+	thread nextobjective
+end
+
+nebel4_bomb:
+	$nebel4 thread global/stationaryweapons.scr::SpawnCollision $nebelwerfer_destroyed_collision
+	dprintln "Nebelwerfer 4 is dead!!!"
+	if ($nebel4_parade_trigger != NULL)
+		$nebel4_parade_trigger remove
+	level.nebel4_bombed = 1
+	dprintln level.stickybombs " Sticky bombs left..."
+	thread nextobjective
+end
+
+panzertank1_stickybomb_planted:
+	thread stickybomb_use
+	dprintln level.stickybombs " Sticky bombs left..."
+	switch (self)
+	{
+		case panzertank1_stickybomb_a:
+			$panzertank1_stickybomb_b remove
+			$panzertank1_stickybomb_c remove
+			$panzertank1_stickybomb_d remove
+			break
+		case panzertank1_stickybomb_b:
+			$panzertank1_stickybomb_a remove
+			$panzertank1_stickybomb_c remove
+			$panzertank1_stickybomb_d remove
+			break
+		case panzertank1_stickybomb_c:
+			$panzertank1_stickybomb_a remove
+			$panzertank1_stickybomb_b remove
+			$panzertank1_stickybomb_d remove
+			break
+		case panzertank1_stickybomb_d:
+			$panzertank1_stickybomb_a remove
+			$panzertank1_stickybomb_b remove
+			$panzertank1_stickybomb_c remove
+			break
+	}
+end
+
+panzertank2_stickybomb_planted:
+	thread stickybomb_use	
+	dprintln level.stickybombs " Sticky bombs left..."
+	switch (self)
+	{
+		case panzertank2_stickybomb_a:
+			$panzertank2_stickybomb_b remove
+			$panzertank2_stickybomb_c remove
+			$panzertank2_stickybomb_d remove
+			break
+		case panzertank2_stickybomb_b:
+			$panzertank2_stickybomb_a remove
+			$panzertank2_stickybomb_c remove
+			$panzertank2_stickybomb_d remove
+			break
+		case panzertank2_stickybomb_c:
+			$panzertank2_stickybomb_a remove
+			$panzertank2_stickybomb_b remove
+			$panzertank2_stickybomb_d remove
+			break
+		case panzertank2_stickybomb_d:
+			$panzertank2_stickybomb_a remove
+			$panzertank2_stickybomb_b remove
+			$panzertank2_stickybomb_c remove
+			break
+	}
+end
+
+panzertank3_stickybomb_planted:
+	thread stickybomb_use
+	dprintln level.stickybombs " Sticky bombs left..."
+	switch (self)
+	{
+		case panzertank3_stickybomb_a:
+			$panzertank3_stickybomb_b remove
+			$panzertank3_stickybomb_c remove
+			$panzertank3_stickybomb_d remove
+			break
+		case panzertank3_stickybomb_b:
+			$panzertank3_stickybomb_a remove
+			$panzertank3_stickybomb_c remove
+			$panzertank3_stickybomb_d remove
+			break
+		case panzertank3_stickybomb_c:
+			$panzertank3_stickybomb_a remove
+			$panzertank3_stickybomb_b remove
+			$panzertank3_stickybomb_d remove
+			break
+		case panzertank3_stickybomb_d:
+			$panzertank3_stickybomb_a remove
+			$panzertank3_stickybomb_b remove
+			$panzertank3_stickybomb_c remove
+			break
+	}
+end
+
+stickybomb_add local.amount:
+ 
+ local.after = level.stickybombs + local.amount
+ thread global/democharge.scr::sticky_switch level.stickybombs local.after
+ level.stickybombs = local.after
+ 
+end
+ 
+stickybomb_use:
+ 
+ local.after = level.stickybombs - 1
+ thread global/democharge.scr::sticky_switch level.stickybombs local.after
+ level.stickybombs = local.after
+ 
+end
+
+// VEHICLE SCENE CODE
+// ------------------
+//
+// HALFTRACK1_AMBUSH - First halftrack attack thread
+//
+
+halftrack1_ambush:
+	
+	level.halftrack_triggered = 1
+	dprintln "STARTING HALF TRACK 1"
+	
+	if (level.skill == "0")
+		local.HalftrackHealth = 500
+	else if (level.skill == "1")
+		local.HalftrackHealth = 750
+	else if (level.skill == "2")
+		local.HalftrackHealth = 1000
+	
+	// Set up the halftrack's physical properties and its death sequence (check with Z for removal, immunity, and health)
+	waitthread global/halftrack.scr::halftrackinit $halftrack1 local.HalftrackHealth models/vehicles/halftrack_winter_d.tik
+	waitthread global/halftrack.scr::halftrack_loadpassengers $halftrack1 2 1 "human/german_winter_type1" "human/german_winter_type1"
+	$halftrack1 immune bullet
+	$halftrack1 immune fast_bullet
+	$halftrack1 immune grenade
+	$halftrack1 thread halftrack_gamelogic
+	$halftrack1.mg42 pitchcaps ( -10 40 0)  
+
+end
+
+halftrack_gamelogic:
+	// Run the vehicle_warning script
+	self thread global/Vehicle_Warning.Scr::WarnFriendlies level.friendly1 1600 0.707
+	self thread global/Vehicle_Warning.Scr::WarnFriendlies level.friendly2 1600 0.707
+	self thread global/Vehicle_Warning.Scr::WarnFriendlies level.friendly3 1600 0.707
+	self.previous_thread = parm.previousthread
+
+	self thread halftrack_dead
+	self.death_thread = parm.previousthread
+
+	// Start the halftrack moving
+	self thread global/halftrack.scr::halftrack_drive $halftrack1 $halftrack1_path 1 300 520 40 128
+	wait 3
+	
+	if (isAlive level.friendly1)
+	{
+		dprintln "Friendly 1 says...."
+		level.friendly1 nodamage
+		level.friendly1 exec global/disable_ai.scr
+		level.friendly1 turnto $halftrack1
+		level.friendly1 lookat $player
+		level.friendly1 say dfr_T2L1_AP4368 
+		wait 6 
+		level.friendly1 exec global/enable_ai.scr
+		level.friendly1 takedamage
+	}
+	else if (isAlive level.friendly2)
+	{
+		dprintln "Friendly 2 says...."
+		level.friendly2 nodamage
+		level.friendly2 exec global/disable_ai.scr
+		level.friendly2 turnto $halftrack1
+		level.friendly2 lookat $player
+		level.friendly2 say dfr_T2L1_AP4368
+		wait 6
+		level.friendly2 exec global/enable_ai.scr
+		level.friendly2 takedamage	
+	}
+	
+	exec global/obj.scr 2 current "Use Nebelwerfer to Destroy the Halftrack" $halftrack1.origin
+	self waittill drive
+	
+end
+
+halftrack_dead:
+	self waittill death
+	thread global/halftrack.scr::halftrack_killed $halftrack1
+	exec global/obj.scr 2 complete "Use Nebelwerfer to Destroy the Halftrack" $halftrack1.origin
+	level.obj2Complete = 1
+	dprintln "player origin is " $player.origin
+	if (isAlive level.friendly1)
+	{
+		level.friendly1 exec global/disable_ai.scr
+		level.friendly1 waitthread DoGiveStickybombDialogue
+		level.friendly1 exec global/enable_ai.scr
+		end
+	}
+	else if (isAlive level.friendly2)
+	{
+		level.friendly2 exec global/disable_ai.scr
+		level.friendly2 waitthread DoGiveStickybombDialogue		
+		level.friendly2 exec global/enable_ai.scr
+		end		
+	}
+	else if (isAlive level.friendly3)
+	{
+		level.friendly3 exec global/disable_ai.scr
+		level.friendly3 waitthread DoGiveStickybombDialogue		
+		// level.friendly3 exec global/enable_ai.scr	jsl-->NEVER turnon medic's AI!
+		end		
+	}
+end
+
+// Tigertank1 - starts the TigerTanks rolling on it's path
+
+tigertank1_thread:
+	exec global/autosave.scr 1
+	//thread global/ai.scr::spawn 6
+	$player stufftext "tmstop"
+	$player stufftext "tmstart sound/music/Thuringer.mp3"
+	
+	thread gags/T2L1_Tank.scr::DoTank1
+
+	$tigertank1 thread gags/t2l1_tank_mgsoldier.scr::mgsoldier_spawn
+end
+
+stuka_run:
+	$stuka show
+	dprintln "stuka is go!!"
+	$stuka thread gags/T1L1_PlaneRide.Scr::Fly $stuka_path 2100 .8
+	$stuka thread rollplane .5
+	wait 1.5
+	$stuka playsound plane
+end
+
+//--------------------------------------------------------------
+// rollplane - Make the plane do a cool roll...
+//--------------------------------------------------------------
+
+rollplane local.rollspeed:
+ 
+	local.ang = self.angles
+ 
+	while ( self!=NIL && self!=NULL )
+	{
+		local.cang = self.angles
+		local.ang[2] -= local.rollspeed
+		local.cang[2] = local.ang[2]
+		self angles local.cang
+		waitframe
+	}
+ 
+ end
+
+tigertank2_thread:
+	thread nebeller4_start
+	$tigertank2 show
+	$tigertank2 thread tank_think 0 tankbomb2_nebelwerfer
+	$tigertank2 thread drive_path $tigertank2_path level.enemytankspeed
+	thread tank_targeting
+	$tigertank2 thread global/Vehicle_Warning.Scr::WarnFriendlies level.friendly1 1600 0.707
+	$tigertank2 thread global/Vehicle_Warning.Scr::WarnFriendlies level.friendly2 1600 0.707
+	$tigertank2 thread global/Vehicle_Warning.Scr::WarnFriendlies level.friendly3 1600 0.707
+	$tigertank2.previous_thread = parm.previousthread
+	$tigertank2 waittill drive
+	exec global/obj.scr 4 current "Use Sticky Bomb to Destroy Second Tank" $tigertank2.origin
+end
+
+//
+// drive_path
+//
+
+drive_path local.path local.speed local.remove:
+	self.driving = 1
+
+	// drive Vector position, speed, acceleration, reach_distance, look_ahead
+	self drive local.path local.speed 30 200 level.lookahead
+
+	self waittill drive
+	if (self)
+	{
+		self stop
+		self.driving = 0
+		if (local.remove == "remove")
+			self remove
+	}
+end
+
+// Displays explosive model, destroys tank, and updates objectives
+
+halftrack1_bomb:
+	if (isalive $player)
+	{
+		// add a little ouchie check
+		local.length = vector_length( $halftrack1.origin - $player.origin )
+		if (local.length < 200)
+		{
+			local.prehealth = $player.health
+			radiusdamage ( $halftrack1.origin + (0 0 128) ) 200 200
+			if (local.prehealth == $player.health)
+				$player kill
+		}
+	}
+end
+
+tankbomb1:
+	dprintln "Tank Bomb 1 Executed!"
+	thread gags/T2L1_Tank.scr::Tank1Dead
+	$tigertank1.type = empty_panzer_winter
+	$tigertank1 thread tank_killed
+	level.obj3Complete = 1
+	exec global/obj.scr 3 complete "Use Sticky Bomb to Destroy Tank" $tigertank1.origin
+	thread nextobjective
+end
+
+tankbomb2:
+
+	if ( level.tank2destroyed == 0 )
+	{
+		level.tank2destroyed = 1
+
+		dprintln "Tank Bomb 2 Executed!"
+
+		$tigertank2.type = panzer_winter
+		$tigertank2 thread tank_killed
+
+		level.obj4Complete = 1
+		exec global/obj.scr 4 complete "Use Sticky Bomb to Destroy Second Tank" $tigertank2.origin
+
+		thread nextobjective
+	}
+
+end
+
+tankbomb2_nebelwerfer:
+
+	if ( $panzertank2_stickybomb_a )
+		$panzertank2_stickybomb_a remove
+	if ( $panzertank2_stickybomb_b )
+		$panzertank2_stickybomb_b remove
+	if ( $panzertank2_stickybomb_c )
+		$panzertank2_stickybomb_c remove
+	if ( $panzertank2_stickybomb_d )
+		$panzertank2_stickybomb_d remove
+
+	thread tankbomb2
+
+end
+
+
+//
+// crashing_truck - a covered opel truck filled with troops comes careening around the corner
+//	and crashes, several troops crawl out and attack
+//
+
+crashing_truck:
+	
+	exec global/autosave.scr 2
+	//thread global/spotlight.scr::deadcorona $crashing_truck "light left" 
+	//thread global/spotlight.scr::deadcorona $crashing_truck "light right"
+	$crashing_truck moveanim 21p300_truckcrash
+	thread gags/t2l1_explosion.scr::DoCrashingTruck
+	wait 3
+	thread snow_crash
+	
+	wait 1
+	$player stufftext "tmstop"
+	$player stufftext "tmstartloop sound/music/Sturmgeist.mp3"
+	thread snow_crash_2
+	$mg42 thread global/mg42_active.scr::mg42	
+	
+end
+
+//
+// snow_crash - In addition to being the name of an interesting cyberpunk novel set in LA, snow_crash spawns the particles that occur when the 
+//	truck crashes
+//
+
+snow_crash:
+	local.ent = spawn EffectEntity "model" $snow_crash.spawnmodel
+	local.ent.origin = $snow_crash.origin
+	local.ent notsolid
+	local.ent anim idle
+	wait 3
+	local.ent delete
+end
+
+snow_crash_2:
+	local.ent = spawn EffectEntity "model" $crash_tree_fx.spawnmodel
+	local.ent.origin = $crash_tree_fx.origin
+	local.ent notsolid
+	local.ent anim idle
+	wait 3
+	local.ent = spawn EffectEntity "model" $engine_smoke.spawnmodel
+	local.ent.origin = $engine_smoke.origin
+	local.ent notsolid
+	local.ent anim idle
+end
+
+depot_notice:
+	
+	thread crashing_truck
+
+	if (isAlive level.friendly1)
+	{
+		dprintln "There's the depot, let's take it! (friendly1)"
+		level.friendly1 exec global/disable_ai.scr
+		level.friendly1 say dfr_T2L1_AP4205 
+		wait 3
+		level.friendly1 exec global/enable_ai.scr
+	}
+	else if (isAlive level.friendly2)
+	{
+		dprintln "There's the depot, let's take it! (friendly2)"
+		level.friendly2 exec global/disable_ai.scr
+		level.friendly2 say dfr_T2L1_AP4205 
+		wait 3
+		level.friendly2 exec global/enable_ai.scr	
+	}
+
+
+end
+
+// MISSION OBJECTIVE CODE
+// ----------------------
+// Code pertaining to ending the mission and handling mission objectives
+//
+// check_squad_death - waits until all your teammates are dead to end the scene
+//
+
+check_squad_death:
+
+	wait 1
+	while ( (isAlive level.friendly1) || (isAlive level.friendly2) || (isAlive level.friendly3) )
+	{
+		waitframe
+	}
+	wait 1
+	iprintln "Your squad has been wiped out. You failed the mission."
+	wait 3
+	missionfailed
+
+end
+
+//
+// nextobjective - Determines the next mission objective and redirects the compass,
+//	first for the 4 Nebelwerfers, then for other targets in the mission
+//
+
+nextobjective:
+
+	level.nebelsbombed = 0
+	if ( level.nebel1_bombed == 1 )
+		level.nebelsbombed++
+	if ( level.nebel2_bombed == 1 )
+		level.nebelsbombed++
+	if ( level.nebel3_bombed == 1 )
+		level.nebelsbombed++
+	if ( level.nebel4_bombed == 1 )
+		level.nebelsbombed++
+
+	if (level.nebel1_bombed != 1)		// If the 1st nebel is not done, point to it. Each case covers printing the # left.
+	{
+		waitthread nebel_objective $nebel1_rally.origin
+		end
+	}
+	else if (level.nebel2_bombed != 1)	// If the 2nd nebel is not done, point to it. Each case covers printing the # left.
+	{
+		waitthread nebel_objective $nebel2_rally.origin
+		end
+	}
+	else if (level.nebel3_bombed != 1)	// If the 3rd nebel is not done, point to it. Each case covers printing the # left.
+	{
+		waitthread nebel_objective $nebel3_rally.origin
+		end
+	}
+	else if (level.nebel4_bombed != 1)	// If the 4th nebel is not done, point to it. Each case covers printing the # left.
+	{
+		waitthread nebel_objective $nebel4_rally.origin
+		end
+	}
+	exec global/obj.scr 1 complete "Destroy the Nebelwerfers" $nebel1_rally.origin
+	level.obj1Complete = 1
+	if (level.obj2Complete != 1)
+	{
+		waitthread global/objectives.scr::current_objectives 2
+		end
+	}
+	if (level.obj3Complete != 1)
+	{
+		waitthread global/objectives.scr::current_objectives 3
+		end
+	}
+	if (level.obj4Complete != 1)
+	{
+		waitthread global/objectives.scr::current_objectives 4
+		end
+	}
+	//if (level.obj5Complete != 1)
+	//{
+	//	waitthread global/objectives.scr::current_objectives 5
+	//	end
+	//}
+	waitthread global/objectives.scr::current_objectives 5
+
+end
+
+nebel_objective local.org:
+
+	switch level.nebelsbombed
+	{
+		case 0:
+			waitthread global/objectives.scr::add_objectives 1 2 "Destroy the Nebelwerfers [4 remaining]" local.org
+			break
+		case 1:
+			waitthread global/objectives.scr::add_objectives 1 2 "Destroy the Nebelwerfers [3 remaining]" local.org
+			break
+		case 2:
+			waitthread global/objectives.scr::add_objectives 1 2 "Destroy the Nebelwerfers [2 remaining]" local.org
+			break
+		case 3:
+			waitthread global/objectives.scr::add_objectives 1 2 "Destroy the Nebelwerfers [1 remaining]" local.org
+			break
+	}
+	waitthread global/objectives.scr::current_objectives 1
+
+end
+
+
+//
+// endlevel - checks logic flags if objectives are complete.  If so, level ends.
+//
+
+endlevel:
+	if ((level.obj1Complete) && (level.obj2Complete) && (level.obj3Complete) && (level.obj4Complete))
+	{
+		exec global/obj.scr 5 complete "Acquire a Supply Truck" $supply_truck.origin
+		exec global/missioncomplete.scr t2l2 1
+	}
+	else
+		iprintln "You have not completed all your objectives yet."
+		wait 20
+end
+
+
+//
+// VEHICLE CODE
+// ------------
+//
+
+// TANK THREADS
+// ---------------------------------------------------------------
+// Taken from global/vehicle_thinkers - customized for use in t2l1
+
+tank_think local.notattacking local.deaththread:
+
+	self rendereffects "-shadow"
+	self.start_health = 1000
+	self.health = self.start_health
+	self removeondeath 0
+	self immune bullet
+	self immune fast_bullet
+	self immune grenade
+	self immune bash
+
+	if (self.target)
+		self.collisionent = self.target
+
+	self.gun = self QueryTurretSlotEntity 0
+	self.gun turnspeed 45
+	self.gun maxyawoffset 135
+	self.gun pitchCaps ( 0 60 0)
+
+	self.gun2 = self QueryTurretSlotEntity 1
+
+	//if (self.gun)
+	//	self.gun nodamage
+	//if (self.gun2)
+	//	self.gun2 nodamage
+
+	if (level.sightdistance == NIL)
+		level.sightdistance = 16000
+	if (local.notattacking != 1)
+	{
+		while ( (level.playertanktarget == 0) || (level.playertanktarget == NIL) )
+			wait 1
+		self.gun setAimTarget level.playertanktarget
+		thread enemy_tank_attack_loop self.gun
+		self.attack_thread = parm.previousthread
+		thread tank_pain self.gun
+		self.pain_thread = parm.previousthread
+	}
+
+	// Commenting out waittill death, now the only way the tank can die is if the
+	// player plants the bomb!
+	// MJG: well.. commenting out the waittill death causes problems if one expects to blow the tank by other means...
+	if ( local.deaththread != NIL )
+	{
+		println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~ waiting for death"
+		self waittill death
+		thread local.deaththread
+	}
+
+end
+
+//
+// tank targeting - this is where the player tank target is set to different friendly
+//	AI's in your squad
+
+tank_targeting:
+	dprintln "Got this far"
+	level.playertanktarget = $player
+end
+
+tank_killed:
+
+	self waitthread global/vehicles_thinkers.scr::tank_killed
+
+end
+
+tank_pain local.gun:
+
+	local.previoushealth = self.health
+	local.timer = 0
+	while(isAlive self)
+	{
+		wait .1
+		if ( (isAlive self) && (self.health < local.previoushealth) )
+		{
+			println "z:         " self " is damaged. self.start_health: " self.start_health
+			println "z:         current health: " self.health
+			println "z:         " self " is stunned"
+			self playsound damage_tank
+			self.stunned = 1
+			local.gun setAimTarget NULL
+
+			if (self.driving == 1)
+				self modifydrive 5 100 256
+			if (self.driving_reverse == 1)
+				self modifydrive -5 100 256
+
+		//	self.smoke = spawn script_model model "models/emitters/linger_smoke.tik"
+			self.smoke = spawn "models/emitters/linger_smoke.tik"
+			self.smoke notsolid
+			self.smoke anim start
+			self.smoke.origin = (self.origin + (0 0 80))
+			self.smoke glue self
+			local.previoushealth = self.health
+			local.timer = 0
+		}
+
+		if (local.timer == 80)
+		{
+			local.gun setAimTarget level.playertanktarget
+			if (self.driving == 1)
+				self modifydrive level.enemytankspeed 30 256
+			if (self.driving_reverse == 1)
+				self modifydrive level.enemytankspeed_reverse 30 256
+			self.stunned = 0
+			println "z:         " self " is no longer stunned"
+		}
+		local.timer++
+	}
+end
+
+enemy_tank_attack_loop local.gun:    //self is the tank
+
+	while (isAlive self)
+	{
+		local.traceoffset = local.gun.origin + (0 0 48)
+		//iprintln "Inside the while loop"
+		if (self.stunned == 1)
+		{
+			println "z:             " self " is not firing because stunned"
+			wait 1
+		}
+		else if !(vector_within level.playertanktarget.centroid self.origin level.sightdistance)
+		{
+			println "z:             " self " is not firing because range"
+			wait 1
+		}
+		else if (!(sighttrace level.playertanktarget.centroid local.traceoffset 1))
+		{
+			dprintln "level.playertanktarget.origin is " level.playertanktarget.origin
+			dprintln "local.traceoffset is " local.traceoffset
+			println "z:             " self " is not firing because sight trace"
+			wait 1
+		}
+		else
+		{
+			dprintln "z:         " self " on target, waitting 3 secs to fire"
+			wait 3
+			if (self.stunned != 1)
+				local.gun anim fire
+			wait 2
+		}
+	}
+
+end
+
+nebelwerferDeath:
+	local.origin = self.origin
+	while (isalive self)
+		waitframe
+	radiusdamage ( local.origin + (0 0 128) ) 300 300
+end

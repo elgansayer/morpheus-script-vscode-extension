@@ -1,0 +1,243 @@
+//
+// Three germans talking around a russian tank, right at the end of the level.
+//
+// Inputs and outputs:
+//
+//		three_germans_at_tank_init				Input, call to start gag.
+//
+// Prop List:
+//
+//		level.tankguard[1]
+//		level.tankguard[2]
+//		level.tankguard[3]
+//
+
+	level.germantankguys_dialog = 0
+	level.tank_guys_in = 0
+
+	$enemy thread alert_others
+
+end
+
+
+alert_others:
+
+	self waittill hasenemy
+
+	if ( level.tank_guys_in==1 )
+	{
+		level.tankguard[1] attackplayer
+		level.tankguard[2] attackplayer
+		level.tankguard[3] attackplayer
+		}
+
+	end
+
+
+// Spawn the guys in and play idle animations for them.
+three_germans_at_tank_init:
+
+	level.tank_guys_in = 1
+
+	println ("Starting german tank guys gag.")
+
+	// Tweak soldier's blend values.
+	//level.tankguard[1].blendtime = 1.0
+	//level.tankguard[2].blendtime = 1.0
+	//level.tankguard[3].blendtime = 1.0
+
+	//
+	// Record and begin their animation threads.
+	//
+
+	// Tank guy 1.
+	level.tankguard[1] thread germantankguy_01
+	level.germantankguy01thread = parm.previousthread
+
+	// Tank guy 2.
+	level.tankguard[2] thread germantankguy_02
+	level.germantankguy02thread = parm.previousthread
+
+	// Tank guy 3.
+	level.tankguard[3] thread germantankguy_03
+	level.germantankguy03thread = parm.previousthread
+
+	// Begin a thread to see if they get hit.
+	thread three_germans_at_tank_waitforhit
+
+	wait 10.0
+
+	// Begin dialog for the germans.
+	if (level.germantankguys_dialog == 0)
+	{
+		println ("German tank guys start talking")
+		level.germantankguys_dialog = 1
+	}
+
+end
+
+
+// See if any of the germans get hit. If they do, kick of their attack state and ignore all animations.
+three_germans_at_tank_waitforhit:
+
+	println ("Waiting for guys to get hit")
+/*
+	local.healthguy1 = level.tankguard[1].health
+	local.healthguy2 = level.tankguard[2].health
+	local.healthguy3 = level.tankguard[3].health
+	local.tankguya = level.tankguard[1]
+	local.tankguyb = level.tankguard[2]
+	local.tankguyc = level.tankguard[3]
+	while (level.germantankguys_dialog < 2)
+	{
+		local.healthd_a = local.healthguy1 - local.tankguya.health
+		local.healthd_b = local.healthguy2 - local.tankguyb.health
+		local.healthd_c = local.healthguy3 - local.tankguyc.health
+		if (local.healthd_a != 0) || (local.healthd_b != 0) || (local.healthd_c != 0))
+		{
+			println ("A german tank guy gets hit")
+			level.germantankguys_dialog = 2
+
+			// Soldier 1 attacks.
+			level.germantankguy01thread delete
+			waitexec anim/attack.scr::AttackDeleteSubThread
+			level.tankguard[1] thread germantankguy_01_alert
+
+			// Soldier 2 attacks.
+			level.germantankguy02thread delete
+			waitexec anim/attack.scr::AttackDeleteSubThread
+			level.tankguard[2] thread germantankguy_02_alert
+
+			// Soldier 3 attacks.
+			level.germantankguy03thread delete
+			waitexec anim/attack.scr::AttackDeleteSubThread
+			level.tankguard[3] thread germantankguy_03_alert
+
+		}
+		waitframe
+	}
+*/
+end
+
+
+//
+//	31G403_Dial01		31G403_Dial01.skc
+//	31G404_Idle 		31G404_Idle.skc
+//	31G413_laugh		31G413_laugh.skc
+//	31G405_transtoalert	31G405_transtoalert.skc
+//
+germantankguy_01:
+
+	while (level.germantankguys_dialog == 0)
+	{
+		println ("German 1 idles")
+		self anim 31G404_Idle
+		self waittill animdone
+	}
+	println ("German 1 talks")
+	self anim 31G403_Dial01
+	self waittill animdone
+	println ("German 1 laughs")
+	self anim 31G413_laugh
+	self waittill animdone
+	while (1)
+	{
+		println ("German 1 idles")
+		self anim 31G404_Idle
+		self waittill animdone
+	}
+
+end
+
+germantankguy_01_alert:
+
+	println ("German tank guy 1 attacks")
+	self anim 31G405_transtoalert
+	self waittill animdone
+	level.tankguard[1] exec global/enable_ai.scr
+
+end
+
+
+//
+//	31G407_Dial02		31G407_Dial02.skc
+//	31G412_Idle			31G412_Idle.skc
+//	31G414_laugh		31G414_laugh.skc
+//	31G408_transtoalert	31G408_transtoalert.skc
+//
+germantankguy_02:
+
+	while (level.germantankguys_dialog == 0)
+	{
+		println ("German 2 idles")
+		self anim 31G412_Idle
+		self waittill animdone
+	}
+	println ("German 2 talks")
+	self anim 31G407_Dial02
+	self waittill animdone
+	println ("German 2 laughs")
+	self anim 31G414_laugh
+	self waittill animdone
+	while (1)
+	{
+		println ("German 2 idles")
+		self anim 31G412_Idle
+		self waittill animdone
+	}
+
+end
+
+germantankguy_02_alert:
+
+	println ("German tank guy 2 attacks")
+	self anim 31G408_transtoalert
+	self waittill animdone
+	level.tankguard[2] exec global/enable_ai.scr
+
+end
+
+
+//
+//	31G409_Idle			31G409_Idle.skc
+//	31G410_Dial03		31G410_Dial03.skc
+//	31G415_laugh		31G415_laugh.skc
+//	31G411_transtoalert	31G411_transtoalert.skc
+//
+germantankguy_03:
+
+	while (level.germantankguys_dialog == 0)
+	{
+		println ("German 3 idles")
+		self anim 31G409_Idle
+		self waittill animdone
+	}
+	println ("German 3 talks")
+	self anim 31G410_Dial03
+	self waittill animdone
+	self anim 31G415_laugh
+	self waittill animdone
+	while (1)
+	{
+		println ("German 3 idles")
+		self anim 31G409_Idle
+		self waittill animdone
+	}
+
+end
+
+germantankguy_03_alert:
+
+	println ("German tank guy 3 attacks")
+	self anim 31G411_transtoalert
+	self waittill animdone
+	level.tankguard[3] exec global/enable_ai.scr
+
+end
+
+
+
+
+
+
+

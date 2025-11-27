@@ -1,0 +1,62 @@
+//-----------
+doLights:
+//-----------
+
+	level.lightStyleNo = 0
+
+	//
+	// setup light styles
+	//
+	setlightstyle 1 "textures/alarm_map.tga"
+	setlightstyle 2 "textures/flicker_map.tga"
+	setlightstyle 3 "textures/flicker_map02.tga"
+	setlightstyle 4 "textures/flicker_map03.tga"
+	setlightstyle 5 "textures/brokenLight_map.tga"
+	setlightstyle 6 "textures/red_map.tga"
+	setlightstyle 7 "textures/blue_map.tga"
+	setlightstyle 8 "textures/blue_moon.tga"
+
+
+end
+
+//-----------
+sceneOne:
+//-----------
+	waitthread doLights
+	$lightning_flash thread start 7 1000 0
+
+end
+//-----------
+sceneTwo:
+//-----------
+	waitthread doLights
+	//no need for dynamic lights
+end
+
+//-----------
+sceneThree:
+//-----------
+	waitthread doLights
+	$red_light thread start 6 40 0
+	$blue_moon thread start 8 100 0
+end
+//-----------
+sceneFour:
+//-----------
+	waitthread doLights
+	$supadupaTest thread start 2 150 0
+end
+//-------------------------------------------
+start local.lightStyle local.rad local.int:
+//-------------------------------------------
+
+self rendereffects "+lightstyledynamiclight"
+self lightstyle local.lightStyle
+
+while (1)
+{
+	local.radius=local.rad + randomint local.int
+	self lightRadius local.radius
+	wait .1
+}
+end

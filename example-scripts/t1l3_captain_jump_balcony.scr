@@ -1,0 +1,52 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t1l3_captain_jump_balcony.scr
+//
+// author: Michael Goodwin
+//
+// setup:
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+t1l3_captain_jump:
+
+	self remove
+
+	if ( isAlive level.captain )
+	{
+		level.captain thread global/friendly.scr::friendlystop
+		level.captain exec global/disable_ai.scr
+
+		level.captain.movedoneradius = 16.0
+		level.captain runto $jumpspot
+		level.captain waittill movedone
+
+		level.captain turnto $facebeforejump
+		wait 0.65
+		level.captain turnto NULL
+
+		level.captain anim_noclip 13C500_Capthopsbalc
+		level.captain waittill animdone
+		level.captain turnto (3700 884 64)
+		level.captain waittill turndone
+		level.captain turnto NULL
+
+		level.captain waitthread gags/t1l3_misc.scr::behealthy 1
+
+		level.captain thread global/friendly.scr::friendlythink
+		level.captain exec global/enable_ai.scr
+	}
+
+end

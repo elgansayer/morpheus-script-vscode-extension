@@ -1,0 +1,143 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+// gags/t3l1_soldiers_balcony.scr
+//
+// author: Michael Goodwin
+//
+// run the main thread on the level object (after spawn) as follows:
+//
+//   exec gags/t3l1_soldiers_balcony.scr
+//
+// description:
+//
+// setup:
+//
+// other notes:
+//
+// TODO:
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main:
+
+//	level waittill prespawn
+
+	// hide the soldiers with targetname "balconyspawner"
+	if ( $balconyspawner == NULL )
+		level.balconyspawners = 0
+	else
+		level.balconyspawners = $balconyspawner.size
+
+	if ( level.balconyspawners > 0 )
+	{
+		level.balconyspawner = exec global/makearray.scr $balconyspawner
+
+		for ( local.i = 1; local.i < level.balconyspawners + 1; local.i++ )
+		{
+//			println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ hiding " level.balconyspawner[local.i]
+			level.balconyspawner[local.i] = waitthread global/spawner.scr::spawner_create level.balconyspawner[local.i]
+		}
+	}
+
+	// find the balconyspawnertriggers and run the wait thread on each
+	if ( $balconyspawnertrigger == NULL )
+		level.balconyspawnertriggers = 0
+	else
+		level.balconyspawnertriggers = $balconyspawnertrigger.size
+
+	if ( level.balconyspawnertriggers > 0 )
+	{
+		level.balconyspawnertrigger = exec global/makearray.scr $balconyspawnertrigger
+
+		for ( local.i = 1; local.i < level.balconyspawnertriggers + 1; local.i++ )
+		{
+//			println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ found trigger " level.balconyspawnertrigger[local.i]
+			level.balconyspawnertrigger[local.i] thread balconyspawnertriggerwait
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on each balconyspawner trigger
+//   until the trigger is tripped
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+balconyspawnertriggerwait:
+
+//	level waittill spawn
+
+//	println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " self " waiting for trigger"
+	self waittill trigger
+
+//	println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " self " got triggerer"
+	self thread balconyspawn self.set
+
+	self delete
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the trigger that is tripped
+//   to spawn the balcony soldier
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+balconyspawn local.set:
+
+	for ( local.i = 1; local.i < level.balconyspawners + 1; local.i++ )
+	{
+		if ( local.set == level.balconyspawner[local.i].set )
+		{
+//			println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ activating " level.balconyspawner[local.i]
+			local.ent = waitthread global/spawner.scr::spawner_activate level.balconyspawner[local.i]
+
+			local.ent thread balconyspawnwalk
+		}
+	}
+
+end
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// this thread runs on the enemy that spawns
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+balconyspawnwalk:
+
+	self.nosurpise = 1
+	exec global/enable_ai.scr
+
+	self type_idle "patrol"
+	self patrolpath self.target
+
+	while ( (isAlive self) && (self.patrolpath != NULL) && (self.enemy == NULL) )
+	{
+		println "~~~~~~~~~~~~~~~~~~~~~~~~~ patrolpath is " self.patrolpath " enemy is " self.enemy
+		wait 0.1
+	}
+
+	if ( (isAlive self) && (self.enemy == NULL) )
+	{
+		println "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ waiting for a bit "
+		wait 5
+	}
+
+	if ( (isAlive self) && (self.enemy == NULL) )
+	{
+		local.target = self.target + "_return"
+		println "~~~~~~~~~~~~~~~~~~~~~~~~~ (return) patrolpath is " local.target
+		self type_idle "patrol"
+		self patrolpath local.target
+	}
+
+end
+
