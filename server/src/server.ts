@@ -97,35 +97,38 @@ connection.onInitialized(() => {
 
 async function loadCommands() {
     // Look for commands.json relative to the server script
-    // We are in out/server/src/server.js (compiled) or server/src/server.ts (source)
+    // When compiled, we are in out/server/src/server.js
     // commands.json is in the root of the extension
-
-    // In development (source), we are in server/src
-    // In production (out), we are in out/server/src
-
-    // Try multiple paths to be safe
+    
+    // __dirname points to out/server/src, so we need to go up 3 levels
     const possiblePaths = [
-        path.join(__dirname, '../../../commands.json'), // From out/server/src
-        path.join(__dirname, '../../commands.json')     // From server/src
+        path.join(__dirname, '..', '..', '..', 'commands.json'), // From out/server/src -> root
+        path.join(__dirname, '..', '..', 'commands.json'),       // Fallback
+        path.resolve(__dirname, '../../../commands.json'),       // Alternative resolution
     ];
 
+    connection.console.log(`Server __dirname: ${__dirname}`);
+    
     let loaded = false;
     for (const commandsPath of possiblePaths) {
+        connection.console.log(`Trying to load commands from: ${commandsPath}`);
         if (fs.existsSync(commandsPath)) {
             try {
                 const content = fs.readFileSync(commandsPath, 'utf-8');
                 commands = JSON.parse(content);
-                connection.console.log(`Loaded ${Object.keys(commands).length} commands from ${commandsPath}`);
+                connection.console.log(`Successfully loaded ${Object.keys(commands).length} commands from ${commandsPath}`);
                 loaded = true;
                 break;
             } catch (err) {
-                connection.console.error(`Failed to load commands.json from ${commandsPath}: ${err}`);
+                connection.console.error(`Failed to parse commands.json from ${commandsPath}: ${err}`);
             }
+        } else {
+            connection.console.log(`File not found: ${commandsPath}`);
         }
     }
 
     if (!loaded) {
-        connection.console.log('commands.json not found in extension directory.');
+        connection.console.warn('commands.json not found - hover documentation will not be available');
     }
 }
 
