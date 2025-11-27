@@ -2,7 +2,7 @@
     "name": "morpheus-vscode",
     "displayName": "Morpheus Script",
     "description": "VSCode extension for Medal of Honor: Allied Assault Morpheus scripting language",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "publisher": "OpenMohaa",
     "repository": {
         "type": "git",
