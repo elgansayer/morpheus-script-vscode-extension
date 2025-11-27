@@ -113,7 +113,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.morpheus",
-					"match": "\\b(if|else|while|for|thread|waitthread|wait|waitframe|waitexec|waittill|end|End|END|exec|exec_server|return|break|continue|goto|switch|case|try|catch)\\b"
+					"match": "\\b(if|else|while|for|thread|waitthread|wait|waitframe|waitexec|waittill|end|End|END|exec|exec_server|return|break|continue|goto|switch|case|try|catch|ifequal|ifstrequal|ifnotequal|ifstrnotequal|ifless|iflessequal|ifgreater|ifgreaterequal)\\b"
 				},
 				{
 					"name": "storage.type.morpheus",
@@ -186,7 +186,7 @@
 			"patterns": [
 				{
 					"name": "keyword.operator.assignment.compound.morpheus",
-					"match": "(\\+=|\\-=)"
+					"match": "(\\+=|\\-=|\\b(append|appendint|appendfloat)\\b)"
 				},
 				{
 					"name": "keyword.operator.increment-decrement.morpheus",
