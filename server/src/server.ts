@@ -14,7 +14,9 @@ import {
     DefinitionParams,
     Definition,
     Location,
-    Range
+    Range,
+    Hover,
+    MarkupKind
 } from 'vscode-languageserver/node';
 
 import {
@@ -64,7 +66,8 @@ connection.onInitialize((params: InitializeParams) => {
                 resolveProvider: true
             },
             documentFormattingProvider: true,
-            definitionProvider: true
+            definitionProvider: true,
+            hoverProvider: true
         }
     };
     if (hasWorkspaceFolderCapability) {
@@ -411,6 +414,53 @@ connection.onDefinition((params: DefinitionParams): Definition | null => {
                 end: { line: i, character: lines[i].length }
             });
         }
+    }
+
+    return null;
+});
+
+connection.onHover((params: TextDocumentPositionParams): Hover | null => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return null;
+    }
+
+    const text = document.getText();
+    const lines = text.split(/\r?\n/);
+    const position = params.position;
+    const line = lines[position.line];
+
+    // Simple word extraction at position
+    const wordRegex = /[a-zA-Z0-9_]+/g;
+    let match;
+    let word = '';
+
+    while ((match = wordRegex.exec(line)) !== null) {
+        const start = match.index;
+        const end = match.index + match[0].length;
+        if (position.character >= start && position.character <= end) {
+            word = match[0];
+            break;
+        }
+    }
+
+    if (!word) {
+        return null;
+    }
+
+    // Check if it's a known command
+    // Case-insensitive lookup
+    const lowerWord = word.toLowerCase();
+    const commandKey = Object.keys(commands).find(key => key.toLowerCase() === lowerWord);
+
+    if (commandKey) {
+        const commandInfo = commands[commandKey];
+        return {
+            contents: {
+                kind: MarkupKind.Markdown,
+                value: `**${commandKey}**\n\n${commandInfo.doc}`
+            }
+        };
     }
 
     return null;
