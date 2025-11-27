@@ -73,7 +73,8 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -b",
         "watch": "tsc -b -w",
-        "postinstall": "cd client && npm install && cd ../server && npm install"
+        "postinstall": "cd client && npm install && cd ../server && npm install",
+        "package": "npx vsce package"
     },
     "devDependencies": {
         "@types/node": "^16.11.7",
