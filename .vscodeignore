@@ -1,8 +1,42 @@
+# Development files
 .vscode/**
 .vscode-test/**
-src/**
+.github/**
 .gitignore
-vsc-extension-quickstart.md
-**/*.map
+
+# Source files (bundled into out/)
+client/src/**
+server/src/**
 **/*.ts
+**/*.map
+
+# Config files
+tsconfig.json
+client/tsconfig.json
+server/tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# Documentation
+vsc-extension-quickstart.md
+walkthrough.md
+CHANGELOG.md
+CONTRIBUTING.md
+
+# Example scripts (not needed for extension to work)
 example-scripts/**
+
+# Dependencies (bundled)
+client/node_modules/**
+server/node_modules/**
+node_modules/**
+
+# Package files
+*.vsix
+package-lock.json
+client/package-lock.json
+server/package-lock.json
+
+# Build scripts
+scripts/**
+*.sh
