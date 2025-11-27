@@ -12,4 +12,3 @@ VSCode extension for the Morpheus scripting language used in Medal of Honor: All
 
 1. Open a `.scr` file.
 2. Enjoy syntax highlighting and autocomplete.
-
