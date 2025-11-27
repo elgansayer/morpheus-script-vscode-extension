@@ -275,7 +275,7 @@ connection.onDocumentFormatting(async params => {
     const edits = [];
 
     let indentLevel = 0;
-    let braceDepth = 0;
+    const indentStack: number[] = [];
     let tempIndent = 0;
     let lastLineWasLabel = false;
     const indentChar = params.options.insertSpaces ? ' ' : '\t';
@@ -289,25 +289,39 @@ connection.onDocumentFormatting(async params => {
             continue;
         }
 
+        // Check for case/default
+        // These reset indentation to the brace depth + 1, then increment for subsequent lines
+        const isCase = /^\s*(case\b|default\s*:)/.test(line);
+        if (isCase) {
+            if (indentStack.length > 0) {
+                indentLevel = indentStack[indentStack.length - 1] + 1;
+            }
+        }
+
         // Dedent if line starts with closing brace
-        // Use trimmed line to handle existing indentation
-        if (line.trim().startsWith('}')) {
-            indentLevel = Math.max(0, indentLevel - 1);
-            braceDepth = Math.max(0, braceDepth - 1);
+        // Sync indentLevel with stack
+        if (line.startsWith('}')) {
+            if (indentStack.length > 0) {
+                indentLevel = indentStack.pop()!;
+            } else {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
             tempIndent = 0; // Block closed, reset temp indent
         }
 
         // Dedent if line is 'end'
         // ONLY dedent if we are not in a tempIndent (single-line block)
-        // AND if we are not inside braces (braceDepth == 0)
+        // AND if we are not inside braces (indentStack empty)
         // Check case-insensitive for 'end'
-        if (/^(end|End|END)$/.test(line.trim()) && tempIndent === 0 && braceDepth === 0) {
+        if (/^(end|End|END)$/.test(line) && tempIndent === 0 && indentStack.length === 0) {
             indentLevel = Math.max(0, indentLevel - 1);
         }
 
-        // Handle labels: force 0 indentation, but next line should be indented
+        // Handle labels: force 0 indentation (or current level?), but next line should be indented
         // Regex: starts with word characters, ends with colon, optional comments
-        const isLabel = /^[a-zA-Z0-9_]+:/.test(line);
+        // Exclude 'case' and 'default' which are handled separately
+        // Allow arguments before the colon (e.g. "Label arg1 arg2:")
+        const isLabel = /^\s*(?!(case|default)\b)[a-zA-Z0-9_]+.*:\s*(?:\/\/.*)?$/.test(line);
 
         let currentIndent = '';
         if (!isLabel) {
@@ -316,21 +330,25 @@ connection.onDocumentFormatting(async params => {
 
             // Special handling for comments immediately after a label
             // If the last line was a label, we often want the comment to be at the same level (0)
-            const isComment = line.trim().startsWith('//');
+            const isComment = line.startsWith('//');
             if (isComment && lastLineWasLabel) {
                 effectiveIndent = Math.max(0, effectiveIndent - 1);
-            } else if (!isComment && line.trim().length > 0) {
-                // If we hit code (non-comment, non-empty), reset the flag
+            } else if (!isComment) {
+                // If we hit code (non-comment), reset the flag
                 lastLineWasLabel = false;
             }
 
-            if (!line.trim().startsWith('{')) {
+            if (!line.startsWith('{')) {
                 effectiveIndent += tempIndent;
             }
             currentIndent = indentChar.repeat(Math.max(0, effectiveIndent) * indentSize);
         } else {
-            // Label line itself has 0 indent
+            // Label line itself has 0 indent (or should it be indentLevel?)
+            // For top-level labels, indentLevel is usually 0.
+            // But if we are inside a block? Morpheus labels are usually top-level.
+            // Let's force 0 for now as per user expectation.
             currentIndent = '';
+
             // But it increases indentation for subsequent lines
             indentLevel++;
             tempIndent = 0; // Reset temp indent on new label/section
@@ -342,10 +360,16 @@ connection.onDocumentFormatting(async params => {
 
         // Only replace if indentation is different
         // We need to preserve the content but replace the indentation
-        const trimmedLine = line.trimStart();
-        const newText = currentIndent + trimmedLine;
+        const trimmedLine = line; // line is already trimmed at start of loop
+        // Wait, line was trimmed! We need the original content?
+        // No, we construct newText from currentIndent + trimmedLine.
+        // But 'line' variable is trimmed.
+        // lines[i] is original.
+        const originalLine = lines[i];
+        const content = originalLine.trimStart();
+        const newText = currentIndent + content;
 
-        if (lines[i] !== newText) {
+        if (originalLine !== newText) {
             edits.push({
                 range: range,
                 newText: newText
@@ -356,9 +380,11 @@ connection.onDocumentFormatting(async params => {
         const cleanLine = line.replace(/\/\/.*$/, '').trim();
 
         if (cleanLine.endsWith('{')) {
+            indentStack.push(indentLevel);
             indentLevel++;
-            braceDepth++;
             tempIndent = 0; // Block started, consumed any pending temp indent
+        } else if (isCase) {
+            indentLevel++;
         } else if (/^\s*(if|while|for|else|elif)\b/.test(cleanLine)) {
             // Check if it's a single-line control statement
             tempIndent++;
