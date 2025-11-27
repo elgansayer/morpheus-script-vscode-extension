@@ -16,6 +16,9 @@
 			"include": "#numbers"
 		},
 		{
+			"include": "#constants"
+		},
+		{
 			"include": "#keywords"
 		},
 		{
@@ -66,6 +69,15 @@
 			"patterns": [
 				{
 					"include": "#numbers"
+				},
+				{
+					"include": "#variables"
+				},
+				{
+					"include": "#entities"
+				},
+				{
+					"include": "#operators"
 				}
 			]
 		},
@@ -73,7 +85,11 @@
 			"patterns": [
 				{
 					"name": "constant.numeric.float.morpheus",
-					"match": "\\b\\d+\\.\\d+\\b"
+					"match": "\\b\\d+\\.\\d+([eE][+-]?\\d+)?\\b"
+				},
+				{
+					"name": "constant.numeric.float.morpheus",
+					"match": "\\b\\d+[eE][+-]?\\d+\\b"
 				},
 				{
 					"name": "constant.numeric.integer.morpheus",
@@ -81,19 +97,35 @@
 				}
 			]
 		},
+		"constants": {
+			"patterns": [
+				{
+					"name": "constant.language.null.morpheus",
+					"match": "\\b(NULL|NIL)\\b"
+				},
+				{
+					"name": "constant.language.boolean.morpheus",
+					"match": "\\b(true|false)\\b"
+				}
+			]
+		},
 		"keywords": {
 			"patterns": [
 				{
 					"name": "keyword.control.morpheus",
-					"match": "\\b(if|else|while|for|thread|waitthread|wait|waitframe|waitexec|waittill|end|End|exec|exec_server|return|break|continue|goto|switch|case|dprintln|playmovie|landminedamage)\\b"
+					"match": "\\b(if|else|while|for|thread|waitthread|wait|waitframe|waitexec|waittill|end|End|END|exec|exec_server|return|break|continue|goto|switch|case|try|catch)\\b"
 				},
 				{
 					"name": "storage.type.morpheus",
-					"match": "\\b(local|level|game|parm|group|self)\\b"
+					"match": "\\b(local|level|game|parm|group|self|owner)\\b"
 				},
 				{
 					"name": "keyword.other.morpheus",
-					"match": "\\b(spawn|delete|trigger|print|println|iprintln|iprintlnbold)\\b"
+					"match": "\\b(spawn|delete|trigger|print|println|iprintln|iprintlnbold|dprintln)\\b"
+				},
+				{
+					"name": "keyword.other.array.morpheus",
+					"match": "\\b(makearray|makeArray|endarray|endArray|size)\\b"
 				}
 			]
 		},
@@ -151,8 +183,44 @@
 			]
 		},
 		"operators": {
-			"name": "keyword.operator.morpheus",
-			"match": "(\\+|\\-|\\*|\\/|\\=|\\!|\\<|\\>|\\&|\\||::|\\[|\\])"
+			"patterns": [
+				{
+					"name": "keyword.operator.assignment.compound.morpheus",
+					"match": "(\\+=|\\-=)"
+				},
+				{
+					"name": "keyword.operator.increment-decrement.morpheus",
+					"match": "(\\+\\+|\\-\\-)"
+				},
+				{
+					"name": "keyword.operator.comparison.morpheus",
+					"match": "(==|!=|<=|>=|<|>)"
+				},
+				{
+					"name": "keyword.operator.logical.morpheus",
+					"match": "(\\&\\&|\\|\\||\\!)"
+				},
+				{
+					"name": "keyword.operator.bitwise.morpheus",
+					"match": "(\\&|\\||\\^|~)"
+				},
+				{
+					"name": "keyword.operator.arithmetic.morpheus",
+					"match": "(\\+|\\-|\\*|\\/|%)"
+				},
+				{
+					"name": "keyword.operator.assignment.morpheus",
+					"match": "="
+				},
+				{
+					"name": "keyword.operator.const-array.morpheus",
+					"match": "::"
+				},
+				{
+					"name": "keyword.operator.subscript.morpheus",
+					"match": "(\\[|\\])"
+				}
+			]
 		}
 	}
 }

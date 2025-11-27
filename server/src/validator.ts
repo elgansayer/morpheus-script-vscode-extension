@@ -10,12 +10,57 @@ export interface MorpheusCommand {
     doc: string;
 }
 
-// Standard keywords and common commands
+// Control flow keywords
+export const CONTROL_KEYWORDS = [
+    'if', 'else', 'while', 'for', 'switch', 'case',
+    'break', 'continue', 'goto', 'return',
+    'try', 'catch'
+];
+
+// Thread/execution keywords
+export const THREAD_KEYWORDS = [
+    'thread', 'waitthread', 'wait', 'waitframe', 'waittill', 'waitexec',
+    'end', 'End', 'END',
+    'exec', 'exec_server'
+];
+
+// Scope/variable keywords
+export const SCOPE_KEYWORDS = [
+    'local', 'level', 'game', 'parm', 'group', 'self', 'owner'
+];
+
+// Built-in commands
+export const BUILTIN_COMMANDS = [
+    'spawn', 'delete', 'trigger',
+    'print', 'println', 'iprintln', 'iprintlnbold', 'dprintln',
+    'makearray', 'makeArray', 'endarray', 'endArray',
+    'size'
+];
+
+// Constants
+export const CONSTANTS = [
+    'NULL', 'NIL', 'true', 'false'
+];
+
+// All keywords combined
 export const KEYWORDS = [
-    'if', 'else', 'while', 'for', 'thread', 'waitthread', 'wait', 'waitframe', 'waittill',
-    'end', 'exec', 'exec_server', 'local', 'level', 'game', 'parm', 'group', 'self',
-    'spawn', 'delete', 'trigger', 'print', 'println', 'iprintln', 'iprintlnbold',
-    'break', 'continue', 'goto', 'return'
+    ...CONTROL_KEYWORDS,
+    ...THREAD_KEYWORDS,
+    ...SCOPE_KEYWORDS,
+    ...BUILTIN_COMMANDS,
+    ...CONSTANTS
+];
+
+// Valid operators for validation
+export const OPERATORS = [
+    '=', '+=', '-=',
+    '++', '--',
+    '==', '!=', '<', '>', '<=', '>=',
+    '+', '-', '*', '/', '%',
+    '&&', '||', '!',
+    '&', '|', '^', '~',
+    '::', '.', 
+    '[', ']', '(', ')', '{', '}'
 ];
 
 export function validateText(text: string, commands: Record<string, MorpheusCommand>): Diagnostic[] {
@@ -23,60 +68,84 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
     const lines = text.split(/\r?\n/);
 
     let bracketBalance = 0;
+    let parenBalance = 0;
+    let squareBracketBalance = 0;
     const definedLabels = new Set<string>();
     const threadCalls: { label: string, line: number, char: number }[] = [];
+    let inBlockComment = false;
 
     // Pass 1: Collect labels and check brackets
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const trimmedLine = line.trim();
+        let trimmedLine = line.trim();
 
-        // Skip empty lines and comments
-        if (trimmedLine.length === 0 || trimmedLine.startsWith('//') || trimmedLine.startsWith('/*')) {
+        // Handle block comments
+        if (inBlockComment) {
+            if (trimmedLine.includes('*/')) {
+                inBlockComment = false;
+                trimmedLine = trimmedLine.substring(trimmedLine.indexOf('*/') + 2).trim();
+            } else {
+                continue;
+            }
+        }
+
+        if (trimmedLine.startsWith('/*')) {
+            if (!trimmedLine.includes('*/')) {
+                inBlockComment = true;
+                continue;
+            }
+            trimmedLine = trimmedLine.substring(trimmedLine.indexOf('*/') + 2).trim();
+        }
+
+        // Skip empty lines and line comments
+        if (trimmedLine.length === 0 || trimmedLine.startsWith('//')) {
             continue;
         }
 
-        // Bracket check
-        const openBrackets = (line.match(/{/g) || []).length;
-        const closeBrackets = (line.match(/}/g) || []).length;
-        bracketBalance += openBrackets - closeBrackets;
+        // Bracket checks
+        const openBraces = (line.match(/{/g) || []).length;
+        const closeBraces = (line.match(/}/g) || []).length;
+        bracketBalance += openBraces - closeBraces;
+
+        const openParens = (line.match(/\(/g) || []).length;
+        const closeParens = (line.match(/\)/g) || []).length;
+        parenBalance += openParens - closeParens;
+
+        const openSquare = (line.match(/\[/g) || []).length;
+        const closeSquare = (line.match(/\]/g) || []).length;
+        squareBracketBalance += openSquare - closeSquare;
 
         // Label collection
-        // Check if line ends with : (ignoring comments)
         let content = trimmedLine;
         const commentIndex = content.indexOf('//');
         if (commentIndex !== -1) {
             content = content.substring(0, commentIndex).trim();
         }
 
-        if (content.endsWith(':')) {
+        // Check for label definition (word followed by colon, but not ::)
+        if (content.endsWith(':') && !content.endsWith('::')) {
             const match = content.match(/^([a-zA-Z0-9_]+)/);
             if (match) {
                 definedLabels.add(match[1]);
             }
         }
 
-        // Thread call collection
-        // Matches: thread label, waitthread label, exec label
-        // We need to be careful not to match "thread" as a variable or part of a string
-        // Simple regex for now: \b(thread|waitthread|exec)\s+([a-zA-Z0-9_]+)
-        const threadMatch = line.match(/\b(thread|waitthread|exec)\s+([a-zA-Z0-9_]+)/);
-        if (threadMatch) {
-            // Check if it's an external script call (contains ::) - actually the regex above won't match ::
-            // If the user writes "thread script::label", the regex above might capture "script" as the label if we aren't careful.
-            // Let's refine the regex to exclude :: matches or handle them.
-            // Actually, if it has ::, it's external, so we ignore it.
-            // The regex `([a-zA-Z0-9_]+)` won't match `::`, so `script::label` would fail to match fully or match `script`.
-            // Let's check the full token.
+        // Check for case labels
+        const caseMatch = content.match(/^case\s+(.+):$/);
+        if (caseMatch) {
+            // This is a valid case label, skip further processing
+            continue;
+        }
 
-            const words = trimmedLine.split(/\s+/);
-            for (let j = 0; j < words.length; j++) {
-                if (['thread', 'waitthread', 'exec'].includes(words[j]) && j + 1 < words.length) {
-                    const target = words[j + 1];
-                    // Ignore if it contains :: (external script) or starts with $ (variable)
-                    if (!target.includes('::') && !target.startsWith('$') && !target.startsWith('(') && !target.endsWith('.scr')) {
-                        // Strip trailing semicolon if present
-                        const cleanTarget = target.replace(/;$/, '');
+        // Thread call collection
+        const words = trimmedLine.split(/\s+/);
+        for (let j = 0; j < words.length; j++) {
+            if (['thread', 'waitthread', 'exec'].includes(words[j].toLowerCase()) && j + 1 < words.length) {
+                const target = words[j + 1];
+                // Ignore if it contains :: (external script) or starts with $ (variable)
+                if (!target.includes('::') && !target.startsWith('$') && !target.startsWith('(') && !target.endsWith('.scr')) {
+                    const cleanTarget = target.replace(/[;,]$/, '');
+                    if (cleanTarget.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
                         threadCalls.push({
                             label: cleanTarget,
                             line: i,
@@ -87,8 +156,7 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
             }
         }
 
-        // Simple Heuristic 1: Check for odd number of quotes
-        // This helps detect unclosed strings which can cause syntax errors.
+        // Check for odd number of quotes (unclosed strings)
         const quoteCount = (line.match(/"/g) || []).length;
         if (quoteCount % 2 !== 0) {
             diagnostics.push({
@@ -102,20 +170,38 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
             });
         }
 
-        // Linter: Check for unknown commands
-        // Get the first word of the line
-        const match = trimmedLine.match(/^([a-zA-Z0-9_.$]+)/);
+        // Check for common syntax errors
+        // 1. Assignment in condition (single = in if/while)
+        const conditionMatch = trimmedLine.match(/^(if|while)\s*\(?\s*([^)]+)/i);
+        if (conditionMatch) {
+            const condition = conditionMatch[2];
+            // Check for single = that's not == or != or <= or >=
+            if (/[^=!<>]=[^=]/.test(condition) && !/==/.test(condition)) {
+                diagnostics.push({
+                    severity: DiagnosticSeverity.Warning,
+                    range: {
+                        start: { line: i, character: 0 },
+                        end: { line: i, character: line.length }
+                    },
+                    message: 'Possible assignment in condition. Did you mean == instead of =?',
+                    source: 'morpheus-lsp'
+                });
+            }
+        }
+
+        // Check for unknown commands (first word on line)
+        const match = trimmedLine.match(/^([a-zA-Z_][a-zA-Z0-9_]*)/);
         if (match) {
             const firstWord = match[1];
 
-            // Check if it's a label definition (ends with :)
-            // We use the previously calculated 'content' which has comments stripped
-            if (content.endsWith(':')) {
+            // Skip if it's a label definition
+            if (content.endsWith(':') && !content.endsWith('::')) {
                 continue;
             }
 
-            // Check if it's a variable (starts with $ or contains .)
-            if (firstWord.startsWith('$') || firstWord.includes('.')) {
+            // Skip if next char is . (method call on variable)
+            const afterWord = trimmedLine.substring(firstWord.length);
+            if (afterWord.startsWith('.')) {
                 continue;
             }
 
@@ -125,7 +211,6 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
             const isKeyword = KEYWORDS.some(kw => kw.toLowerCase() === lowerFirstWord);
 
             if (!isCommand && !isKeyword) {
-                // Calculate the range of the word
                 const startChar = line.indexOf(firstWord);
                 diagnostics.push({
                     severity: DiagnosticSeverity.Warning,
@@ -143,7 +228,6 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
     // Pass 2: Validate thread calls
     for (const call of threadCalls) {
         if (!definedLabels.has(call.label)) {
-            // Check if it's a known command or keyword (case-insensitive)
             const lowerLabel = call.label.toLowerCase();
             const isCommand = Object.keys(commands).some(cmd => cmd.toLowerCase() === lowerLabel);
             const isKeyword = KEYWORDS.some(kw => kw.toLowerCase() === lowerLabel);
@@ -155,7 +239,7 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
                         start: { line: call.line, character: call.char },
                         end: { line: call.line, character: call.char + call.label.length }
                     },
-                    message: `Label '${call.label}' not found in this file.`,
+                    message: `Label '${call.label}' not found in this file. Is it defined in an external script?`,
                     source: 'morpheus-lsp'
                 });
             }
@@ -170,7 +254,31 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
                 start: { line: lines.length - 1, character: 0 },
                 end: { line: lines.length - 1, character: lines[lines.length - 1].length }
             },
-            message: `Unbalanced brackets: ${bracketBalance > 0 ? 'Missing closing }' : 'Missing opening {'}`,
+            message: `Unbalanced braces: ${bracketBalance > 0 ? `Missing ${bracketBalance} closing }` : `Missing ${-bracketBalance} opening {`}`,
+            source: 'morpheus-lsp'
+        });
+    }
+
+    if (parenBalance !== 0) {
+        diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: {
+                start: { line: lines.length - 1, character: 0 },
+                end: { line: lines.length - 1, character: lines[lines.length - 1].length }
+            },
+            message: `Unbalanced parentheses: ${parenBalance > 0 ? `Missing ${parenBalance} closing )` : `Missing ${-parenBalance} opening (`}`,
+            source: 'morpheus-lsp'
+        });
+    }
+
+    if (squareBracketBalance !== 0) {
+        diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: {
+                start: { line: lines.length - 1, character: 0 },
+                end: { line: lines.length - 1, character: lines[lines.length - 1].length }
+            },
+            message: `Unbalanced square brackets: ${squareBracketBalance > 0 ? `Missing ${squareBracketBalance} closing ]` : `Missing ${-squareBracketBalance} opening [`}`,
             source: 'morpheus-lsp'
         });
     }
