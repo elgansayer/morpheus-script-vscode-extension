@@ -26,9 +26,10 @@ CONTRIBUTING.md
 # Example scripts (not needed for extension to work)
 example-scripts/**
 
-# Dependencies (bundled)
+# Client dependencies (client uses vscode's built-in modules)
 client/node_modules/**
-server/node_modules/**
+
+# Root node_modules (dev dependencies only)
 node_modules/**
 
 # Package files
