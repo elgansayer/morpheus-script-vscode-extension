@@ -1,4 +1,0 @@
-// In case we want to do something here to cover for the weird briefing autosave look.
-exec global/autosave.scr -5
-
-

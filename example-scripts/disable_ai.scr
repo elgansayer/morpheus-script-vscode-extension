@@ -1,4 +1,0 @@
-// Disables independent AI.
-// Add in here any necessary disable commamds.
-
-self.enableEnemy = 0

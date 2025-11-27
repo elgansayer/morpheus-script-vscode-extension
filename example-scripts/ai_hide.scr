@@ -1,5 +1,0 @@
-// Turns off specified AI
-
-self hide
-self ai_off
-self notsolid

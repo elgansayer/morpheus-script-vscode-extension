@@ -1,2 +1,0 @@
-level waittill spawn
-	exec global/missioncomplete.scr m5l1b 1

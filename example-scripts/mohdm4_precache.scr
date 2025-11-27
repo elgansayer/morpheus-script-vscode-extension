@@ -1,3 +1,0 @@
-exec global/DMprecache.scr
-cache models/fx/dummy.tik
-cache models/items/dm_50_healthbox.tik
