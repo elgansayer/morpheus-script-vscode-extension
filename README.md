@@ -13,7 +13,76 @@ VSCode extension for the Morpheus scripting language used in Medal of Honor: All
 
 ![Syntax Highlighting](screenshots/screen1.png)
 
-![Hover Documentation](screenshots/2.png)
+## Configuration
+
+The extension provides several settings to customize your Morpheus scripting experience. Access these via **File > Preferences > Settings** (or `Ctrl+,`) and search for "Morpheus".
+
+### Available Settings
+
+#### `morpheus.validation.enable`
+
+- **Type**: `boolean`
+- **Default**: `true`
+- **Description**: Enable or disable syntax validation for Morpheus scripts. When enabled, the validator checks for bracket/paren balance, unclosed strings, assignment-in-condition warnings, unknown commands, and thread label references.
+
+#### `morpheus.formatting.enable`
+
+- **Type**: `boolean`
+- **Default**: `true`
+- **Description**: Enable or disable automatic code formatting. The formatter normalizes indentation for labels, braces, control flow blocks, and case statements.
+
+#### `morpheus.validation.sexecPath`
+
+- **Type**: `string`
+- **Default**: `""` (empty)
+- **Description**: Path to the `mfuse_exec` (or `sexec`) executable for advanced external validation. If provided, the extension can invoke this tool to perform additional runtime checks beyond built-in diagnostics.
+
+#### `morpheus.validation.trigger`
+
+- **Type**: `string`
+- **Allowed Values**: `"onSave"`, `"onChange"`, `"disabled"`
+- **Default**: `"onSave"`
+- **Description**: Control when external validation runs:
+  - `onSave`: Run validation when you save the file
+  - `onChange`: Run validation on every edit (may impact performance for large files)
+  - `disabled`: Never run external validation
+
+#### `morpheus.paths.commandsJson`
+
+- **Type**: `string`
+- **Default**: `""` (empty)
+- **Description**: Custom path to a `commands.json` file. If empty, the extension uses the bundled command database. Use this to override with project-specific or extended command definitions.
+
+#### `morpheus.paths.commandsTxt`
+
+- **Type**: `string`
+- **Default**: `""` (empty)
+- **Description**: Custom path to a `commands.txt` file. If provided, the extension can parse this simpler format for command references (typically used during development or scraping workflows).
+
+#### `morpheus.trace.server`
+
+- **Type**: `string`
+- **Allowed Values**: `"off"`, `"messages"`, `"verbose"`
+- **Default**: `"off"`
+- **Description**: Trace the communication between VS Code and the Morpheus language server for debugging:
+  - `off`: No tracing
+  - `messages`: Log protocol messages
+  - `verbose`: Log detailed protocol and internal server activity
+
+### Example Configuration
+
+To customize settings, open your `settings.json` (Ctrl+Shift+P → "Preferences: Open Settings (JSON)") and add:
+
+```json
+{
+  "morpheus.validation.enable": true,
+  "morpheus.formatting.enable": true,
+  "morpheus.validation.trigger": "onSave",
+  "morpheus.validation.sexecPath": "/usr/local/bin/sexec",
+  "morpheus.paths.commandsJson": "${workspaceFolder}/custom-commands.json",
+  "morpheus.trace.server": "off"
+}
+```
 
 ## Quick Start
 
@@ -88,18 +157,18 @@ Minimal example:
 
 ```json
 {
-	"iprintln": {
-		"event_var": "EV_PrintLn",
-		"file": "Entities.cpp",
-		"args": ["string"],
-		"doc": "Prints text to player HUD"
-	},
-	"spawn": {
-		"event_var": "EV_Spawn",
-		"file": "script.cpp",
-		"args": ["classname", "origin?", "angles?"],
-		"doc": "Spawns an entity"
-	}
+  "iprintln": {
+    "event_var": "EV_PrintLn",
+    "file": "Entities.cpp",
+    "args": ["string"],
+    "doc": "Prints text to player HUD"
+  },
+  "spawn": {
+    "event_var": "EV_Spawn",
+    "file": "script.cpp",
+    "args": ["classname", "origin?", "angles?"],
+    "doc": "Spawns an entity"
+  }
 }
 ```
 
@@ -107,10 +176,10 @@ Notes:
 
 - The language server attempts to load `commands.json` from the extension root; it is included in the packaged VSIX.
 - Fields:
-	- `event_var`: engine/event identifier (for reference)
-	- `file`: source component where implemented (for traceability)
-	- `args`: ordered argument types or names (for future signature help)
-	- `doc`: human-readable documentation shown in hover
+  - `event_var`: engine/event identifier (for reference)
+  - `file`: source component where implemented (for traceability)
+  - `args`: ordered argument types or names (for future signature help)
+  - `doc`: human-readable documentation shown in hover
 
 ### `commands.txt` (authoring/scraping, plain text)
 
@@ -120,12 +189,12 @@ Typical layout:
 
 ```text
 CommandName  ; short doc or category
-	arg1       ; arg description
-	arg2?      ; optional arg
+  arg1       ; arg description
+  arg2?      ; optional arg
 
 AnotherCommand
-	paramA
-	paramB?
+  paramA
+  paramB?
 ```
 
 Usage workflow:
