@@ -25,6 +25,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { validateText, KEYWORDS, MorpheusCommand } from './validator';
+import { validateWithSexec } from './sexecValidator';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -99,7 +100,7 @@ async function loadCommands() {
     // Look for commands.json relative to the server script
     // When compiled, we are in out/server/src/server.js
     // commands.json is in the root of the extension
-    
+
     // __dirname points to out/server/src, so we need to go up 3 levels
     const possiblePaths = [
         path.join(__dirname, '..', '..', '..', 'commands.json'), // From out/server/src -> root
@@ -108,7 +109,7 @@ async function loadCommands() {
     ];
 
     connection.console.log(`Server __dirname: ${__dirname}`);
-    
+
     let loaded = false;
     for (const commandsPath of possiblePaths) {
         connection.console.log(`Trying to load commands from: ${commandsPath}`);
@@ -137,6 +138,8 @@ interface MorpheusSettings {
     morpheus: {
         validation: {
             enable: boolean;
+            sexecPath: string;
+            trigger: 'onSave' | 'onChange' | 'disabled';
         };
         formatting: {
             enable: boolean;
@@ -147,7 +150,18 @@ interface MorpheusSettings {
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
-const defaultSettings: MorpheusSettings = { morpheus: { validation: { enable: true }, formatting: { enable: true } } };
+const defaultSettings: MorpheusSettings = {
+    morpheus: {
+        validation: {
+            enable: true,
+            sexecPath: "",
+            trigger: "onSave"
+        },
+        formatting: {
+            enable: true
+        }
+    }
+};
 let globalSettings: MorpheusSettings = defaultSettings;
 
 // Cache the settings of all open documents
@@ -164,7 +178,7 @@ connection.onDidChangeConfiguration(change => {
     }
 
     // Revalidate all open text documents
-    documents.all().forEach(validateTextDocument);
+    documents.all().forEach(doc => validateTextDocument(doc, 'onChange'));
 });
 
 function getDocumentSettings(resource: string): Thenable<MorpheusSettings> {
@@ -197,13 +211,17 @@ documents.onDidClose(e => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-    validateTextDocument(change.document);
+    validateTextDocument(change.document, 'onChange');
+});
+
+documents.onDidSave(change => {
+    validateTextDocument(change.document, 'onSave');
 });
 
 // Standard keywords and common commands
 
 
-async function validateTextDocument(textDocument: TextDocument): Promise<void> {
+async function validateTextDocument(textDocument: TextDocument, trigger: 'onChange' | 'onSave'): Promise<void> {
     const settings = await getDocumentSettings(textDocument.uri);
     if (!settings.morpheus.validation.enable) {
         connection.sendDiagnostics({ uri: textDocument.uri, diagnostics: [] });
@@ -212,6 +230,25 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
     const text = textDocument.getText();
     const diagnostics = validateText(text, commands);
+
+    // Run external validator (sexec) based on settings
+    const sexecPath = settings.morpheus.validation.sexecPath;
+    const validationTrigger = settings.morpheus.validation.trigger;
+
+    let shouldRunSexec = false;
+    if (validationTrigger !== 'disabled') {
+        if (validationTrigger === 'onChange') {
+            shouldRunSexec = true;
+        } else if (validationTrigger === 'onSave' && trigger === 'onSave') {
+            shouldRunSexec = true;
+        }
+    }
+
+    if (shouldRunSexec && sexecPath) {
+        const sexecDiagnostics = await validateWithSexec(textDocument, sexecPath);
+        diagnostics.push(...sexecDiagnostics);
+    }
+
     // Send the computed diagnostics to VSCode.
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }

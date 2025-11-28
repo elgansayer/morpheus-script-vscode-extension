@@ -55,6 +55,23 @@
                     "default": true,
                     "description": "Enable/disable Morpheus script formatting."
                 },
+                "morpheus.validation.sexecPath": {
+                    "scope": "resource",
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to the 'mfuse_exec' executable for advanced validation."
+                },
+                "morpheus.validation.trigger": {
+                    "scope": "resource",
+                    "type": "string",
+                    "enum": [
+                        "onSave",
+                        "onChange",
+                        "disabled"
+                    ],
+                    "default": "onSave",
+                    "description": "When to run the external validator."
+                },
                 "morpheus.trace.server": {
                     "scope": "window",
                     "type": "string",
