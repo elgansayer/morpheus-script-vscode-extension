@@ -1,6 +1,9 @@
 import {
     Diagnostic,
-    DiagnosticSeverity
+    DiagnosticSeverity,
+    DiagnosticRelatedInformation,
+    Location,
+    Range
 } from 'vscode-languageserver/node';
 
 export interface MorpheusCommand {
@@ -63,7 +66,12 @@ export const OPERATORS = [
     '[', ']', '(', ')', '{', '}'
 ];
 
-export function validateText(text: string, commands: Record<string, MorpheusCommand>): Diagnostic[] {
+export function validateText(
+    text: string, 
+    commands: Record<string, MorpheusCommand>,
+    documentUri?: string,
+    hasDiagnosticRelatedInfo: boolean = false
+): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     const lines = text.split(/\r?\n/);
 
@@ -233,7 +241,7 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
             const isKeyword = KEYWORDS.some(kw => kw.toLowerCase() === lowerLabel);
 
             if (!isCommand && !isKeyword) {
-                diagnostics.push({
+                const diagnostic: Diagnostic = {
                     severity: DiagnosticSeverity.Warning,
                     range: {
                         start: { line: call.line, character: call.char },
@@ -241,7 +249,35 @@ export function validateText(text: string, commands: Record<string, MorpheusComm
                     },
                     message: `Label '${call.label}' not found in this file. Is it defined in an external script?`,
                     source: 'morpheus-lsp'
-                });
+                };
+
+                // Add related information if supported
+                if (hasDiagnosticRelatedInfo && documentUri) {
+                    // Find similar labels that might be typos
+                    const similarLabels = Array.from(definedLabels).filter(label => 
+                        label.toLowerCase().includes(call.label.toLowerCase().substring(0, 3)) ||
+                        call.label.toLowerCase().includes(label.toLowerCase().substring(0, 3))
+                    );
+                    
+                    if (similarLabels.length > 0) {
+                        diagnostic.relatedInformation = similarLabels.slice(0, 3).map(label => {
+                            // Find the line where this label is defined
+                            let labelLine = 0;
+                            for (let i = 0; i < lines.length; i++) {
+                                if (lines[i].trim().startsWith(label + ':')) {
+                                    labelLine = i;
+                                    break;
+                                }
+                            }
+                            return {
+                                location: Location.create(documentUri, Range.create(labelLine, 0, labelLine, label.length)),
+                                message: `Did you mean '${label}'?`
+                            };
+                        });
+                    }
+                }
+
+                diagnostics.push(diagnostic);
             }
         }
     }

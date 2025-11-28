@@ -3,7 +3,6 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
 import { URI } from 'vscode-uri';
 
 export async function validateWithSexec(textDocument: TextDocument, sexecPath: string, configuredCommandsTxtPath?: string): Promise<Diagnostic[]> {
@@ -34,6 +33,17 @@ export async function validateWithSexec(textDocument: TextDocument, sexecPath: s
 
         const tempFileName = `.tmp_${fileName}`;
         const tempFilePath = path.join(fileDir, tempFileName);
+
+        // Cleanup function to ensure temp file is removed
+        const cleanupTempFile = () => {
+            try {
+                if (fs.existsSync(tempFilePath)) {
+                    fs.unlinkSync(tempFilePath);
+                }
+            } catch (e) {
+                console.error(`Failed to cleanup temp file ${tempFilePath}:`, e);
+            }
+        };
 
         try {
             fs.writeFileSync(tempFilePath, textDocument.getText());
@@ -85,11 +95,7 @@ export async function validateWithSexec(textDocument: TextDocument, sexecPath: s
 
         sexecProcess.on('close', () => {
             // Clean up temp file
-            try {
-                if (fs.existsSync(tempFilePath)) {
-                    fs.unlinkSync(tempFilePath);
-                }
-            } catch (e) { /* ignore */ }
+            cleanupTempFile();
 
             const lines = output.split('\n');
             // Parse output
@@ -172,7 +178,11 @@ export async function validateWithSexec(textDocument: TextDocument, sexecPath: s
 
         sexecProcess.on('error', (err) => {
             console.error(`Failed to spawn sexec: ${err}`);
+            cleanupTempFile();
             resolve([]);
         });
+
+        // Ensure cleanup on process exit
+        process.on('exit', cleanupTempFile);
     });
 }

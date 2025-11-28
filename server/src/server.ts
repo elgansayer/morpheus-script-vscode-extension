@@ -38,6 +38,11 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 
+// Export for use in validator
+export function getHasDiagnosticRelatedInformation(): boolean {
+    return hasDiagnosticRelatedInformationCapability;
+}
+
 
 
 let commands: Record<string, MorpheusCommand> = {};
@@ -257,7 +262,7 @@ async function validateTextDocument(textDocument: TextDocument, trigger: 'onChan
     }
 
     const text = textDocument.getText();
-    const diagnostics = validateText(text, commands);
+    const diagnostics = validateText(text, commands, textDocument.uri, hasDiagnosticRelatedInformationCapability);
 
     // Run external validator (sexec) based on settings
     const sexecPath = settings.morpheus.validation.sexecPath;

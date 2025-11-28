@@ -151,11 +151,12 @@
 			"patterns": [
 				{
 					"name": "variable.other.property.morpheus",
-					"match": "\\.[a-zA-Z0-9_]+"
+					"match": "\\.[a-zA-Z_][a-zA-Z0-9_]*"
 				},
 				{
+					"comment": "Generic identifier - matches last due to pattern order",
 					"name": "variable.other.morpheus",
-					"match": "\\b[a-zA-Z0-9_]+\\b"
+					"match": "(?<!\\$|\\.|::)\\b[a-zA-Z_][a-zA-Z0-9_]*\\b(?!:)"
 				}
 			]
 		},

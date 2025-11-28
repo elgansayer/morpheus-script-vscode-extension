@@ -43,7 +43,7 @@
                 "extensions": [
                     ".scr"
                 ],
-                "configuration": "./syntaxes/morpheus.tmLanguage.json"
+                "configuration": "./syntaxes/morpheus.language-configuration.json"
             }
         ],
         "grammars": [

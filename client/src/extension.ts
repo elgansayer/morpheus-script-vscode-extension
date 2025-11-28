@@ -10,6 +10,11 @@ import {
 
 let client: LanguageClient;
 
+// Generate a random debug port between 6010 and 6999 to avoid conflicts
+function getDebugPort(): number {
+    return Math.floor(Math.random() * 990) + 6010;
+}
+
 export function activate(context: ExtensionContext) {
     console.log('Morpheus Script extension is activating...');
     
@@ -20,9 +25,10 @@ export function activate(context: ExtensionContext) {
     
     console.log('Server module path:', serverModule);
     
-    // The debug options for the server
-    // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-    const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+    // The debug options for the server with dynamic port
+    const debugPort = getDebugPort();
+    const debugOptions = { execArgv: ['--nolazy', `--inspect=${debugPort}`] };
+    console.log(`Debug port: ${debugPort}`);
 
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
@@ -40,8 +46,8 @@ export function activate(context: ExtensionContext) {
         // Register the server for Morpheus script files
         documentSelector: [{ scheme: 'file', language: 'morpheus' }],
         synchronize: {
-            // Notify the server about file changes to '.clientrc files contained in the workspace
-            fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
+            // Notify the server about file changes to commands.json
+            fileEvents: workspace.createFileSystemWatcher('**/commands.json')
         },
         outputChannelName: 'Morpheus Language Server'
     };
@@ -54,10 +60,15 @@ export function activate(context: ExtensionContext) {
         clientOptions
     );
 
-    // Start the client. This will also launch the server
-    client.start();
-    
-    console.log('Morpheus Script extension activated, language server starting...');
+    // Start the client with error handling
+    try {
+        client.start();
+        console.log('Morpheus Script extension activated, language server started successfully.');
+    } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error('Failed to start Morpheus language server:', errorMessage);
+        window.showErrorMessage(`Failed to start Morpheus Language Server: ${errorMessage}`);
+    }
 }
 
 export function deactivate(): Thenable<void> | undefined {
