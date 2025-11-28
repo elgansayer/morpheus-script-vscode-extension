@@ -1,8 +1,8 @@
 {
     "name": "morpheus-vscode",
     "displayName": "Morpheus Script",
-    "description": "VSCode extension for Medal of Honor: Allied Assault Morpheus scripting language",
-    "version": "0.0.9",
+    "description": "Morpheus .scr scripting support for Medal of Honor: Allied Assault: syntax highlighting, hover docs, validation, formatting, and autocomplete.",
+    "version": "0.0.10",
     "publisher": "Elgan",
     "repository": {
         "type": "git",
@@ -13,6 +13,16 @@
     },
     "categories": [
         "Programming Languages"
+    ],
+    "keywords": [
+        "morpheus",
+        "mohaa",
+        "medal of honor",
+        "script",
+        "scripting",
+        ".scr",
+        "language server",
+        "game modding"
     ],
     "activationEvents": [
         "onLanguage:morpheus"
