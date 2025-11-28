@@ -72,6 +72,18 @@
                     "default": "onSave",
                     "description": "When to run the external validator."
                 },
+                "morpheus.paths.commandsJson": {
+                    "scope": "resource",
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to commands.json file. If empty, uses the bundled file."
+                },
+                "morpheus.paths.commandsTxt": {
+                    "scope": "resource",
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to commands.txt file. If empty, uses the bundled file."
+                },
                 "morpheus.trace.server": {
                     "scope": "window",
                     "type": "string",

@@ -92,21 +92,41 @@ connection.onInitialized(() => {
         });
     }
 
-    // Load commands.json if it exists in the workspace root
+    // Load commands.json
     loadCommands();
 });
 
 async function loadCommands() {
+    let configuredPath = '';
+    if (hasConfigurationCapability) {
+        try {
+            const settings = await connection.workspace.getConfiguration({
+                section: 'morpheus'
+            });
+            if (settings && settings.paths && settings.paths.commandsJson) {
+                configuredPath = settings.paths.commandsJson;
+            }
+        } catch (e) {
+            connection.console.error(`Failed to load configuration: ${e}`);
+        }
+    }
+
     // Look for commands.json relative to the server script
     // When compiled, we are in out/server/src/server.js
     // commands.json is in the root of the extension
 
     // __dirname points to out/server/src, so we need to go up 3 levels
-    const possiblePaths = [
+    const possiblePaths = [];
+
+    if (configuredPath) {
+        possiblePaths.push(configuredPath);
+    }
+
+    possiblePaths.push(
         path.join(__dirname, '..', '..', '..', 'commands.json'), // From out/server/src -> root
         path.join(__dirname, '..', '..', 'commands.json'),       // Fallback
-        path.resolve(__dirname, '../../../commands.json'),       // Alternative resolution
-    ];
+        path.resolve(__dirname, '../../../commands.json')        // Alternative resolution
+    );
 
     connection.console.log(`Server __dirname: ${__dirname}`);
 
@@ -144,6 +164,10 @@ interface MorpheusSettings {
         formatting: {
             enable: boolean;
         };
+        paths: {
+            commandsJson: string;
+            commandsTxt: string;
+        };
     };
 }
 
@@ -159,6 +183,10 @@ const defaultSettings: MorpheusSettings = {
         },
         formatting: {
             enable: true
+        },
+        paths: {
+            commandsJson: "",
+            commandsTxt: ""
         }
     }
 };
@@ -245,7 +273,8 @@ async function validateTextDocument(textDocument: TextDocument, trigger: 'onChan
     }
 
     if (shouldRunSexec && sexecPath) {
-        const sexecDiagnostics = await validateWithSexec(textDocument, sexecPath);
+        const commandsTxtPath = settings.morpheus.paths.commandsTxt;
+        const sexecDiagnostics = await validateWithSexec(textDocument, sexecPath, commandsTxtPath);
         diagnostics.push(...sexecDiagnostics);
     }
 

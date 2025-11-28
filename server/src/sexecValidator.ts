@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { URI } from 'vscode-uri';
 
-export async function validateWithSexec(textDocument: TextDocument, sexecPath: string): Promise<Diagnostic[]> {
+export async function validateWithSexec(textDocument: TextDocument, sexecPath: string, configuredCommandsTxtPath?: string): Promise<Diagnostic[]> {
     return new Promise<Diagnostic[]>((resolve) => {
         const diagnostics: Diagnostic[] = [];
 
@@ -43,19 +43,47 @@ export async function validateWithSexec(textDocument: TextDocument, sexecPath: s
             return;
         }
 
-        const process = spawn(sexecPath, ['-d', fileDir, '-s', tempFileName]);
+        // Find commands.txt
+        // Try to find it in the workspace root or relative to the server
+        let commandListPath = '';
+        const possiblePaths = [];
+
+        if (configuredCommandsTxtPath) {
+            possiblePaths.push(configuredCommandsTxtPath);
+        }
+
+        possiblePaths.push(
+            path.join(__dirname, '..', '..', '..', 'commands.txt'), // From out/server/src -> root
+            path.join(__dirname, '..', '..', 'commands.txt'),       // Fallback
+            path.resolve(__dirname, '../../../commands.txt'),       // Alternative resolution
+            path.join(process.cwd(), 'commands.txt')                // CWD
+        );
+
+        for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+                commandListPath = p;
+                break;
+            }
+        }
+
+        const args = ['-d', fileDir, '-s', tempFileName];
+        if (commandListPath) {
+            args.push('-e', commandListPath);
+        }
+
+        const sexecProcess = spawn(sexecPath, args);
 
         let output = '';
 
-        process.stdout.on('data', (data) => {
+        sexecProcess.stdout.on('data', (data) => {
             output += data.toString();
         });
 
-        process.stderr.on('data', (data) => {
+        sexecProcess.stderr.on('data', (data) => {
             output += data.toString();
         });
 
-        process.on('close', () => {
+        sexecProcess.on('close', () => {
             // Clean up temp file
             try {
                 if (fs.existsSync(tempFilePath)) {
@@ -142,7 +170,7 @@ export async function validateWithSexec(textDocument: TextDocument, sexecPath: s
             resolve(diagnostics);
         });
 
-        process.on('error', (err) => {
+        sexecProcess.on('error', (err) => {
             console.error(`Failed to spawn sexec: ${err}`);
             resolve([]);
         });
