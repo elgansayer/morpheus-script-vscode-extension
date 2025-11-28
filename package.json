@@ -2,7 +2,7 @@
     "name": "morpheus-vscode",
     "displayName": "Morpheus Script",
     "description": "Morpheus .scr scripting support for Medal of Honor: Allied Assault: syntax highlighting, hover docs, validation, formatting, and autocomplete.",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "publisher": "Elgan",
     "repository": {
         "type": "git",
@@ -17,7 +17,10 @@
     "keywords": [
         "morpheus",
         "mohaa",
+        "MOHAA",
         "medal of honor",
+        "Medal of Honor Allied Assault",
+        "Allied Assault",
         "script",
         "scripting",
         ".scr",
