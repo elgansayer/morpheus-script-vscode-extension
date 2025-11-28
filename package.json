@@ -3,7 +3,7 @@
     "displayName": "Morpheus Script",
     "icon": "images/icon.png",
     "description": "Morpheus .scr scripting support for Medal of Honor: Allied Assault: syntax highlighting, hover docs, validation, formatting, and autocomplete.",
-    "version": "0.0.13",
+    "version": "0.0.14",
     "publisher": "Elgan",
     "repository": {
         "type": "git",
