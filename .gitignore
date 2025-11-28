@@ -31,3 +31,6 @@ npm-debug.log*
 # Environment files
 .env
 .env.local
+# Embedded git repos
+morfuse_repo/
+sexec/
